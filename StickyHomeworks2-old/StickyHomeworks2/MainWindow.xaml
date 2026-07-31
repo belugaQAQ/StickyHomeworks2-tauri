@@ -1,0 +1,519 @@
+<Window x:Class="StickyHomeworks.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:StickyHomeworks"
+        mc:Ignorable="d"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:ely="http://github.com/HelloWRC/ElysiaFramework"
+        xmlns:controls="clr-namespace:StickyHomeworks.Controls"
+        xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:converter="clr-namespace:StickyHomeworks.Converter"
+        xmlns:behaviors="clr-namespace:StickyHomeworks.Behaviors" 
+        xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="14"
+        FontFamily="{StaticResource HarmonyOsSans}"
+        Title="{Binding SettingsService.Settings.Title, Mode=OneWay}" 
+        ShowInTaskbar="{Binding SettingsService.Settings.IsDebugShowInTaskBar}"
+        d:DataContext="{d:DesignInstance local:MainWindow}"
+        Closing="MainWindow_OnClosing"
+        WindowStyle="None"
+        Height="450" Width="800"
+        MinWidth="250"
+        MinHeight="45"
+        Icon="/Assets/AppLogo.png"
+        StateChanged="MainWindow_OnStateChanged"
+        Activated="MainWindow_OnActivated"
+        Deactivated="MainWindow_OnDeactivated"
+        AllowDrop="True"
+        DragEnter="MainWindow_OnDragEnter">
+    <Window.Style>
+        <Style TargetType="Window">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ViewModel.IsUnlocked}" Value="True">
+                    <Setter Property="ResizeMode" Value="CanResize"/>
+                    <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ViewModel.IsUnlocked}" Value="False">
+                    <Setter Property="ResizeMode" Value="NoResize"/>
+                    <Setter Property="Background" Value="{x:Null}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
+    <Window.Resources>
+        <converter:ColorToBrushConverter x:Key="ColorToBrushConverter"/>
+        <converter:OpacityToBackgroundConverter x:Key="OpacityToBackgroundConverter"/>
+        <converter:BooleanAndNotToVisibilityConverter x:Key="BooleanAndNotToVisibilityConverter"/>
+        <Style x:Key="MarkdownParagraphBaseStyle" TargetType="Paragraph">
+            <Setter Property="FontWeight" Value="Regular"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="LineHeight" Value="1"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+        <Style TargetType="Paragraph" BasedOn="{StaticResource MarkdownParagraphBaseStyle}"/>
+        <Style TargetType="FlowDocument" >
+            <Setter Property="PagePadding" Value="0"/>
+        </Style>
+        <Style x:Key="BlankFocusVisualStyle">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Grid/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <CollectionViewSource x:Key='SourceGrouped' 
+                              Source="{Binding ProfileService.Profile.Homeworks}">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Subject"/>
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
+
+        <StackPanel x:Key="ExitConfirm" VerticalAlignment="Stretch" Margin="40" MaxHeight="100" MaxWidth="200" >
+            <TextBlock Margin="47 0 0 0" Style="{StaticResource MaterialDesignHeadline6TextBlock}">
+                <Run Text="退出应用"/>
+            </TextBlock>
+            <TextBlock Margin="30 0 0 0" TextWrapping="Wrap">
+                <Run Text="确定要退出应用吗？"/>
+            </TextBlock>
+            <StackPanel Orientation="Horizontal" Margin="0 10 0 0" HorizontalAlignment="Right">
+                <Button Content="退出" HorizontalAlignment="Right" Style="{DynamicResource MaterialDesignFlatButton}" Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 
+                        Click="ButtonExit_OnClick">
+                    <Button.CommandParameter>
+                        <system:Boolean xmlns:system="clr-namespace:System;assembly=mscorlib">
+                            True
+                        </system:Boolean>
+                    </Button.CommandParameter>
+                </Button>
+                <Button Content="取消" HorizontalAlignment="Right" Style="{DynamicResource MaterialDesignFlatButton}" Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" Margin="60 0 0 0">
+                    <Button.CommandParameter>
+                        <system:Boolean xmlns:system="clr-namespace:System;assembly=mscorlib">
+                            False
+                        </system:Boolean>
+                    </Button.CommandParameter>
+                </Button>
+            </StackPanel>
+        </StackPanel>
+        <Storyboard x:Key="StoryBoardSaving">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="PackIconArrowFile" Storyboard.TargetProperty="(Canvas.Top)">
+                <EasingDoubleKeyFrame KeyTime="00:00:00" Value="1"/>
+                <EasingDoubleKeyFrame KeyTime="00:00:00.2000000" Value="50"/>
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
+    </Window.Resources>
+    <WindowChrome.WindowChrome>
+        <WindowChrome GlassFrameThickness="-1"
+                      ResizeBorderThickness="8"
+                      CaptionHeight="0">
+
+        </WindowChrome>
+    </WindowChrome.WindowChrome>
+    <Grid>
+    <materialDesign:DialogHost Identifier="MainWindow">
+        <materialDesign:DrawerHost IsTabStop="False"
+                                   FocusVisualStyle="{x:Null}"
+                                   DrawerClosing="DrawerHost_OnDrawerClosing">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <!-- 供 MultiBinding 跟踪主题色：DynamicResource 会随深浅色更新，勿用 StaticResource -->
+                <Border x:Name="ThemePaperBrushSource"
+                        Width="0" Height="0"
+                        Visibility="Collapsed"
+                        Background="{DynamicResource MaterialDesignPaper}" />
+                <!-- 背景 -->
+                <Border Grid.Row="0"
+                        Grid.RowSpan="3">
+                    <Border.Background>
+                        <MultiBinding Converter="{StaticResource OpacityToBackgroundConverter}">
+                            <Binding ElementName="ThemePaperBrushSource" Path="Background" />
+                            <Binding Path="SettingsService.Settings.Opacity"/>
+                        </MultiBinding>
+                    </Border.Background>
+                </Border>
+                <!-- 标题栏 -->
+                <materialDesign:ColorZone Grid.Row="0"
+                                          Mode="PrimaryMid"
+                                          Padding="6"
+                                          materialDesign:ElevationAssist.Elevation="Dp2"
+                                          MouseDown="DragBorder_OnMouseDown">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <!-- 标题 -->
+                        <TextBlock Grid.Column="0" 
+                                 Text="{Binding SettingsService.Settings.Title, Mode=OneWay}"
+                                 Foreground="{Binding SettingsService.Settings.TitleColor, Converter={StaticResource ColorToBrushConverter},  Mode=OneWay}"
+                                 FontWeight="{Binding SettingsService.Settings.TitleFontWeight, Mode=OneWay}"
+                                 VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis"
+                                 FontSize="22" Margin="6 2 2 2"/>
+
+                        <!-- 功能区 -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <StackPanel.Resources>
+                                <Style TargetType="Button"
+                                       BasedOn="{StaticResource MaterialDesignToolForegroundButton}">
+                                    <Setter Property="Margin" Value="4 0"></Setter>
+                                </Style>
+                            </StackPanel.Resources>
+                            
+                            <Button Click="ButtonMore_Click">
+                                <Button.Content>
+                                    <materialDesign:PackIcon Kind="Menu" Width="18" Height="18" />
+                                </Button.Content>
+                                <Button.ToolTip>更多选项…</Button.ToolTip>
+                                <Button.Visibility>
+                                    <MultiBinding Converter="{StaticResource BooleanAndNotToVisibilityConverter}">
+                                        <Binding Path="ViewModel.IsExpanded" />
+                                        <Binding Path="ViewModel.IsFrozen" />
+                                    </MultiBinding>
+                                </Button.Visibility>
+                            </Button>
+                            <materialDesign:PopupEx x:Name="PopupExAdvanced"
+                                                    StaysOpen="False"
+                                                    AllowsTransparency="True"
+                                                    PopupAnimation="Fade">
+                                <Grid Background="{DynamicResource MaterialDesignPaper}"
+                                      Margin="8"
+                                      TextElement.Foreground="{DynamicResource MaterialDesignBody}">
+                                    <Grid.Effect>
+                                        <DropShadowEffect BlurRadius="8" Direction="0" 
+                                                          ShadowDepth="0"
+                                                          
+                                                          Opacity="0.5"/>
+                                    </Grid.Effect>
+                                    <StackPanel Margin="12" MenuItem.Click="MenuItem_OnClick">
+                                        <ely:IconText Kind="CogOutline" Text="更多选项"/>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <!-- 界面缩放 -->
+                                            <TextBlock Grid.Row="0" 
+                                                       Grid.Column="0"
+                                                       Text="界面缩放"
+                                                       VerticalAlignment="Center"/>
+                                            <controls:NumberUpDownControl Grid.Row="0" 
+                                                                          Grid.Column="1"
+                                                                          StringFormat="P0"
+                                                                          MinValue="0.8"
+                                                                          MaxValue="5"
+                                                                          VerticalAlignment="Center"
+                                                                          Value="{Binding SettingsService.Settings.Scale, Mode=TwoWay}"
+                                                                          Step="0.05"/>
+                                            <!-- 背景不透明度 -->
+                                            <TextBlock Grid.Row="1" 
+                                                       Grid.Column="0"
+                                                       Text="背景不透明度"
+                                                       VerticalAlignment="Center"/>
+                                            <controls:NumberUpDownControl Grid.Row="1" 
+                                                                          Grid.Column="1"
+                                                                          StringFormat="P0"
+                                                                          MinValue="0"
+                                                                          MaxValue="1"
+                                                                          VerticalAlignment="Center"
+                                                                          Value="{Binding SettingsService.Settings.Opacity, Mode=TwoWay}"
+                                                                          Step="0.05"/>
+                                        </Grid>
+                                        <Separator Margin="-12 4"/>
+                                        <MenuItem Margin="-12 0" Icon="{materialDesign:PackIcon Refresh}" Header="恢复过期的作业" Click="MenuItemRecoverExpiredHomework_OnClick" IsEnabled="{Binding ViewModel.CanRecoverExpireHomework}"/>
+                                        <MenuItem Margin="-12 0" Icon="{materialDesign:PackIcon History}" Header="时间机器…" Click="MenuItemTimeMachine_OnClick"/>
+                                        <MenuItem Margin="-12 0" Icon="{materialDesign:PackIcon CogOutline}" Header="更多设置…" Click="ButtonSettings_OnClick"/>
+                                        <!--<MenuItem Margin="-12 0" Icon="{materialDesign:PackIcon HelpCircleOutline}" Header="帮助" Click="Docs"/>-->
+                                        <MenuItem Margin="-12 0" Icon="{materialDesign:PackIcon ExitToApp}" Header="退出" Command="{x:Static materialDesign:DialogHost.OpenDialogCommand}" CommandParameter="{StaticResource ExitConfirm}" />
+                                    </StackPanel>
+                                </Grid>
+                            </materialDesign:PopupEx>
+                            <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                          Margin="4 0"
+                                          ToolTip="锁定窗口"
+                                          IsChecked="{Binding ViewModel.IsUnlocked, Converter={StaticResource InvertBooleanConverter}}">
+                                <ToggleButton.Content>
+                                    <materialDesign:PackIcon Kind="UnlockedOutline" Width="18" Height="18" />
+                                </ToggleButton.Content>
+                                <materialDesign:ToggleButtonAssist.OnContent>
+                                    <materialDesign:PackIcon Kind="Lock" Width="18" Height="18" />
+                                </materialDesign:ToggleButtonAssist.OnContent>
+                                <materialDesign:ToggleButtonAssist.SwitchTrackOnBackground>
+                                    <DynamicResource ResourceKey="MaterialDesignPaper" />
+                                </materialDesign:ToggleButtonAssist.SwitchTrackOnBackground>
+                                <ToggleButton.Visibility>
+                                    <MultiBinding Converter="{StaticResource BooleanAndNotToVisibilityConverter}">
+                                        <Binding Path="ViewModel.IsExpanded" />
+                                        <Binding Path="ViewModel.IsFrozen" />
+                                    </MultiBinding>
+                                </ToggleButton.Visibility>
+                            </ToggleButton>
+                                <Button Margin="4 0"
+                                        ToolTip="冻结界面"
+                                        Click="ButtonFreeze_OnClick">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignToolForegroundButton}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ViewModel.IsFrozen}" Value="False">
+                                                    <Setter Property="Content">
+                                                        <Setter.Value>
+                                                            <materialDesign:PackIcon Kind="snowflake" Width="18" Height="18" />
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ViewModel.IsFrozen}" Value="True">
+                                                    <Setter Property="Content">
+                                                        <Setter.Value>
+                                                            <materialDesign:PackIcon Kind="snowflakeoff" Width="18" Height="18" />
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Click="ButtonExport_OnClick">
+                                <Button.Content>
+                                    <materialDesign:PackIcon Kind="FileExport" Width="18" Height="18" />
+                                </Button.Content>
+                                <Button.ToolTip>导出…</Button.ToolTip>
+                                <Button.Visibility>
+                                    <MultiBinding Converter="{StaticResource BooleanAndNotToVisibilityConverter}">
+                                        <Binding Path="ViewModel.IsExpanded" />
+                                        <Binding Path="ViewModel.IsFrozen" />
+                                    </MultiBinding>
+                                </Button.Visibility>
+                            </Button>
+                            <Button Click="ButtonCreateHomework_OnClick">
+                                <Button.Content>
+                                    <materialDesign:PackIcon Kind="Add" Width="18" Height="18" />
+                                </Button.Content>
+                                <Button.ToolTip>布置作业</Button.ToolTip>
+                                <Button.Visibility>
+                                    <MultiBinding Converter="{StaticResource BooleanAndNotToVisibilityConverter}">
+                                        <Binding Path="ViewModel.IsExpanded" />
+                                        <Binding Path="ViewModel.IsFrozen" />
+                                    </MultiBinding>
+                                </Button.Visibility>
+                            </Button>
+                            <Button Margin="4 0" Click="ButtonExpandingSwitcher_OnClick">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignToolForegroundButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ViewModel.IsExpanded}" Value="True">
+                                                <Setter Property="Content" Value="{materialDesign:PackIcon WindowMinimize}"/>
+                                                <Setter Property="ToolTip" Value="收起主界面"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ViewModel.IsExpanded}" Value="False">
+                                                <Setter Property="Content" Value="{materialDesign:PackIcon WindowRestore}"/>
+                                                <Setter Property="ToolTip" Value="展开主界面"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </materialDesign:ColorZone>
+
+                <!-- 作业列表 -->
+                <ListView Grid.Row="1"
+                          Focusable="False"
+                          IsTabStop="False"
+                          Margin="8"
+                          FocusVisualStyle="{StaticResource BlankFocusVisualStyle}"
+                          HorizontalContentAlignment="Stretch"
+                          SelectionMode="Single"
+                          ItemsSource="{Binding Source={StaticResource SourceGrouped}}"
+                          SelectedItem="{Binding ViewModel.SelectedHomework}"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                          ScrollViewer.CanContentScroll="False"
+                          SelectionChanged="MainListView_OnSelectionChanged"
+                          Visibility="{Binding ViewModel.IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
+                          x:Name="MainListView" 
+                          d:ItemsSource="{d:SampleData ItemCount=5}">
+                    <ListView.LayoutTransform>
+                        <TransformGroup>
+                            <ScaleTransform ScaleX="{Binding SettingsService.Settings.Scale, Mode=OneWay}"
+                                            ScaleY="{Binding SettingsService.Settings.Scale, Mode=OneWay}" />
+                            <SkewTransform />
+                            <RotateTransform />
+                            <TranslateTransform />
+                        </TransformGroup>
+                    </ListView.LayoutTransform>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                            <Setter Property="Padding" Value="24 0 0 0" />
+                            <Setter Property="materialDesign:BehaviorsAssist.Behaviors">
+                                <Setter.Value>
+                                    <materialDesign:BehaviorCollection>
+                                        <behaviors:ControlExposeBehavior Condition="{Binding IsSelected, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBoxItem}}"
+                                                                         ExposedControl="{Binding ViewModel.SelectedListBoxItem, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, Mode=OneWayToSource}"/>
+                                    </materialDesign:BehaviorCollection>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.Panel>
+                                <ItemsPanelTemplate>
+                                    <controls:MasonryPanel FocusVisualStyle="{x:Null}">
+                                        <controls:MasonryPanel.ItemWidth>
+                                            <MultiBinding Converter="{StaticResource MinValueMultiConverter}"
+                                                          Mode="OneWay">
+                                                <Binding Path="ActualWidth" ElementName="MainListView" Mode="OneWay" />
+                                                <Binding Path="SettingsService.Settings.MaxPanelWidth" Mode="OneWay" />
+                                            </MultiBinding>
+                                        </controls:MasonryPanel.ItemWidth>
+                                    </controls:MasonryPanel>
+                                </ItemsPanelTemplate>
+                            </GroupStyle.Panel>
+                            <GroupStyle.ContainerStyle>
+                                <Style TargetType="{x:Type GroupItem}">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="{x:Type GroupItem}">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="22" FontWeight="Bold" />
+                                                    <ItemsPresenter />
+                                                </StackPanel>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </GroupStyle.ContainerStyle>
+                        </GroupStyle>
+                    </ListView.GroupStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <controls:HomeworkControl Grid.Column="0"
+                                                          IsEditing="{Binding ViewModel.IsDrawerOpened, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                                          IsSelected="{Binding IsSelected, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBoxItem}, Mode=OneWay}"
+                                                          HorizontalAlignment="Stretch"
+                                                          Homework="{Binding}" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                            Visibility="{Binding IsSelected, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBoxItem}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Button Content="{materialDesign:PackIcon EditOutline}"
+                                            Style="{StaticResource MaterialDesignToolForegroundButton}"
+                                            Margin="4 0" ToolTip="编辑" Click="ButtonEditHomework_OnClick" />
+                                    <Button Content="{materialDesign:PackIcon DeleteOutline}"
+                                            Style="{StaticResource MaterialDesignToolForegroundButton}"
+                                            Margin="4 0" ToolTip="删除" Foreground="IndianRed"
+                                            Click="ButtonRemoveHomework_OnClick" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <!-- 布置作业 -->
+                <Button Grid.Row="2"
+                        Click="ButtonCreateHomework_OnClick"
+                        Style="{StaticResource MaterialDesignFlatButton}">
+                    <ely:IconText Kind="Add" Text="布置作业" />
+                    <Button.Visibility>
+                        <MultiBinding Converter="{StaticResource BooleanAndNotToVisibilityConverter}">
+                            <Binding Path="ViewModel.IsExpanded" />
+                            <Binding Path="ViewModel.IsFrozen" />
+                        </MultiBinding>
+                    </Button.Visibility>
+                </Button>
+
+                <!-- 保存中 -->
+                <!--<Canvas Grid.Row="1" Margin="0,30,50,0" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    -->
+                <!-- File -->
+                <!--
+                    <materialDesign:PackIcon Name="PackIconArrowFile" Kind="ArrowDownBold" Width="26" Height="26" Canvas.Top="0"/>
+                    -->
+                <!-- File -->
+                <!--
+                    <materialDesign:PackIcon Name="PackIconFile" Kind="FileDocument" Width="26" Height="26" Canvas.Top="30"/>
+                </Canvas>-->
+
+                <!-- 已解锁 -->
+                <Border Grid.Row="1" Grid.RowSpan="2"
+                        d:Visibility="Collapsed"
+                        Visibility="{Binding ViewModel.IsUnlocked, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Opacity="0.75" Background="{DynamicResource MaterialDesignPaper}" 
+                        BorderThickness="8 0 8 8"
+                        BorderBrush="{DynamicResource PrimaryHueMidBrush}"/>
+                <StackPanel Grid.Row="1" Grid.RowSpan="2"
+                            d:Visibility="Collapsed"
+                            Visibility="{Binding ViewModel.IsUnlocked, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Margin="12">
+                    <!--<Image Source="/Assets/光辉矢愿_瞄准.png" Height="81" Width="81"
+                           HorizontalAlignment="Center"
+                           Margin="0 0 0 8"/>-->
+                    <!--materialDesign:PackIcon Kind="MoveResizeVariant" 
+                                             Height="80" Width="80"
+                                             HorizontalAlignment="Center"
+                                             Margin="8"/-->
+                        <controls:WindowMovingDemo Margin="0 0 0 30"
+                                                   ToolTip="动画示意：先拖动窗口，再演示解锁时的缩放与鼠标轨迹（循环播放）"/>
+                        <TextBlock Text="窗口已经解锁，拖动以移动窗口，拉伸边缘以调整窗口大小。"
+                               TextWrapping="Wrap" 
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                </StackPanel>
+                <Border Grid.Row="1" Grid.RowSpan="2"
+                        x:Name="DragBorder"
+                        d:Visibility="Collapsed"
+                        Visibility="{Binding ViewModel.IsUnlocked, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Background="Transparent"
+                        MouseDown="DragBorder_OnMouseDown"
+                        >
+
+                </Border>
+
+                <!-- Working -->
+                <Border Grid.Row="1" Grid.RowSpan="2"
+                        d:Visibility="Collapsed"
+                        Visibility="{Binding ViewModel.IsWorking, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Opacity="0.75" Background="{DynamicResource MaterialDesignPaper}" />
+                <StackPanel Grid.Row="1" Grid.RowSpan="2"
+                            d:Visibility="Collapsed"
+                            Visibility="{Binding ViewModel.IsWorking, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center">
+                    <ely:StarRailLoadingControl/>
+                </StackPanel>
+
+                <!-- Snackbar -->
+                <materialDesign:Snackbar Grid.Row="0" Grid.RowSpan="3"
+                                         MessageQueue="{Binding ViewModel.SnackbarMessageQueue}"/>
+            </Grid>
+        </materialDesign:DrawerHost>
+    </materialDesign:DialogHost>
+        <tb:TaskbarIcon 
+            x:Name="TrayIconView"
+            ToolTipText="StickyHomeworks2"
+            IconSource="/Assets/AppLogo.ico"
+            LeftClickCommand="{Binding OpenTaskbarWindowCommand}">
+            <i:Interaction.Triggers>
+                <i:EventTrigger EventName="MouseRightButtonDown">
+                    <i:InvokeCommandAction Command="{Binding OpenTaskbarWindowCommand}"/>
+                </i:EventTrigger>
+            </i:Interaction.Triggers>
+        </tb:TaskbarIcon>
+    </Grid>
+</Window>

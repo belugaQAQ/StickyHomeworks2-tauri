@@ -1,0 +1,74 @@
+# .github/workflows/build.yml
+name: Build StickyHomeworks2
+
+on:
+  push:
+    branches: 
+      - "master"
+      - "dev"
+      - "dev1"
+  pull_request:
+    branches: 
+      - "master"
+      - "dev"
+      - "dev1"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: StickyHomeworks2.sln          
+      Project_Path: StickyHomeworks2/StickyHomeworks2.csproj   
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Setup Node (Web SPA)
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+        cache: npm
+        cache-dependency-path: StickyHomeworks2.Web/ClientApp/package-lock.json
+
+    - name: Restore
+      run: dotnet restore ${{ env.Solution_Name }}
+
+    - name: Web SPA dependencies
+      working-directory: StickyHomeworks2.Web/ClientApp
+      run: npm ci
+
+    - name: Build
+      run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }} --no-restore -p:SkipEmbeddedUpdater=true
+
+    - name: Test
+      run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal
+
+    - name: Publish (self-contained)
+      run: |
+        dotnet publish ${{ env.Project_Path }} `
+          --configuration ${{ matrix.configuration }} `
+          --runtime win-x64 `
+          --self-contained true `
+          --output ./publish `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:PublishReadyToRun=true
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StickyHomeworks2-${{ matrix.configuration }}
+        path: ./publish

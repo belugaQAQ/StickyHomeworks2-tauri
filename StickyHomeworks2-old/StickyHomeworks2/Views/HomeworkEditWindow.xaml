@@ -1,0 +1,326 @@
+<Window x:Class="StickyHomeworks.Views.HomeworkEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:StickyHomeworks.Views"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:ely="http://github.com/HelloWRC/ElysiaFramework"
+        xmlns:behaviors="clr-namespace:StickyHomeworks.Behaviors"
+        xmlns:stickyHomeworks="clr-namespace:StickyHomeworks"
+        xmlns:converter="clr-namespace:StickyHomeworks.Converter"
+        xmlns:emoji="clr-namespace:Emoji.Wpf;assembly=Emoji.Wpf"
+        mc:Ignorable="d"
+        WindowStyle="None"
+        Topmost="True"
+        ShowInTaskbar="False"
+        d:DataContext="{d:DesignInstance local:HomeworkEditWindow}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        Background="{x:Null}"
+        FontFamily="{StaticResource HarmonyOsSans}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="14"
+        TextOptions.TextFormattingMode="Ideal" 
+        TextOptions.TextRenderingMode="Auto"   
+        ResizeMode="NoResize"
+        SizeToContent="Height"
+        AllowsTransparency="True"
+        Icon="/Assets/AppLogo.png"
+        Title="编辑作业" Height="450" Width="300">
+    <Window.Resources>
+        <ely:IntToStringConverter x:Key="IntToStringConverter" />
+        <converter:ColorToBrushConverter x:Key="ColorToBrushConverter" />
+    </Window.Resources>
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="22"
+                      ResizeBorderThickness="4"/>
+    </WindowChrome.WindowChrome>
+    <materialDesign:Card Margin="6"
+            Background="{DynamicResource MaterialDesignPaper}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*" MinHeight="0"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0" Background="{DynamicResource MaterialDesignToolBarBackground}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
+                <materialDesign:ColorZone Grid.Column="1"
+                                          Margin="8"
+                                          Background="{DynamicResource MaterialDesignBodyLight}"
+                                          Height="4"/>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="4"/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" 
+                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                  materialDesign:HintAssist.Hint="科目"
+                                  SelectionChanged="Selector_OnSelectionChanged"
+                                  ItemsSource="{Binding SettingsService.Settings.Subjects}"
+                                  SelectedItem="{Binding MainWindow.ViewModel.SelectedHomework.Subject}"/>
+                        <DatePicker Grid.Column="2"
+                                    Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
+                                    materialDesign:HintAssist.Hint="截止日期"
+                                    SelectedDate="{Binding MainWindow.ViewModel.SelectedHomework.DueTime}"/>
+                    </Grid>
+                    <Separator Margin="-6 6"/>
+                    <ely:IconText Kind="TagMultipleOutline" Text="标签"/>
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding SettingsService.Settings.Tags}"
+                             Style="{StaticResource MaterialDesignFilterChipPrimaryOutlineListBox}">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem"
+                                   BasedOn="{StaticResource MaterialDesignFilterChipPrimaryOutlineListBoxItem}">
+                                <Setter Property="materialDesign:BehaviorsAssist.Behaviors">
+                                    <Setter.Value>
+                                        <materialDesign:BehaviorCollection>
+                                            <behaviors:AllCollectionBehavior
+                                                AllCollection="{Binding MainWindow.ViewModel.SelectedHomework.Tags, RelativeSource={RelativeSource FindAncestor, AncestorType=local:HomeworkEditWindow}}"
+                                                CurrentValue="{Binding}" />
+                                        </materialDesign:BehaviorCollection>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+
+                    <Separator Grid.Row="3" Margin="2 8 2 8" />
+                    <ely:IconText Kind="FormatBold" Text="文本"/>
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                            <Button x:Name="EmojiButton"
+                                    Content="{materialDesign:PackIcon EmoticonOutline}"
+                                    VerticalAlignment="Center"
+                                    Margin="4 0"
+                                    Click="ButtonEmoji_OnClick"
+                                    Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                            <Button x:Name="InsertImageButton"
+                                    Content="{materialDesign:PackIcon ImageAddOutline}"
+                                    VerticalAlignment="Center"
+                                    Margin="4 0"
+                                    Click="ButtonInsertImage_OnClick"
+                                    Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                            <Button Content="{materialDesign:PackIcon LinkAdd}"
+                                    VerticalAlignment="Center"
+                                    Margin="4 0"
+                                    Click="ButtonInsertLink_OnClick"
+                                    ToolTip="插入链接"
+                                    Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                            <Button Content="{materialDesign:PackIcon Undo}"
+                                    Command="Undo"
+                                    ToolTip="撤销"
+                                    CommandTarget="{Binding RelatedRichTextBox}"
+                                    VerticalAlignment="Center"
+                                    Margin="4 0"
+                                    Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                            <Button Content="{materialDesign:PackIcon ContentCopy}"
+                                    VerticalAlignment="Center"
+                                    Margin="4 0"
+                                    Command="Copy"
+                                    ToolTip="复制"
+                                    CommandTarget="{Binding RelatedRichTextBox}"
+                                    Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                            <Button Content="{materialDesign:PackIcon ContentCut}"
+                                    VerticalAlignment="Center"
+                                    Margin="4 0"
+                                    Command="Cut"
+                                    ToolTip="剪切"
+                                    CommandTarget="{Binding RelatedRichTextBox}"
+                                    Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                            <Button Content="{materialDesign:PackIcon ContentPaste}"
+                                    VerticalAlignment="Center"
+                                    Margin="4 0"
+                                    Command="Paste"
+                                    ToolTip="粘贴"
+                                    CommandTarget="{Binding RelatedRichTextBox}"
+                                    Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                        </StackPanel>
+                    </Grid>
+                    <WrapPanel Margin="0 6 0 0">
+                        <ely:ColorPicker Margin="0 0 6 0"
+                                         Color="{Binding ViewModel.TextColor, Mode=TwoWay, Delay=50}"
+                                         VerticalAlignment="Center" />
+                        <Button Content="{materialDesign:PackIcon FormatColorReset}"
+                                VerticalAlignment="Center"
+                                ToolTip="清除颜色"
+                                Click="ButtonClearColor_OnClick"
+                                Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                        <Button Content="{materialDesign:PackIcon Add}"
+                                VerticalAlignment="Center"
+                                ToolTip="添加到常用的颜色"
+                                Click="ButtonAddToColor_OnClick"
+                                Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                        <ListBox ItemsSource="{Binding SettingsService.Settings.SavedColors}"
+                                 VerticalAlignment="Center"
+                                 SelectionChanged="ListBoxColors_OnSelectionChanged">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                    <Setter Property="Padding" Value="2"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Ellipse Width="16" Height="16"
+                                             Fill="{Binding Converter={StaticResource ColorToBrushConverter}}"
+                                             Stroke="{DynamicResource MaterialDesignBody}"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </WrapPanel>
+                    <Expander Padding="0" materialDesign:ExpanderAssist.HorizontalHeaderPadding="0"
+                              Margin="0 6 0 0">
+                        <Expander.Header>
+                            <TextBlock Text="更多格式"/>
+                        </Expander.Header>
+                        <StackPanel Margin="0 4 0 0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="4"/>
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="4"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ListBox Grid.Column="0" SelectionMode="Multiple" 
+                                         VerticalAlignment="Bottom"
+                                         SelectionChanged="ListBoxTextStyles_OnSelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem"
+                                               BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter Property="Foreground"
+                                                            Value="{DynamicResource PrimaryHueMidBrush}">
+                                                    </Setter>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBoxItem Content="{materialDesign:PackIcon Kind=FormatBold}"
+                                                 ToolTip="粗体（Ctrl+B）" IsSelected="{Binding ViewModel.IsBold}"/>
+                                    <ListBoxItem Content="{materialDesign:PackIcon Kind=FormatItalic}"
+                                                 ToolTip="斜体（Ctrl+I）" IsSelected="{Binding ViewModel.IsItalic}"/>
+                                    <ListBoxItem Content="{materialDesign:PackIcon Kind=FormatUnderline}"
+                                                 ToolTip="下划线（Ctrl+U）" IsSelected="{Binding ViewModel.IsUnderlined}"/>
+                                    <ListBoxItem Content="{materialDesign:PackIcon Kind=FormatStrikethroughVariant}"
+                                                 ToolTip="删除线" IsSelected="{Binding ViewModel.IsStrikeThrough}"/>
+                                </ListBox>
+                                <TextBox Grid.Column="2" Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                         Margin="0 6 0 0"
+                                         Text="{Binding ViewModel.FontSize, Converter={StaticResource IntToStringConverter}, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="字号" VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" Grid.Column="4" VerticalAlignment="Bottom">
+                                    <Button Content="{materialDesign:PackIcon FormatFontSizeDecrease}"
+                                            VerticalAlignment="Center"
+                                            Margin="3 0"
+                                            Style="{StaticResource MaterialDesignToolForegroundButton}" 
+                                            Click="ButtonFontSizeDecrease_OnClick"/>
+                                    <Button Content="{materialDesign:PackIcon FormatFontSizeIncrease}"
+                                            VerticalAlignment="Center"
+                                            Margin="3 0"
+                                            Click="ButtonFontSizeIncrease_OnClick"
+                                            Style="{StaticResource MaterialDesignToolForegroundButton}" />
+                                </StackPanel>
+                            </Grid>
+                            <ComboBox Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                      Margin="0 6 0 0"
+                                      SelectedItem="{Binding ViewModel.Font, Mode=TwoWay}"
+                                      ItemsSource="{Binding ViewModel.FontFamilies}"
+                                      materialDesign:HintAssist.Hint="字体">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock FontFamily="{Binding}"
+                                                   FontWeight="Regular">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding}" Value="{StaticResource HarmonyOsSans}">
+                                                            <Setter Property="Text" Value="HarmonyOs Sans SC (内置)"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                    <Setter Property="Text" Value="{Binding}"/>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                    </Expander>
+                    <Separator Grid.Row="3" Margin="2 8 2 8"/>
+                    <ely:IconText Kind="BookMultipleOutline" Text="作业模板" Margin="0 0 0 6"/>
+                    <Expander Padding="0"
+                              materialDesign:ExpanderAssist.HorizontalHeaderPadding="0"
+                              Margin="0 2 0 0"
+                              IsExpanded="False"
+                              d:IsExpanded="True">
+                        <Expander.Header>
+                            <TextBlock Text="快捷短语" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
+                        </Expander.Header>
+                        <WrapPanel x:Name="WpHomeworkTemplateQuickActions" Margin="0 4 0 0"/>
+                    </Expander>
+                    <Expander Padding="0"
+                              materialDesign:ExpanderAssist.HorizontalHeaderPadding="0"
+                              Margin="0 2 0 0"
+                              IsExpanded="False"
+                              d:IsExpanded="True">
+                        <Expander.Header>
+                            <TextBlock Text="本科作业条目" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
+                        </Expander.Header>
+                        <WrapPanel x:Name="WpHomeworkTemplateSubjectBooks" Margin="0 4 0 0"/>
+                    </Expander>
+                    <Expander Padding="0"
+                              materialDesign:ExpanderAssist.HorizontalHeaderPadding="0"
+                              Margin="0 2 0 0"
+                              IsExpanded="False"
+                              d:IsExpanded="True">
+                        <Expander.Header>
+                            <TextBlock Text="通用作业条目" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
+                        </Expander.Header>
+                        <WrapPanel x:Name="WpHomeworkTemplateCommonBooks" Margin="0 4 0 0"/>
+                    </Expander>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Separator Grid.Row="2" Margin="2 8 2 0"/>
+            <StackPanel Grid.Row="3" Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="8">
+                <Button Click="ButtonEditingDone_OnClick">
+                    <ely:IconText Kind="Check" Text="确定"/>
+                </Button>
+            </StackPanel>
+            <Popup x:Name="EmojiPickerPopup" PlacementTarget="{Binding ElementName=EmojiButton}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+                <Border Background="{DynamicResource MaterialDesignPaper}" BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="1" Width="320" MaxHeight="400">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <WrapPanel x:Name="EmojiPanel" Margin="8" />
+                    </ScrollViewer>
+                </Border>
+            </Popup>
+        </Grid>
+    </materialDesign:Card>
+</Window>
