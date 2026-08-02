@@ -1,51 +1,11 @@
 <script setup lang="ts">
-import { ref, toRef } from "vue";
+import { computed, ref, toRef } from "vue";
 import { useHomeworkMasonry, type SubjectGroup } from "../composables/useHomeworkMasonry";
 import "../styles/homework-board.css";
 
 const selectedHomeworkId = ref<string | null>(null);
-const props = defineProps<{ mobileLayout: boolean }>();
-
-const groups: SubjectGroup[] = [
-  {
-    name: "语文",
-    homeworks: [
-      { id: "chinese-read-1", content: "第六课课文朗读，并准备两个讨论问题。", tags: ["朗读", "小组"] },
-      { id: "chinese-read-2", content: "第六课课文朗读，并准备两个讨论问题。", tags: ["朗读"] },
-      { id: "chinese-write", content: "完成练习册最后两行书写练习。", tags: ["练习册"] },
-    ],
-  },
-  {
-    name: "数学",
-    homeworks: [
-      { id: "math-fractions", content: "完成第 1 至 12 题，并写出计算过程。", tags: ["分数", "练习"] },
-      { id: "math-geometry", content: "整理角的分类，并完成几何笔记。", tags: ["笔记"] },
-    ],
-  },
-  {
-    name: "英语",
-    homeworks: [
-      { id: "english-words", content: "复习第三组词汇的拼写和例句。", tags: ["词汇"] },
-      { id: "english-dialogue", content: "朗读课本第八页对话。", tags: ["朗读"] },
-    ],
-  },
-  {
-    name: "物理",
-    homeworks: [
-      { id: "eglish-words", content: "复习第三组词汇的拼写和例句。", tags: ["词汇"] },
-      { id: "eglish-dialogue", content: "朗读课本第八页对话。", tags: ["朗读"] },
-    ],
-  },
-  {
-    name: "化学",
-    homeworks: [
-      { id: "englh-words", content: "复习第三组词汇的拼写和例句。", tags: ["词汇"] },
-      { id: "englh-dialogue", content: "朗读课本第八页对话。", tags: ["朗读"] },
-      { id: "englh-dialue", content: "朗读课本第八页对话。", tags: ["朗读"] },
-      { id: "englh-dialog", content: "朗读课本第八页对话。", tags: ["朗读"] },
-    ],
-  },
-];
+const props = defineProps<{ mobileLayout: boolean; groups: SubjectGroup[] }>();
+const groups = computed(() => props.groups);
 
 const { masonryColumns, setBoardElement, setGroupElement, setScrollElement } = useHomeworkMasonry(
   groups,
@@ -61,6 +21,10 @@ function selectHomework(id: string) {
 <template>
   <section :ref="setBoardElement" class="homework-board" aria-label="作业列表">
     <div :ref="setScrollElement" class="homework-scroll-region">
+      <div v-if="groups.length === 0" class="homework-empty-state">
+        <m3e-icon name="assignment"></m3e-icon>
+        <m3e-heading variant="title" size="large" level="2">还没有作业</m3e-heading>
+      </div>
       <div class="masonry-columns" :style="{ '--homework-column-count': masonryColumns.length }">
         <div v-for="(column, columnIndex) in masonryColumns" :key="columnIndex" class="masonry-column">
           <section

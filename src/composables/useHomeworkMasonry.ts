@@ -13,10 +13,10 @@ export type SubjectGroup = {
   homeworks: Homework[];
 };
 
-export function useHomeworkMasonry(groups: SubjectGroup[], mobileLayout: Ref<boolean>) {
+export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Ref<boolean>) {
   const boardElement = ref<HTMLElement | null>(null);
   const scrollElement = ref<HTMLElement | null>(null);
-  const masonryColumns = ref<SubjectGroup[][]>([groups]);
+  const masonryColumns = ref<SubjectGroup[][]>([groups.value]);
   const groupElements = new Map<string, HTMLElement>();
   const groupHeights = new Map<string, number>();
   let previousColumns = new Map<string, number>();
@@ -60,20 +60,20 @@ export function useHomeworkMasonry(groups: SubjectGroup[], mobileLayout: Ref<boo
     await nextTick();
 
     if (mobileLayout.value) {
-      masonryColumns.value = [groups];
-      previousColumns = new Map(groups.map((group) => [group.name, 0]));
+      masonryColumns.value = [groups.value];
+      previousColumns = new Map(groups.value.map((group) => [group.name, 0]));
       return;
     }
 
     const maxHeight = getAvailableColumnHeight();
     const gap = getColumnGap();
 
-    for (const group of groups) {
+    for (const group of groups.value) {
       const element = groupElements.get(group.name);
       if (element) groupHeights.set(group.name, element.getBoundingClientRect().height);
     }
 
-    const items = groups.map((group) => ({
+    const items = groups.value.map((group) => ({
       group,
       key: group.name,
       // Before the first measurement, use a stable provisional height only to render every group.
@@ -113,7 +113,7 @@ export function useHomeworkMasonry(groups: SubjectGroup[], mobileLayout: Ref<boo
     scheduleLayout();
   });
 
-  watch(mobileLayout, scheduleLayout);
+  watch([groups, mobileLayout], scheduleLayout, { deep: true });
 
   onBeforeUnmount(() => {
     cancelAnimationFrame(layoutFrame);

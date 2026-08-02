@@ -16,6 +16,20 @@
   overflow-y: hidden;
 }
 
+.homework-empty-state {
+  display: grid;
+  min-height: 14rem;
+  place-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+  text-align: center;
+}
+
+.homework-empty-state > m3e-icon {
+  font-size: 3rem;
+}
+
 .subject-group > m3e-heading {
   display: block;
   margin: 0 0 0.65rem;

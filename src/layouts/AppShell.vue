@@ -2,6 +2,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { computed, onMounted, ref } from "vue";
 import HomeworkBoard from "../views/HomeworkBoard.vue";
+import { loadAppData } from "../services/app-data";
+import { createDefaultAppData, type AppData } from "../types/app-data";
+import type { SubjectGroup } from "../composables/useHomeworkMasonry";
+import { isHomeworkExpired, toHomeworkDisplayText } from "../utils/homework-content";
 import "../styles/app-shell.css";
 
 type NavigationItem = "homeworks" | "templates" | "settings";
@@ -11,6 +15,7 @@ const isDrawerOpen = ref(false);
 const isMobileRuntime = ref(false);
 const appDrawer = ref<HTMLElement | null>(null);
 const moreSheet = ref<HTMLElement | null>(null);
+const appData = ref<AppData>(createDefaultAppData());
 
 const navigationItems: Array<{ id: NavigationItem; label: string; hint: string }> = [
   { id: "homeworks", label: "作业", hint: "home" },
@@ -25,6 +30,24 @@ const currentTitle = computed(() =>
 const currentContext = computed(() => {
   if (activeNavigation.value === "homeworks") return "今日任务";
   return currentTitle.value;
+});
+
+const homeworkGroups = computed<SubjectGroup[]>(() => {
+  const groups = new Map<string, SubjectGroup>();
+
+  for (const homework of appData.value.homeworks) {
+    const subject = homework.subject.trim() || "其它";
+    const group = groups.get(subject) ?? { name: subject, homeworks: [] };
+    group.homeworks.push({
+      id: homework.id,
+      content: toHomeworkDisplayText(homework.content),
+      tags: homework.tags,
+      expired: isHomeworkExpired(homework.dueTime),
+    });
+    groups.set(subject, group);
+  }
+
+  return [...groups.values()];
 });
 
 function selectNavigation(id: NavigationItem) {
@@ -75,6 +98,7 @@ onMounted(async () => {
   moreSheet.value?.setAttribute("handle", "");
   moreSheet.value?.setAttribute("detents", "fit half full");
   isMobileRuntime.value = await detectMobileRuntime();
+  appData.value = await loadAppData();
 });
 </script>
 
@@ -131,7 +155,11 @@ onMounted(async () => {
         </aside>
 
         <main class="app-content">
-          <HomeworkBoard v-if="activeNavigation === 'homeworks'" :mobile-layout="isMobileRuntime" />
+          <HomeworkBoard
+            v-if="activeNavigation === 'homeworks'"
+            :mobile-layout="isMobileRuntime"
+            :groups="homeworkGroups"
+          />
 
           <section v-else class="placeholder-view">
             <m3e-heading variant="headline" size="large" level="1">{{ currentTitle }}</m3e-heading>
