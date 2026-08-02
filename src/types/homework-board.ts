@@ -3,6 +3,7 @@ export type BoardHomework = {
   content: string;
   tags: string[];
   expired?: boolean;
+  expiredMarkColor?: string;
 };
 
 export type SubjectGroup = {

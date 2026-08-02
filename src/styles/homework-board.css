@@ -40,7 +40,7 @@
   display: grid;
   width: max-content;
   min-width: 100%;
-  grid-template-columns: repeat(var(--homework-column-count), 21.875rem);
+  grid-template-columns: repeat(var(--homework-column-count), var(--homework-panel-width, 21.875rem));
   gap: 0.5rem;
 }
 
@@ -84,7 +84,8 @@
 }
 
 .homework-item--expired {
-  --m3e-list-item-label-text-color: var(--md-sys-color-error);
+  --m3e-list-item-label-text-color: var(--homework-expired-color, var(--md-sys-color-error));
+  --m3e-list-item-leading-color: var(--homework-expired-color, var(--md-sys-color-error));
 }
 
 .homework-marker {
@@ -139,19 +140,19 @@
 
 }
 
-.app-theme--mobile .homework-board {
+.app-frame--mobile .homework-board {
   height: auto;
   min-height: calc(100dvh - 7rem);
   overflow: visible;
 }
 
-.app-theme--mobile .homework-scroll-region {
+.app-frame--mobile .homework-scroll-region {
   height: auto;
   padding-bottom: max(6rem, env(safe-area-inset-bottom));
   overflow: visible;
 }
 
-.app-theme--mobile .masonry-columns {
+.app-frame--mobile .masonry-columns {
   width: auto;
   grid-template-columns: minmax(0, 1fr);
 }

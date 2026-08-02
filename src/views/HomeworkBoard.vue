@@ -5,7 +5,7 @@ import type { SubjectGroup } from "../types/homework-board";
 import "../styles/homework-board.css";
 
 const selectedHomeworkId = ref<string | null>(null);
-const props = defineProps<{ mobileLayout: boolean; groups: SubjectGroup[] }>();
+const props = defineProps<{ mobileLayout: boolean; groups: SubjectGroup[]; maxPanelWidth: number }>();
 const emit = defineEmits<{
   edit: [id: string];
   delete: [id: string];
@@ -40,7 +40,13 @@ function deleteHomework(id: string) {
         <m3e-icon name="assignment"></m3e-icon>
         <m3e-heading variant="title" size="large" level="2">还没有作业</m3e-heading>
       </div>
-      <div class="masonry-columns" :style="{ '--homework-column-count': masonryColumns.length }">
+      <div
+        class="masonry-columns"
+        :style="{
+          '--homework-column-count': masonryColumns.length,
+          '--homework-panel-width': `${maxPanelWidth}px`,
+        }"
+      >
         <div v-for="(column, columnIndex) in masonryColumns" :key="columnIndex" class="masonry-column">
           <section
             v-for="group in column"
@@ -59,6 +65,7 @@ function deleteHomework(id: string) {
               :key="homework.id"
               class="homework-item"
               :class="{ 'homework-item--selected': selectedHomeworkId === homework.id, 'homework-item--expired': homework.expired }"
+              :style="homework.expired ? { '--homework-expired-color': homework.expiredMarkColor } : undefined"
               @click="selectHomework(homework.id)"
             >
               <span slot="leading" class="homework-marker" aria-hidden="true"></span>

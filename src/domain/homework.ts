@@ -1,6 +1,9 @@
-import type { AppData, HomeworkRecord } from "../types/app-data";
+import type { AppData, AppSettings, HomeworkRecord } from "../types/app-data";
 import type { SubjectGroup } from "../types/homework-board";
 import { isHomeworkExpired, toHomeworkDisplayText } from "../utils/homework-content.ts";
+import { uniqueVocabulary } from "./vocabulary.ts";
+
+export { uniqueVocabulary } from "./vocabulary.ts";
 
 export function localDateValue(value = new Date()) {
   return formatLocalDate(value);
@@ -15,10 +18,6 @@ export function formatLocalDate(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-export function uniqueVocabulary(values: readonly string[]) {
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
 export function normalizeHomework(homework: HomeworkRecord): HomeworkRecord {
@@ -57,7 +56,12 @@ export function removeHomeworkRecord(data: AppData, homeworkId: string): AppData
   };
 }
 
-export function groupHomeworks(homeworks: readonly HomeworkRecord[]): SubjectGroup[] {
+type ExpiryMarkSettings = Pick<AppSettings, "isExpiredMarkEnabled" | "expiredMarkColor">;
+
+export function groupHomeworks(
+  homeworks: readonly HomeworkRecord[],
+  expiryMarkSettings: ExpiryMarkSettings = { isExpiredMarkEnabled: false, expiredMarkColor: "" },
+): SubjectGroup[] {
   const groups = new Map<string, SubjectGroup>();
 
   for (const homework of homeworks) {
@@ -67,7 +71,8 @@ export function groupHomeworks(homeworks: readonly HomeworkRecord[]): SubjectGro
       id: homework.id,
       content: toHomeworkDisplayText(homework.content),
       tags: homework.tags,
-      expired: isHomeworkExpired(homework.dueTime),
+      expired: expiryMarkSettings.isExpiredMarkEnabled && isHomeworkExpired(homework.dueTime),
+      expiredMarkColor: expiryMarkSettings.expiredMarkColor,
     });
     groups.set(subject, group);
   }

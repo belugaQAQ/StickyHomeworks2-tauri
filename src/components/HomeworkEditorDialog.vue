@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { nextTick, ref } from "vue";
+import { nextTick, onBeforeUnmount, ref } from "vue";
 import { useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import { toDateInputValue } from "../domain/homework";
 import type { HomeworkRecord } from "../types/app-data";
 
 type DialogElement = HTMLElement & {
-  show: () => void;
+  show: () => void | Promise<void>;
   hide: () => void;
 };
 
@@ -17,10 +17,14 @@ type SelectElement = HTMLElement & {
   value: string | readonly string[] | null;
 };
 
+type FilterChipElement = HTMLElement & {
+  selected: boolean;
+};
+
 const props = defineProps<{
   homework: HomeworkRecord | null;
   subjects: string[];
-  newTag: string;
+  tags: string[];
   saveError: string;
   isEditing: boolean;
 }>();
@@ -31,22 +35,56 @@ const emit = defineEmits<{
   "update:content": [content: string];
   "update:subject": [subject: string];
   "update:dueDate": [date: Date];
-  "update:newTag": [tag: string];
-  addTag: [];
-  removeTag: [tag: string];
+  "update:tagSelection": [tag: string, selected: boolean];
 }>();
 
 const dialog = ref<DialogElement | null>(null);
 const dueDatePicker = ref<DatepickerElement | null>(null);
+let editorResizeObserver: ResizeObserver | null = null;
+let fitFrame = 0;
 
 useWebKitGtkDialogExit(dialog);
+
+function fitDialogToContent() {
+  const root = dialog.value?.shadowRoot;
+  const base = root?.querySelector<HTMLDialogElement>(".base");
+  const content = root?.querySelector<HTMLElement>(".content");
+  if (!base?.open || !content) return;
+
+  base.style.removeProperty("height");
+  window.requestAnimationFrame(() => {
+    const overflow = Math.ceil(content.scrollHeight - content.clientHeight);
+    if (overflow <= 1) return;
+
+    const nextHeight = Math.min(window.innerHeight - 4, base.offsetHeight + overflow + 1);
+    if (nextHeight > base.offsetHeight) base.style.height = `${nextHeight}px`;
+  });
+}
+
+function scheduleDialogFit() {
+  window.cancelAnimationFrame(fitFrame);
+  fitFrame = window.requestAnimationFrame(fitDialogToContent);
+}
+
+function prepareDynamicDialogHeight() {
+  const root = dialog.value?.shadowRoot;
+  const content = root?.querySelector<HTMLElement>(".content");
+  const editor = dialog.value?.querySelector<HTMLElement>(".homework-editor");
+  if (!content || !editor) return;
+
+  content.style.flex = "1 1 auto";
+  editorResizeObserver?.disconnect();
+  editorResizeObserver = new ResizeObserver(scheduleDialogFit);
+  editorResizeObserver.observe(editor);
+  scheduleDialogFit();
+}
 
 function show() {
   void nextTick(() => {
     if (props.homework && dueDatePicker.value) {
       dueDatePicker.value.date = new Date(`${toDateInputValue(props.homework.dueTime)}T00:00:00`);
     }
-    dialog.value?.show();
+    void Promise.resolve(dialog.value?.show()).then(prepareDynamicDialogHeight);
   });
 }
 
@@ -64,6 +102,15 @@ function updateSubject(event: Event) {
   if (typeof value === "string") emit("update:subject", value);
 }
 
+function updateTagSelection(tag: string, event: Event) {
+  emit("update:tagSelection", tag, (event.currentTarget as FilterChipElement).selected);
+}
+
+onBeforeUnmount(() => {
+  window.cancelAnimationFrame(fitFrame);
+  editorResizeObserver?.disconnect();
+});
+
 defineExpose({ show, hide });
 </script>
 
@@ -78,11 +125,11 @@ defineExpose({ show, hide });
         <textarea
           id="homework-content"
           :value="homework.content"
-          rows="4"
+          rows="2"
           @input="emit('update:content', ($event.target as HTMLTextAreaElement).value)"
         ></textarea>
       </m3e-form-field>
-      <m3e-textarea-autosize for="homework-content" min-rows="4" max-rows="8"></m3e-textarea-autosize>
+      <m3e-textarea-autosize for="homework-content" min-rows="2" max-rows="4"></m3e-textarea-autosize>
 
       <m3e-form-field variant="outlined">
         <label slot="label" for="homework-subject">科目</label>
@@ -103,30 +150,19 @@ defineExpose({ show, hide });
       </m3e-form-field>
       <m3e-datepicker ref="dueDatePicker" id="homework-due-picker" variant="auto" label="选择截止日期" @change="updateDueDate"></m3e-datepicker>
 
-      <m3e-form-field variant="outlined">
-        <label slot="label" for="homework-new-tag">标签</label>
-        <input
-          id="homework-new-tag"
-          :value="newTag"
-          autocomplete="off"
-          @input="emit('update:newTag', ($event.target as HTMLInputElement).value)"
-          @keydown.enter.prevent="emit('addTag')"
-        />
-        <m3e-icon-button slot="suffix" aria-label="添加标签" @click="emit('addTag')">
-          <m3e-icon name="add"></m3e-icon>
-        </m3e-icon-button>
-      </m3e-form-field>
-      <m3e-chip-set v-if="homework.tags.length" class="editor-tag-set">
-        <m3e-input-chip
-          v-for="tag in homework.tags"
+      <m3e-heading v-if="tags.length" class="editor-tags-title" variant="title" size="small" level="3">
+        标签
+      </m3e-heading>
+      <m3e-filter-chip-set v-if="tags.length" class="editor-tag-set" aria-label="作业标签" multi>
+        <m3e-filter-chip
+          v-for="tag in tags"
           :key="tag"
-          removable
-          :remove-label="`移除标签 ${tag}`"
-          @remove="emit('removeTag', tag)"
+          :selected="homework.tags.includes(tag)"
+          @change="updateTagSelection(tag, $event)"
         >
           {{ tag }}
-        </m3e-input-chip>
-      </m3e-chip-set>
+        </m3e-filter-chip>
+      </m3e-filter-chip-set>
       <p v-if="saveError" class="editor-error" role="alert">{{ saveError }}</p>
     </div>
     <div slot="actions" end>

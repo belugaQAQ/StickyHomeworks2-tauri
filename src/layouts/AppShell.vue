@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { invoke } from "@tauri-apps/api/core";
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, provide, ref } from "vue";
+import { RouterView, useRoute, useRouter } from "vue-router";
+import { appContextKey } from "../app-context";
 import HomeworkEditorDialog from "../components/HomeworkEditorDialog.vue";
 import { useHomeworkEditor } from "../composables/useHomeworkEditor";
 import { useHomeworkStore } from "../composables/useHomeworkStore";
 import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWorkaround";
 import { useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
-import HomeworkBoard from "../views/HomeworkBoard.vue";
+import type { AppSettings } from "../types/app-data";
+import { routeTransitionName } from "../router";
 import "../styles/app-shell.css";
 
 type NavigationItem = "homeworks" | "templates" | "settings";
@@ -21,29 +24,38 @@ type HomeworkEditorDialogElement = {
   hide: () => void;
 };
 
-const activeNavigation = ref<NavigationItem>("homeworks");
+const route = useRoute();
+const router = useRouter();
 const isDrawerOpen = ref(false);
 const isMobileRuntime = ref(false);
 const loadError = ref("");
 const deleteError = ref("");
+const settingsError = ref("");
 const appDrawer = ref<HTMLElement | null>(null);
 const moreSheet = ref<HTMLElement | null>(null);
 const editorDialog = ref<HomeworkEditorDialogElement | null>(null);
 const deleteDialog = ref<DialogElement | null>(null);
 const deleteHomeworkId = ref<string | null>(null);
-const { appData, homeworkGroups, load, saveHomework, deleteHomework } = useHomeworkStore();
+const {
+  appData,
+  homeworkGroups,
+  load,
+  saveHomework,
+  deleteHomework,
+  updateSettings,
+  deleteGlobalTag: deleteGlobalTagFromStore,
+} = useHomeworkStore();
 const {
   editingHomework,
-  newTag,
   saveError,
   editorSubjects,
+  editorTags,
   openCreate,
   openEdit,
   updateContent,
   updateSubject,
   updateDueDate,
-  addTag,
-  removeTag,
+  updateTagSelection,
   save: saveHomeworkEditor,
 } = useHomeworkEditor({ appData, saveHomework });
 
@@ -56,6 +68,12 @@ const navigationItems: Array<{ id: NavigationItem; label: string; hint: string }
   { id: "settings", label: "设置", hint: "settings" },
 ];
 
+const activeNavigation = computed<NavigationItem>(() => {
+  if (route.path.startsWith("/settings")) return "settings";
+  if (route.path === "/templates") return "templates";
+  return "homeworks";
+});
+
 const currentTitle = computed(() =>
   navigationItems.find((item) => item.id === activeNavigation.value)?.label ?? appData.value.settings.title,
 );
@@ -63,7 +81,8 @@ const currentTitle = computed(() =>
 const currentContext = computed(() => activeNavigation.value === "homeworks" ? "今日任务" : currentTitle.value);
 
 function selectNavigation(id: NavigationItem) {
-  activeNavigation.value = id;
+  const path = id === "homeworks" ? "/" : `/${id}`;
+  void router.push(path);
   isDrawerOpen.value = false;
 }
 
@@ -106,6 +125,35 @@ async function confirmDeleteHomework() {
     deleteError.value = "删除失败，请重试。";
   }
 }
+
+async function updateAppSettings(mutate: (settings: AppSettings) => AppSettings) {
+  settingsError.value = "";
+  try {
+    await updateSettings(mutate);
+  } catch {
+    settingsError.value = "保存失败，请重试。";
+  }
+}
+
+async function deleteGlobalTag(tag: string) {
+  settingsError.value = "";
+  try {
+    await deleteGlobalTagFromStore(tag);
+  } catch {
+    settingsError.value = "保存失败，请重试。";
+  }
+}
+
+provide(appContextKey, {
+  appData,
+  homeworkGroups,
+  isMobileRuntime,
+  settingsError,
+  openEditHomework,
+  requestDeleteHomework,
+  updateAppSettings,
+  deleteGlobalTag,
+});
 
 function syncDrawerState(event: Event) {
   isDrawerOpen.value = (event.currentTarget as HTMLElement & { start: boolean }).start;
@@ -159,15 +207,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <m3e-theme
-    class="app-theme"
-    :class="{ 'app-theme--mobile': isMobileRuntime }"
-    color="#22D1EC"
-    scheme="auto"
-    motion="expressive"
-    strong-focus
-  >
-    <div class="app-frame">
+  <div class="app-frame" :class="{ 'app-frame--mobile': isMobileRuntime }">
       <m3e-app-bar>
         <m3e-icon-button
           slot="leading"
@@ -212,37 +252,35 @@ onMounted(async () => {
 
         <main class="app-content">
           <p v-if="loadError" class="editor-error" role="alert">{{ loadError }}</p>
-          <HomeworkBoard
-            v-if="activeNavigation === 'homeworks'"
-            :mobile-layout="isMobileRuntime"
-            :groups="homeworkGroups"
-            @edit="openEditHomework"
-            @delete="requestDeleteHomework"
-          />
-
-          <section v-else class="placeholder-view">
-            <m3e-heading variant="headline" size="large" level="1">{{ currentTitle }}</m3e-heading>
-          </section>
+          <RouterView v-slot="{ Component }">
+            <Transition :name="routeTransitionName" mode="out-in">
+              <div :key="route.fullPath" class="route-view">
+                <component :is="Component" />
+              </div>
+            </Transition>
+          </RouterView>
         </main>
       </m3e-drawer-container>
 
-      <m3e-fab
-        variant="primary"
-        size="medium"
-        class="create-fab"
-        aria-label="Create homework"
-        @pointerdown="preserveMobileScrollPosition"
-      >
-        <m3e-fab-menu-trigger for="fab-menu">
-          <m3e-icon name="edit" variant="rounded"></m3e-icon>
-        </m3e-fab-menu-trigger>
-      </m3e-fab>
-      <m3e-fab-menu id="fab-menu" variant="primary">
-        <m3e-fab-menu-item @click="openCreateHomework">
-          <m3e-icon slot="icon" name="add" filled></m3e-icon>
-          新建作业
-        </m3e-fab-menu-item>
-      </m3e-fab-menu>
+      <template v-if="activeNavigation === 'homeworks'">
+        <m3e-fab
+          variant="primary"
+          size="medium"
+          class="create-fab"
+          aria-label="Create homework"
+          @pointerdown="preserveMobileScrollPosition"
+        >
+          <m3e-fab-menu-trigger for="fab-menu">
+            <m3e-icon name="edit" variant="rounded"></m3e-icon>
+          </m3e-fab-menu-trigger>
+        </m3e-fab>
+        <m3e-fab-menu id="fab-menu" variant="primary">
+          <m3e-fab-menu-item @click="openCreateHomework">
+            <m3e-icon slot="icon" name="add" filled></m3e-icon>
+            新建作业
+          </m3e-fab-menu-item>
+        </m3e-fab-menu>
+      </template>
 
       <m3e-bottom-sheet
         ref="moreSheet"
@@ -256,8 +294,8 @@ onMounted(async () => {
         <m3e-heading id="sheetTitle" slot="header" variant="title" size="large">更多</m3e-heading>
         <m3e-action-list>
           <m3e-list-action>
-            <m3e-bottom-sheet-action @click="selectNavigation('settings')">设置</m3e-bottom-sheet-action>
-            <span slot="supporting-text">前往设置页面</span>
+            <m3e-bottom-sheet-action>TEST</m3e-bottom-sheet-action>
+            <span slot="supporting-text">测试</span>
           </m3e-list-action>
         </m3e-action-list>
       </m3e-bottom-sheet>
@@ -266,7 +304,7 @@ onMounted(async () => {
         ref="editorDialog"
         :homework="editingHomework"
         :subjects="editorSubjects"
-        :new-tag="newTag"
+        :tags="editorTags"
         :save-error="saveError"
         :is-editing="Boolean(editingHomework && appData.homeworks.some((item) => item.id === editingHomework?.id))"
         @cancel="closeHomeworkEditor"
@@ -274,9 +312,7 @@ onMounted(async () => {
         @update:content="updateContent"
         @update:subject="updateSubject"
         @update:due-date="updateDueDate"
-        @update:new-tag="newTag = $event"
-        @add-tag="addTag"
-        @remove-tag="removeTag"
+        @update:tag-selection="updateTagSelection"
       />
 
       <m3e-dialog ref="deleteDialog" alert disable-close>
@@ -288,6 +324,5 @@ onMounted(async () => {
           <m3e-button variant="filled" @click="confirmDeleteHomework">删除</m3e-button>
         </div>
       </m3e-dialog>
-    </div>
-  </m3e-theme>
+  </div>
 </template>

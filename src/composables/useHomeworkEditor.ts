@@ -9,13 +9,13 @@ type HomeworkEditorOptions = {
 
 export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptions) {
   const editingHomework = ref<HomeworkRecord | null>(null);
-  const newTag = ref("");
   const saveError = ref("");
   const editorSubjects = computed(() => uniqueVocabulary([
     ...appData.value.settings.subjects,
     editingHomework.value?.subject ?? "",
     "其它",
   ]));
+  const editorTags = computed(() => appData.value.settings.tags);
 
   function openCreate() {
     const lastHomework = appData.value.homeworks[appData.value.homeworks.length - 1];
@@ -37,7 +37,7 @@ export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptio
     editingHomework.value = {
       ...homework,
       dueTime: toDateInputValue(homework.dueTime),
-      tags: [...homework.tags],
+      tags: homework.tags.filter((tag) => editorTags.value.includes(tag)),
     };
     resetFormMessages();
     return true;
@@ -55,16 +55,11 @@ export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptio
     if (editingHomework.value) editingHomework.value.dueTime = formatLocalDate(date);
   }
 
-  function addTag() {
-    const tag = newTag.value.trim();
-    if (!editingHomework.value || !tag || editingHomework.value.tags.includes(tag)) return;
-    editingHomework.value.tags.push(tag);
-    newTag.value = "";
-  }
-
-  function removeTag(tag: string) {
+  function updateTagSelection(tag: string, selected: boolean) {
     if (!editingHomework.value) return;
-    editingHomework.value.tags = editingHomework.value.tags.filter((item) => item !== tag);
+    editingHomework.value.tags = selected
+      ? uniqueVocabulary([...editingHomework.value.tags, tag])
+      : editingHomework.value.tags.filter((item) => item !== tag);
   }
 
   async function save() {
@@ -85,22 +80,20 @@ export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptio
   }
 
   function resetFormMessages() {
-    newTag.value = "";
     saveError.value = "";
   }
 
   return {
     editingHomework,
-    newTag,
     saveError,
     editorSubjects,
+    editorTags,
     openCreate,
     openEdit,
     updateContent,
     updateSubject,
     updateDueDate,
-    addTag,
-    removeTag,
+    updateTagSelection,
     save,
     reset,
   };

@@ -1,4 +1,3 @@
-.app-theme,
 .app-frame {
   display: block;
   min-height: 100dvh;
@@ -49,6 +48,58 @@
 
 .app-content {
   min-width: 0;
+  overflow-x: hidden;
+}
+
+.route-view {
+  min-width: 0;
+}
+
+.settings-forward-enter-active,
+.settings-back-enter-active {
+  transition:
+    opacity var(--md-sys-motion-duration-medium-2, 300ms) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1)),
+    transform var(--md-sys-motion-duration-medium-2, 300ms) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1));
+}
+
+.settings-forward-leave-active,
+.settings-back-leave-active {
+  transition:
+    opacity var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15)),
+    transform var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15));
+}
+
+.settings-forward-enter-from,
+.settings-back-leave-to {
+  opacity: 0;
+  transform: translateX(1.5rem);
+}
+
+.settings-forward-leave-to,
+.settings-back-enter-from {
+  opacity: 0;
+  transform: translateX(-0.75rem);
+}
+
+.route-fade-enter-active,
+.route-fade-leave-active {
+  transition: opacity var(--md-sys-motion-duration-short-3, 150ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.route-fade-enter-from,
+.route-fade-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-forward-enter-active,
+  .settings-forward-leave-active,
+  .settings-back-enter-active,
+  .settings-back-leave-active,
+  .route-fade-enter-active,
+  .route-fade-leave-active {
+    transition: none;
+  }
 }
 
 .placeholder-view {
@@ -87,6 +138,7 @@
 .homework-editor {
   display: grid;
   gap: 0.75rem;
+  height: max-content;
   width: min(40rem, calc(100vw - 5rem));
 }
 
@@ -94,13 +146,12 @@
   width: 100%;
 }
 
-.homework-editor textarea {
-  min-height: 6rem;
-  resize: vertical;
-}
-
 .editor-tag-set {
   margin-top: -0.25rem;
+}
+
+.editor-tags-title {
+  margin: 0;
 }
 
 .editor-error {
