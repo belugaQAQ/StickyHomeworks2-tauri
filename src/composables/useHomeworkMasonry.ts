@@ -1,17 +1,9 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance, type Ref } from "vue";
 import { distributeMasonry } from "./masonryDistribution";
+import { shouldRefreshMasonryColumns } from "./masonryColumnState";
+import type { SubjectGroup } from "../types/homework-board";
 
-export type Homework = {
-  id: string;
-  content: string;
-  tags: string[];
-  expired?: boolean;
-};
-
-export type SubjectGroup = {
-  name: string;
-  homeworks: Homework[];
-};
+export type { SubjectGroup } from "../types/homework-board";
 
 export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Ref<boolean>) {
   const boardElement = ref<HTMLElement | null>(null);
@@ -82,7 +74,7 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
     const distribution = distributeMasonry(items, maxHeight, gap, previousColumns);
     const nextColumns = distribution.columns.map((column) => column.map((item) => item.group));
 
-    if (!hasSameColumns(masonryColumns.value, nextColumns)) masonryColumns.value = nextColumns;
+    if (shouldRefreshMasonryColumns(masonryColumns.value, nextColumns)) masonryColumns.value = nextColumns;
     previousColumns = distribution.columnByKey;
   }
 
@@ -123,10 +115,4 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
   });
 
   return { masonryColumns, setBoardElement, setGroupElement, setScrollElement };
-}
-
-function hasSameColumns(current: SubjectGroup[][], next: SubjectGroup[][]) {
-  return current.length === next.length
-    && current.every((column, columnIndex) => column.length === next[columnIndex].length
-      && column.every((group, groupIndex) => group.name === next[columnIndex][groupIndex].name));
 }

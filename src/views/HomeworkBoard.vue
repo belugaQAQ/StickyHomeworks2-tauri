@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from "vue";
-import { useHomeworkMasonry, type SubjectGroup } from "../composables/useHomeworkMasonry";
+import { useHomeworkMasonry } from "../composables/useHomeworkMasonry";
+import type { SubjectGroup } from "../types/homework-board";
 import "../styles/homework-board.css";
 
 const selectedHomeworkId = ref<string | null>(null);
 const props = defineProps<{ mobileLayout: boolean; groups: SubjectGroup[] }>();
+const emit = defineEmits<{
+  edit: [id: string];
+  delete: [id: string];
+}>();
 const groups = computed(() => props.groups);
 
 const { masonryColumns, setBoardElement, setGroupElement, setScrollElement } = useHomeworkMasonry(
@@ -14,6 +19,16 @@ const { masonryColumns, setBoardElement, setGroupElement, setScrollElement } = u
 
 function selectHomework(id: string) {
   selectedHomeworkId.value = selectedHomeworkId.value === id ? null : id;
+}
+
+function editHomework(id: string) {
+  selectedHomeworkId.value = id;
+  emit("edit", id);
+}
+
+function deleteHomework(id: string) {
+  selectedHomeworkId.value = id;
+  emit("delete", id);
 }
 
 </script>
@@ -52,10 +67,10 @@ function selectHomework(id: string) {
                 <m3e-chip v-for="tag in homework.tags" :key="tag" variant="outlined">{{ tag }}</m3e-chip>
               </div>
               <div v-if="selectedHomeworkId === homework.id" slot="trailing" class="homework-actions">
-                <m3e-icon-button aria-label="编辑作业" title="编辑作业" @click.stop>
+                <m3e-icon-button aria-label="编辑作业" title="编辑作业" @click.stop="editHomework(homework.id)">
                   <m3e-icon name="edit"></m3e-icon>
                 </m3e-icon-button>
-                <m3e-icon-button aria-label="删除作业" title="删除作业" @click.stop>
+                <m3e-icon-button aria-label="删除作业" title="删除作业" @click.stop="deleteHomework(homework.id)">
                   <m3e-icon name="delete"></m3e-icon>
                 </m3e-icon-button>
               </div>

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
+    "test:domain": "node --experimental-strip-types scripts/homework-domain.test.ts",
     "test:masonry": "node --experimental-strip-types scripts/masonry-regression.test.ts",
     "preview": "vite preview",
     "tauri": "tauri"
@@ -14,6 +15,7 @@
     "@m3e/icons": "^1.0.11",
     "@m3e/web": "^2.7.1",
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "@tauri-apps/plugin-opener": "^2",
     "vue": "^3.5.13"
   },

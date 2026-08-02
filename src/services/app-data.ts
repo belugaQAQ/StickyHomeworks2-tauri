@@ -1,22 +1,16 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { createDefaultAppData, type AppData } from "../types/app-data";
 
 const browserStorageKey = "stickyhomeworks2.app-data.v1";
 
 export async function loadAppData(): Promise<AppData> {
-  try {
-    return await invoke<AppData>("load_app_data");
-  } catch {
-    return loadBrowserFallback();
-  }
+  if (!isTauri()) return loadBrowserFallback();
+  return invoke<AppData>("load_app_data");
 }
 
 export async function saveAppData(data: AppData): Promise<void> {
-  try {
-    await invoke("save_app_data", { data });
-  } catch {
-    window.localStorage.setItem(browserStorageKey, JSON.stringify(data));
-  }
+  if (isTauri()) return invoke("save_app_data", { data });
+  window.localStorage.setItem(browserStorageKey, JSON.stringify(data));
 }
 
 function loadBrowserFallback(): AppData {

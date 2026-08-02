@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { distributeMasonry } from "../src/composables/masonryDistribution.ts";
+import { shouldRefreshMasonryColumns } from "../src/composables/masonryColumnState.ts";
 
 const groups = [
   { key: "chinese", height: 210 },
@@ -41,4 +42,18 @@ test("keeps a previous column when that placement still fits", () => {
   ], 400, 24, priorColumns);
 
   assert.equal(result.columnByKey.get("gamma"), 0);
+});
+
+test("replaces masonry groups when same-subject homework data changes", () => {
+  const before = {
+    name: "数学",
+    homeworks: [{ id: "math-1", content: "完成练习", tags: [], expired: false }],
+  };
+  const after = {
+    name: "数学",
+    homeworks: [{ id: "math-1", content: "完成练习", tags: [], expired: true }],
+  };
+
+  assert.equal(shouldRefreshMasonryColumns([[before]], [[after]]), true);
+  assert.equal(shouldRefreshMasonryColumns([[after]], [[after]]), false);
 });
