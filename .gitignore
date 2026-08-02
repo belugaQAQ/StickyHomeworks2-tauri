@@ -24,3 +24,6 @@ StickyHomeworks2-old
 *.sln
 *.sw?
 
+/m3e-mcp/
+/m3e/
+/MIGRATION_PLAN.md
