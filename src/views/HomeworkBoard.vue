@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, type ComponentPublicInstance } from "vue";
 import { useHomeworkMasonry, type SubjectGroup } from "../composables/useHomeworkMasonry";
 import "../styles/homework-board.css";
 
@@ -32,6 +32,10 @@ const groups: SubjectGroup[] = [
 
 const { boardElement, masonryColumns } = useHomeworkMasonry(groups);
 
+function setBoardElement(element: Element | ComponentPublicInstance | null) {
+  boardElement.value = element instanceof HTMLElement ? element : null;
+}
+
 function selectHomework(id: string) {
   selectedHomeworkId.value = selectedHomeworkId.value === id ? null : id;
 }
@@ -39,7 +43,7 @@ function selectHomework(id: string) {
 </script>
 
 <template>
-  <section ref="boardElement" class="homework-board" aria-label="作业列表">
+  <section :ref="setBoardElement" class="homework-board" aria-label="作业列表">
     <div class="homework-scroll-region">
       <div class="masonry-columns" :style="{ '--homework-column-count': masonryColumns.length }">
         <div v-for="(column, columnIndex) in masonryColumns" :key="columnIndex" class="masonry-column">
