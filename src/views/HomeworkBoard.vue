@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, type ComponentPublicInstance } from "vue";
+import { ref, toRef } from "vue";
 import { useHomeworkMasonry, type SubjectGroup } from "../composables/useHomeworkMasonry";
 import "../styles/homework-board.css";
 
 const selectedHomeworkId = ref<string | null>(null);
+const props = defineProps<{ mobileLayout: boolean }>();
 
 const groups: SubjectGroup[] = [
   {
@@ -28,13 +29,28 @@ const groups: SubjectGroup[] = [
       { id: "english-dialogue", content: "朗读课本第八页对话。", tags: ["朗读"] },
     ],
   },
+  {
+    name: "物理",
+    homeworks: [
+      { id: "eglish-words", content: "复习第三组词汇的拼写和例句。", tags: ["词汇"] },
+      { id: "eglish-dialogue", content: "朗读课本第八页对话。", tags: ["朗读"] },
+    ],
+  },
+  {
+    name: "化学",
+    homeworks: [
+      { id: "englh-words", content: "复习第三组词汇的拼写和例句。", tags: ["词汇"] },
+      { id: "englh-dialogue", content: "朗读课本第八页对话。", tags: ["朗读"] },
+      { id: "englh-dialue", content: "朗读课本第八页对话。", tags: ["朗读"] },
+      { id: "englh-dialog", content: "朗读课本第八页对话。", tags: ["朗读"] },
+    ],
+  },
 ];
 
-const { boardElement, masonryColumns } = useHomeworkMasonry(groups);
-
-function setBoardElement(element: Element | ComponentPublicInstance | null) {
-  boardElement.value = element instanceof HTMLElement ? element : null;
-}
+const { masonryColumns, setBoardElement, setGroupElement, setScrollElement } = useHomeworkMasonry(
+  groups,
+  toRef(props, "mobileLayout"),
+);
 
 function selectHomework(id: string) {
   selectedHomeworkId.value = selectedHomeworkId.value === id ? null : id;
@@ -44,10 +60,16 @@ function selectHomework(id: string) {
 
 <template>
   <section :ref="setBoardElement" class="homework-board" aria-label="作业列表">
-    <div class="homework-scroll-region">
+    <div :ref="setScrollElement" class="homework-scroll-region">
       <div class="masonry-columns" :style="{ '--homework-column-count': masonryColumns.length }">
         <div v-for="(column, columnIndex) in masonryColumns" :key="columnIndex" class="masonry-column">
-          <section v-for="group in column" :key="group.name" class="subject-group" :aria-labelledby="`subject-${group.name}`">
+          <section
+            v-for="group in column"
+            :key="group.name"
+            :ref="(element) => setGroupElement(group.name, element)"
+            class="subject-group"
+            :aria-labelledby="`subject-${group.name}`"
+          >
             <m3e-heading :id="`subject-${group.name}`" variant="headline" size="small" level="2">
               {{ group.name }}
             </m3e-heading>
@@ -66,10 +88,10 @@ function selectHomework(id: string) {
                 <m3e-chip v-for="tag in homework.tags" :key="tag" variant="outlined">{{ tag }}</m3e-chip>
               </div>
               <div v-if="selectedHomeworkId === homework.id" slot="trailing" class="homework-actions">
-                <m3e-icon-button aria-label="编辑作业" title="编辑作业" variant="tonal" @click.stop>
+                <m3e-icon-button aria-label="编辑作业" title="编辑作业" @click.stop>
                   <m3e-icon name="edit"></m3e-icon>
                 </m3e-icon-button>
-                <m3e-icon-button aria-label="删除作业" title="删除作业" variant="standard" @click.stop>
+                <m3e-icon-button aria-label="删除作业" title="删除作业" @click.stop>
                   <m3e-icon name="delete"></m3e-icon>
                 </m3e-icon-button>
               </div>

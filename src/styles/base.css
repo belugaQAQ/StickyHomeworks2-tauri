@@ -1,3 +1,17 @@
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 400;
+  src: url("../assets/fonts/material-symbols-outlined.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Material Symbols Rounded";
+  font-style: normal;
+  font-weight: 400;
+  src: url("../assets/fonts/material-symbols-rounded.ttf") format("truetype");
+}
+
 /* M3E defines these MD3 tokens dynamically on <html>; declarations keep CSS tooling aware of them. */
 @property --md-sys-color-background {
   syntax: "<color>";
