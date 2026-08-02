@@ -162,11 +162,21 @@ jobs:
           scheme="$(plutil -extract project.schemes.0 raw -o - "$scheme_list_path")"
           test -n "$scheme" || { echo "Xcode project has no shared scheme"; exit 1; }
           archive_path="$RUNNER_TEMP/stickyhomeworks2.xcarchive"
+          build_settings_path="$RUNNER_TEMP/ios-build-settings.txt"
 
           xcodebuild \
             -project "$project_path" \
             -scheme "$scheme" \
-            -configuration Release \
+            -configuration release \
+            -sdk iphoneos \
+            -showBuildSettings > "$build_settings_path"
+          grep -Eq '^[[:space:]]*CONFIGURATION = release$' "$build_settings_path" \
+            || { echo "Expected the Tauri release configuration before archiving"; cat "$build_settings_path"; exit 1; }
+
+          xcodebuild \
+            -project "$project_path" \
+            -scheme "$scheme" \
+            -configuration release \
             -sdk iphoneos \
             -archivePath "$archive_path" \
             CODE_SIGNING_ALLOWED=NO \
