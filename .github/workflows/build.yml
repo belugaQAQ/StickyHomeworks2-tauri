@@ -159,5 +159,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: stickyhomeworks2-ios-unsigned
-          path: src-tauri/gen/apple/build/ios/**/*.ipa
+          path: src-tauri/gen/apple/build/arm64/*.ipa
           if-no-files-found: error
