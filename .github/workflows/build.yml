@@ -39,7 +39,7 @@ jobs:
             path: |
               src-tauri/target/release/bundle/deb/*.deb
               src-tauri/target/release/bundle/rpm/*.rpm
-              src-tauri/target/release/bundle/appimage/*.appimage
+              src-tauri/target/release/bundle/appimage/*.AppImage
 
     runs-on: ${{ matrix.os }}
     steps:
