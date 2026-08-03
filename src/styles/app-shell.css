@@ -10,10 +10,28 @@
   background: var(--md-sys-color-background);
 }
 
+.app-frame--window-unlocked {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .app-bar {
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.app-bar--unlocked {
+  cursor: grab;
+}
+
+.app-bar--unlocked:active {
+  cursor: grabbing;
+}
+
+.window-control-error {
+  margin: 0 1.5rem 1.25rem;
+  color: var(--md-sys-color-error);
 }
 
 .app-drawer {
@@ -160,10 +178,6 @@
 }
 
 @media (min-width: 768px) {
-  .app-bar m3e-icon-button[slot="leading"] {
-    display: none;
-  }
-
   .create-fab {
     right: 2rem;
     bottom: 2rem;

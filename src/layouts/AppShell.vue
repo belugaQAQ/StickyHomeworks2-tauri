@@ -4,8 +4,10 @@ import { computed, nextTick, onMounted, provide, ref } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
 import HomeworkEditorDialog from "../components/HomeworkEditorDialog.vue";
+import WindowUnlockOverlay from "../components/WindowUnlockOverlay.vue";
 import { useHomeworkEditor } from "../composables/useHomeworkEditor";
 import { useHomeworkStore } from "../composables/useHomeworkStore";
+import { useDesktopWindowControls } from "../composables/useDesktopWindowControls";
 import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWorkaround";
 import { useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import type { AppSettings } from "../types/app-data";
@@ -35,7 +37,19 @@ const appDrawer = ref<HTMLElement | null>(null);
 const moreSheet = ref<HTMLElement | null>(null);
 const editorDialog = ref<HomeworkEditorDialogElement | null>(null);
 const deleteDialog = ref<DialogElement | null>(null);
+const exitDialog = ref<DialogElement | null>(null);
 const deleteHomeworkId = ref<string | null>(null);
+const {
+  isDesktopWindow,
+  isUnlocked: isWindowUnlocked,
+  isMaximized: isWindowMaximized,
+  error: windowControlError,
+  initialize: initializeWindowControls,
+  close: closeWindow,
+  minimize: minimizeWindow,
+  toggleMaximize: toggleWindowMaximize,
+  toggleUnlocked: toggleWindowUnlocked,
+} = useDesktopWindowControls();
 const {
   appData,
   homeworkGroups,
@@ -114,6 +128,14 @@ function closeDeleteDialog() {
   deleteDialog.value?.hide();
   deleteHomeworkId.value = null;
   deleteError.value = "";
+}
+
+function requestCloseWindow() {
+  exitDialog.value?.show();
+}
+
+function closeExitDialog() {
+  exitDialog.value?.hide();
 }
 
 async function confirmDeleteHomework() {
@@ -205,10 +227,12 @@ async function detectMobileRuntime() {
 }
 
 onMounted(async () => {
+  isMobileRuntime.value = await detectMobileRuntime();
+  await initializeWindowControls(isMobileRuntime.value);
   // M3E uses the attribute in Shadow DOM CSS, while Vue may set only the property.
+  await nextTick();
   moreSheet.value?.setAttribute("handle", "");
   moreSheet.value?.setAttribute("detents", "fit half full");
-  isMobileRuntime.value = await detectMobileRuntime();
 
   try {
     await load();
@@ -219,8 +243,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="app-frame" :class="{ 'app-frame--mobile': isMobileRuntime }">
-      <m3e-app-bar>
+  <div
+    class="app-frame"
+    :class="{
+      'app-frame--mobile': isMobileRuntime,
+      'app-frame--window-unlocked': isWindowUnlocked,
+    }"
+    :data-tauri-drag-region="isWindowUnlocked ? 'deep' : undefined"
+  >
+      <m3e-app-bar class="app-bar" :class="{ 'app-bar--unlocked': isWindowUnlocked }">
         <m3e-icon-button
           slot="leading"
           aria-label="Menu"
@@ -233,7 +264,7 @@ onMounted(async () => {
         </m3e-icon-button>
         <span slot="title">{{ appData.settings.title }}</span>
         <span slot="subtitle">{{ currentContext }}</span>
-        <m3e-icon-button slot="trailing" aria-label="More options" variant="tonal">
+        <m3e-icon-button slot="trailing" aria-label="更多选项" variant="tonal">
           <m3e-bottom-sheet-trigger for="More-Sheet">
             <m3e-icon name="more_horiz"></m3e-icon>
           </m3e-bottom-sheet-trigger>
@@ -305,12 +336,28 @@ onMounted(async () => {
       >
         <m3e-heading id="sheetTitle" slot="header" variant="title" size="large">更多</m3e-heading>
         <m3e-action-list>
-          <m3e-list-action>
-            <m3e-bottom-sheet-action>TEST</m3e-bottom-sheet-action>
-            <span slot="supporting-text">测试</span>
+          <m3e-list-action v-if="isDesktopWindow" @click="toggleWindowMaximize">
+            <m3e-icon slot="leading" :name="isWindowMaximized ? 'fullscreen_exit' : 'fullscreen'"></m3e-icon>
+            <m3e-bottom-sheet-action>{{ isWindowMaximized ? "还原窗口" : "最大化" }}</m3e-bottom-sheet-action>
+          </m3e-list-action>
+          <m3e-list-action v-if="isDesktopWindow" @click="toggleWindowUnlocked">
+            <m3e-icon slot="leading" :name="isWindowUnlocked ? 'lock' : 'lock_open'"></m3e-icon>
+            <m3e-bottom-sheet-action>{{ isWindowUnlocked ? "锁定窗口" : "解锁窗口" }}</m3e-bottom-sheet-action>
+            <span slot="supporting-text">{{ isWindowUnlocked ? "窗口不可移动或调整大小" : "允许移动和调整大小" }}</span>
+          </m3e-list-action>
+          <m3e-list-action v-if="isDesktopWindow" @click="minimizeWindow">
+            <m3e-icon slot="leading" name="minimize"></m3e-icon>
+            <m3e-bottom-sheet-action>最小化</m3e-bottom-sheet-action>
+          </m3e-list-action>
+          <m3e-list-action v-if="isDesktopWindow" @click="requestCloseWindow">
+            <m3e-icon slot="leading" name="close"></m3e-icon>
+            <m3e-bottom-sheet-action>关闭</m3e-bottom-sheet-action>
           </m3e-list-action>
         </m3e-action-list>
+        <p v-if="windowControlError" class="window-control-error" role="alert">{{ windowControlError }}</p>
       </m3e-bottom-sheet>
+
+      <WindowUnlockOverlay v-if="isWindowUnlocked" />
 
       <HomeworkEditorDialog
         ref="editorDialog"
@@ -326,6 +373,14 @@ onMounted(async () => {
         @update:due-date="updateDueDate"
         @update:tag-selection="updateTagSelection"
       />
+
+      <m3e-dialog ref="exitDialog" alert disable-close>
+        <m3e-heading slot="header" variant="headline" size="small" level="2">关闭应用？</m3e-heading>
+        <div slot="actions" end>
+          <m3e-button variant="text" @click="closeExitDialog">取消</m3e-button>
+          <m3e-button variant="filled" @click="closeWindow">确定</m3e-button>
+        </div>
+      </m3e-dialog>
 
       <m3e-dialog ref="deleteDialog" alert disable-close>
         <m3e-heading slot="header" variant="headline" size="small" level="2">删除作业？</m3e-heading>
