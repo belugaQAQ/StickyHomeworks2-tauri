@@ -46,6 +46,8 @@
   --window-unlock-preview-expanded-height: 7.54rem;
   --window-unlock-move-distance-x: 2.25rem;
   --window-unlock-move-distance-y: -0.65rem;
+  --window-unlock-preview-moved-x: calc(var(--window-unlock-preview-offset-x) + var(--window-unlock-move-distance-x));
+  --window-unlock-preview-moved-y: calc(var(--window-unlock-preview-offset-y) + var(--window-unlock-move-distance-y));
 }
 
 .window-unlock-overlay:active {
@@ -157,12 +159,10 @@
 @keyframes window-unlock-overlay-enter {
   from {
     opacity: 0;
-    transform: translateY(1.5rem) scale(0.96);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
@@ -171,23 +171,26 @@
   15%,
   48%,
   100% {
+    top: var(--window-unlock-preview-offset-y);
+    left: var(--window-unlock-preview-offset-x);
     width: var(--window-unlock-preview-width);
     height: var(--window-unlock-preview-height);
-    transform: translate(0, 0);
   }
 
   27%,
   35% {
+    top: var(--window-unlock-preview-moved-y);
+    left: var(--window-unlock-preview-moved-x);
     width: var(--window-unlock-preview-width);
     height: var(--window-unlock-preview-height);
-    transform: translate(var(--window-unlock-move-distance-x), var(--window-unlock-move-distance-y));
   }
 
   67%,
   77% {
+    top: var(--window-unlock-preview-offset-y);
+    left: var(--window-unlock-preview-offset-x);
     width: var(--window-unlock-preview-expanded-width);
     height: var(--window-unlock-preview-expanded-height);
-    transform: translate(0, 0);
   }
 }
 
@@ -197,13 +200,13 @@
   42%,
   100% {
     opacity: 0.56;
-    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
   }
 
   24%,
   32% {
     opacity: 1;
-    transform: scale(1.14);
+    box-shadow: 0 0 0 0.45rem color-mix(in srgb, var(--md-sys-color-primary) 32%, transparent);
   }
 }
 
@@ -212,13 +215,13 @@
   52%,
   100% {
     opacity: 0.56;
-    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
   }
 
   67%,
   78% {
     opacity: 1;
-    transform: scale(1.14);
+    box-shadow: 0 0 0 0.45rem color-mix(in srgb, var(--md-sys-color-primary) 32%, transparent);
   }
 }
 
