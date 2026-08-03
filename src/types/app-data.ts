@@ -24,6 +24,13 @@ export type AppData = {
   settings: AppSettings;
 };
 
+export type LegacyImportResult = {
+  data: AppData;
+  legacyRichTextCount: number;
+  removedTagReferenceCount: number;
+  replacedSubjectCount: number;
+};
+
 export function createDefaultAppData(): AppData {
   return {
     schemaVersion: 1,

@@ -1,5 +1,5 @@
 import { inject, type ComputedRef, type InjectionKey, type Ref } from "vue";
-import type { AppData, AppSettings } from "./types/app-data";
+import type { AppData, AppSettings, LegacyImportResult } from "./types/app-data";
 import type { SubjectGroup } from "./types/homework-board";
 
 export type AppContext = {
@@ -11,6 +11,7 @@ export type AppContext = {
   requestDeleteHomework: (id: string) => void;
   updateAppSettings: (mutate: (settings: AppSettings) => AppSettings) => Promise<void>;
   deleteGlobalTag: (tag: string) => Promise<void>;
+  importLegacyData: (profileContents: string | undefined, settingsContents: string) => Promise<LegacyImportResult>;
 };
 
 export const appContextKey: InjectionKey<AppContext> = Symbol("StickyHomeworks2 app context");

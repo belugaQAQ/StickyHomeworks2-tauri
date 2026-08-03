@@ -4,6 +4,7 @@ import HomeworksView from "./views/HomeworksView.vue";
 import SettingsBoardView from "./views/SettingsBoardView.vue";
 import SettingsExpiryView from "./views/SettingsExpiryView.vue";
 import SettingsGeneralView from "./views/SettingsGeneralView.vue";
+import SettingsImportView from "./views/SettingsImportView.vue";
 import SettingsIndexView from "./views/SettingsIndexView.vue";
 import SettingsVocabularyView from "./views/SettingsVocabularyView.vue";
 import TemplatesView from "./views/TemplatesView.vue";
@@ -23,6 +24,7 @@ export const router = createRouter({
     { path: "/templates", name: "templates", component: TemplatesView },
     { path: "/settings", name: "settings", component: SettingsIndexView, meta: { settingsDepth: 0 } },
     { path: "/settings/general", name: "settings-general", component: SettingsGeneralView, meta: { settingsDepth: 1 } },
+    { path: "/settings/import", name: "settings-import", component: SettingsImportView, meta: { settingsDepth: 1 } },
     { path: "/settings/vocabulary", name: "settings-vocabulary", component: SettingsVocabularyView, meta: { settingsDepth: 1 } },
     { path: "/settings/expiry", name: "settings-expiry", component: SettingsExpiryView, meta: { settingsDepth: 1 } },
     { path: "/settings/board", name: "settings-board", component: SettingsBoardView, meta: { settingsDepth: 1 } },

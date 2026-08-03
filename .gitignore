@@ -29,3 +29,8 @@ StickyHomeworks2-old
 /MIGRATION_PLAN.md
 /docs/phase-two-original-project-scope.md
 /AGENTS.md
+/scripts/*.test.ts
+/scripts/*.browser.test.py
+/scripts/run-browser-test.sh
+/src-tauri/src/local_tests/
+/CONTEXT.md

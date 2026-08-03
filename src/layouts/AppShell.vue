@@ -44,6 +44,7 @@ const {
   deleteHomework,
   updateSettings,
   deleteGlobalTag: deleteGlobalTagFromStore,
+  importLegacyData: importLegacyDataFromStore,
 } = useHomeworkStore();
 const {
   editingHomework,
@@ -144,6 +145,16 @@ async function deleteGlobalTag(tag: string) {
   }
 }
 
+async function importLegacyData(profileContents: string | undefined, settingsContents: string) {
+  settingsError.value = "";
+  try {
+    return await importLegacyDataFromStore(profileContents, settingsContents);
+  } catch (error) {
+    settingsError.value = error instanceof Error ? error.message : "导入失败，请检查所选文件。";
+    throw error;
+  }
+}
+
 provide(appContextKey, {
   appData,
   homeworkGroups,
@@ -153,6 +164,7 @@ provide(appContextKey, {
   requestDeleteHomework,
   updateAppSettings,
   deleteGlobalTag,
+  importLegacyData,
 });
 
 function syncDrawerState(event: Event) {

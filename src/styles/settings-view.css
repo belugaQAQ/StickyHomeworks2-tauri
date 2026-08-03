@@ -81,6 +81,51 @@
   --m3e-segmented-list-item-container-color: var(--md-sys-color-surface-container-highest);
 }
 
+.settings-file-input {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settings-import {
+  gap: 0.75rem;
+}
+
+.settings-import__file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+}
+
+.settings-import__file > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.settings-import__file strong,
+.settings-import__file small,
+.settings-import__notice {
+  color: var(--md-sys-color-on-surface);
+}
+
+.settings-import__file small,
+.settings-import__notice {
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.35;
+}
+
+.settings-import__file small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 599px) {
   .settings-page {
     padding-top: 1.5rem;

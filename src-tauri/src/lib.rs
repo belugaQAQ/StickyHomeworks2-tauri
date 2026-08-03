@@ -1,5 +1,7 @@
 mod commands;
 mod data;
+mod legacy_import;
+mod persistence;
 mod platform;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -18,7 +20,7 @@ pub fn run() {
             platform::webkitgtk_dialog_exit_workaround_required,
             commands::load_app_data,
             commands::save_app_data,
-            commands::import_legacy_data
+            commands::import_legacy_data_contents
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

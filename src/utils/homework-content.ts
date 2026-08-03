@@ -12,6 +12,10 @@ export function toHomeworkDisplayText(content: string): string {
   }
 }
 
+export function toHomeworkEditorText(content: string): string {
+  return content.trim().startsWith("<FlowDocument") ? toHomeworkDisplayText(content) : content;
+}
+
 export function isHomeworkExpired(dueTime: string): boolean {
   const dueDate = new Date(dueTime);
   if (Number.isNaN(dueDate.getTime())) return false;

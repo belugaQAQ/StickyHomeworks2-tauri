@@ -1,53 +1,51 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+use uuid::Uuid;
 
-const APP_STATE_FILE: &str = "app-state.json";
+pub(crate) const OTHER_SUBJECT: &str = "其它";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HomeworkRecord {
     #[serde(default)]
-    id: String,
+    pub(crate) id: String,
     #[serde(default, alias = "Content")]
-    content: String,
+    pub(crate) content: String,
     #[serde(default, alias = "Subject")]
-    subject: String,
+    pub(crate) subject: String,
     #[serde(default = "default_due_time", alias = "DueTime")]
-    due_time: String,
+    pub(crate) due_time: String,
     #[serde(default, alias = "Tags")]
-    tags: Vec<String>,
+    pub(crate) tags: Vec<String>,
     #[serde(default, alias = "FirstExpiredShowTime")]
-    first_expired_show_time: Option<String>,
+    pub(crate) first_expired_show_time: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AppSettings {
     #[serde(default = "default_title", alias = "Title")]
-    title: String,
+    pub(crate) title: String,
     #[serde(default, alias = "Subjects")]
-    subjects: Vec<String>,
+    pub(crate) subjects: Vec<String>,
     #[serde(default, alias = "Tags")]
-    tags: Vec<String>,
+    pub(crate) tags: Vec<String>,
     #[serde(default = "default_true", alias = "Autooutwork")]
-    auto_outwork: bool,
+    pub(crate) auto_outwork: bool,
     #[serde(default, alias = "DelayedCleanupEnabled")]
-    delayed_cleanup_enabled: bool,
+    pub(crate) delayed_cleanup_enabled: bool,
     #[serde(default, alias = "IsExpiredMarkEnabled")]
-    is_expired_mark_enabled: bool,
+    pub(crate) is_expired_mark_enabled: bool,
     #[serde(default = "default_expired_mark_color", alias = "ExpiredMarkColor")]
-    expired_mark_color: String,
+    pub(crate) expired_mark_color: String,
     #[serde(default = "default_max_panel_width", alias = "MaxPanelWidth")]
-    max_panel_width: f64,
+    pub(crate) max_panel_width: f64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AppData {
     #[serde(default = "schema_version")]
-    schema_version: u8,
+    pub(crate) schema_version: u8,
     #[serde(default, alias = "Homeworks")]
     pub(crate) homeworks: Vec<HomeworkRecord>,
     #[serde(default)]
@@ -79,27 +77,22 @@ impl Default for AppData {
     }
 }
 
-pub(crate) fn read_app_data(path: &Path) -> Result<AppData, String> {
-    let mut data = read_json(path)?;
-    normalize_data(&mut data);
-    Ok(data)
-}
+pub(crate) fn normalize_app_data(data: &mut AppData) {
+    data.schema_version = schema_version();
+    normalize_settings(&mut data.settings);
 
-pub(crate) fn read_legacy_data(
-    profile_path: &Path,
-    settings_path: Option<&Path>,
-) -> Result<AppData, String> {
-    let mut data: AppData = read_json(profile_path)?;
-    if let Some(path) = settings_path {
-        data.settings = read_legacy_settings(path)?;
+    for homework in &mut data.homeworks {
+        if Uuid::parse_str(&homework.id).is_err() {
+            homework.id = Uuid::new_v4().to_string();
+        }
     }
-    normalize_data(&mut data);
-    Ok(data)
 }
 
-pub(crate) fn write_app_data(path: &Path, data: &mut AppData) -> Result<(), String> {
-    normalize_data(data);
-    write_json_atomically(path, data)
+pub(crate) fn normalize_settings(settings: &mut AppSettings) {
+    settings.title = normalized_title(&settings.title);
+    settings.subjects = unique_vocabulary(std::mem::take(&mut settings.subjects));
+    settings.tags = unique_vocabulary(std::mem::take(&mut settings.tags));
+    settings.max_panel_width = normalize_panel_width(settings.max_panel_width);
 }
 
 fn schema_version() -> u8 {
@@ -126,96 +119,35 @@ fn default_due_time() -> String {
     "1970-01-01T00:00:00".to_owned()
 }
 
-fn normalize_data(data: &mut AppData) {
-    data.schema_version = schema_version();
-    for (index, homework) in data.homeworks.iter_mut().enumerate() {
-        if homework.id.trim().is_empty() {
-            homework.id = format!("legacy-{index}");
+fn normalized_title(value: &str) -> String {
+    let title = value.trim();
+    if title.is_empty() {
+        default_title()
+    } else {
+        title.to_owned()
+    }
+}
+
+fn unique_vocabulary(values: Vec<String>) -> Vec<String> {
+    let mut normalized = Vec::new();
+    for value in values {
+        let value = value.trim();
+        if !value.is_empty() && !normalized.iter().any(|item| item == value) {
+            normalized.push(value.to_owned());
         }
     }
+    normalized
 }
 
-fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, String> {
-    let source = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    serde_json::from_str(&source).map_err(|error| error.to_string())
+fn normalize_panel_width(value: f64) -> f64 {
+    let value = if value.is_finite() {
+        value
+    } else {
+        default_max_panel_width()
+    };
+    (value.clamp(160.0, 2000.0) / 10.0).round() * 10.0
 }
 
-fn read_legacy_settings(path: &Path) -> Result<AppSettings, String> {
-    let source = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    let value: serde_json::Value =
-        serde_json::from_str(&source).map_err(|error| error.to_string())?;
-    let object = value
-        .as_object()
-        .ok_or("旧 Settings.json 的根节点必须是对象")?;
-    let mut settings = AppSettings::default();
-
-    if let Some(value) = object.get("Title").and_then(serde_json::Value::as_str) {
-        settings.title = value.to_owned();
-    }
-    if let Some(value) = object.get("Subjects").and_then(string_array) {
-        settings.subjects = value;
-    }
-    if let Some(value) = object.get("Tags").and_then(string_array) {
-        settings.tags = value;
-    }
-    if let Some(value) = object
-        .get("Autooutwork")
-        .and_then(serde_json::Value::as_bool)
-    {
-        settings.auto_outwork = value;
-    }
-    if let Some(value) = object
-        .get("DelayedCleanupEnabled")
-        .and_then(serde_json::Value::as_bool)
-    {
-        settings.delayed_cleanup_enabled = value;
-    }
-    if let Some(value) = object
-        .get("IsExpiredMarkEnabled")
-        .and_then(serde_json::Value::as_bool)
-    {
-        settings.is_expired_mark_enabled = value;
-    }
-    if let Some(value) = object
-        .get("ExpiredMarkColor")
-        .and_then(serde_json::Value::as_str)
-    {
-        settings.expired_mark_color = value.to_owned();
-    }
-    if let Some(value) = object
-        .get("MaxPanelWidth")
-        .and_then(serde_json::Value::as_f64)
-    {
-        settings.max_panel_width = value;
-    }
-
-    Ok(settings)
-}
-
-fn string_array(value: &serde_json::Value) -> Option<Vec<String>> {
-    value.as_array().map(|items| {
-        items
-            .iter()
-            .filter_map(serde_json::Value::as_str)
-            .map(str::to_owned)
-            .collect()
-    })
-}
-
-fn write_json_atomically(path: &Path, data: &AppData) -> Result<(), String> {
-    let directory = path.parent().ok_or("应用数据路径没有父目录")?;
-    fs::create_dir_all(directory).map_err(|error| error.to_string())?;
-    let temporary = directory.join(format!(
-        ".{APP_STATE_FILE}.{}.tmp",
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|error| error.to_string())?
-            .as_nanos()
-    ));
-    let contents = serde_json::to_vec_pretty(data).map_err(|error| error.to_string())?;
-    fs::write(&temporary, contents).map_err(|error| error.to_string())?;
-    fs::rename(&temporary, path).map_err(|error| {
-        let _ = fs::remove_file(&temporary);
-        error.to_string()
-    })
-}
+#[cfg(all(test, feature = "local-tests"))]
+#[path = "local_tests/data.rs"]
+mod local_tests;

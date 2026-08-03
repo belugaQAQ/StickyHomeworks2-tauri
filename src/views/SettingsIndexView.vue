@@ -7,6 +7,7 @@ const settingsSections = [
   { path: "/settings/vocabulary", icon: "category", title: "作业词库", detail: "科目和标签" },
   { path: "/settings/expiry", icon: "event_busy", title: "过期作业", detail: "清理和标记" },
   { path: "/settings/board", icon: "view_column", title: "看板", detail: "最大面板宽度" },
+  { path: "/settings/import", icon: "upload_file", title: "导入旧版数据", detail: "Profile.json 和 Settings.json" },
 ];
 </script>
 

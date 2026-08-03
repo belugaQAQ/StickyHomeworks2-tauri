@@ -1,9 +1,22 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
-use crate::data::{read_app_data, read_legacy_data, write_app_data, AppData};
+use serde::Serialize;
+
+use crate::data::AppData;
+use crate::legacy_import::import_legacy_data_from_sources;
+use crate::persistence::{read_app_data, write_app_data};
 
 const APP_STATE_FILE: &str = "app-state.json";
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct LegacyImportResult {
+    data: AppData,
+    legacy_rich_text_count: usize,
+    removed_tag_reference_count: usize,
+    replaced_subject_count: usize,
+}
 
 #[tauri::command]
 pub(crate) fn load_app_data(app: AppHandle) -> Result<AppData, String> {
@@ -21,17 +34,25 @@ pub(crate) fn save_app_data(app: AppHandle, mut data: AppData) -> Result<(), Str
 }
 
 #[tauri::command]
-pub(crate) fn import_legacy_data(
+pub(crate) fn import_legacy_data_contents(
     app: AppHandle,
-    profile_path: String,
-    settings_path: Option<String>,
-) -> Result<AppData, String> {
-    let settings_path = settings_path
-        .filter(|path| !path.trim().is_empty())
-        .map(PathBuf::from);
-    let mut data = read_legacy_data(Path::new(&profile_path), settings_path.as_deref())?;
-    write_app_data(&app_state_path(&app)?, &mut data)?;
-    Ok(data)
+    profile_contents: Option<String>,
+    settings_contents: String,
+) -> Result<LegacyImportResult, String> {
+    let current_data = load_app_data(app.clone())?;
+    let mut result = import_legacy_data_from_sources(
+        current_data,
+        profile_contents.as_deref(),
+        &settings_contents,
+    )?;
+    write_app_data(&app_state_path(&app)?, &mut result.data)?;
+
+    Ok(LegacyImportResult {
+        data: result.data,
+        legacy_rich_text_count: result.legacy_rich_text_count,
+        removed_tag_reference_count: result.removed_tag_reference_count,
+        replaced_subject_count: result.replaced_subject_count,
+    })
 }
 
 fn app_state_path(app: &AppHandle) -> Result<PathBuf, String> {

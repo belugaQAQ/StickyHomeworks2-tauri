@@ -17,7 +17,7 @@ function updatePanelWidth(event: Event) {
       <label slot="label" for="settings-panel-width">最大面板宽度</label>
         <input id="settings-panel-width" type="number" placeholder="0" min="160" max="2000" step="10" :value="appData.settings.maxPanelWidth" @change="updatePanelWidth"/>
         <span slot="suffix">px</span>
-        <span slot="hint">Hint text</span>
+        <span slot="hint">区间160~2000，须为10的倍数</span>
       </m3e-form-field>
   </SettingsPage>
 </template>

@@ -6,8 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "test:domain": "node --experimental-strip-types scripts/homework-domain.test.ts && node --experimental-strip-types scripts/homework-store.test.ts",
-    "test:masonry": "node --experimental-strip-types scripts/masonry-regression.test.ts",
     "preview": "vite preview",
     "tauri": "tauri"
   },

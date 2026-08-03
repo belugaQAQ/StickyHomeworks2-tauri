@@ -11,7 +11,7 @@ export function normalizeSettings(settings: AppSettings): AppSettings {
     title: settings.title.trim() || "作业",
     subjects: uniqueVocabulary(settings.subjects),
     tags: uniqueVocabulary(settings.tags),
-    maxPanelWidth: Math.round(Math.max(160, Math.min(2000, maxPanelWidth))),
+    maxPanelWidth: Math.round(Math.max(160, Math.min(2000, maxPanelWidth)) / 10) * 10,
   };
 }
 

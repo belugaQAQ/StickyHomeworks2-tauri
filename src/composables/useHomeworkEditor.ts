@@ -1,6 +1,7 @@
 import { computed, ref, type Ref } from "vue";
 import { formatLocalDate, localDateValue, toDateInputValue, uniqueVocabulary } from "../domain/homework";
 import type { AppData, HomeworkRecord } from "../types/app-data";
+import { toHomeworkEditorText } from "../utils/homework-content";
 
 type HomeworkEditorOptions = {
   appData: Ref<AppData>;
@@ -36,6 +37,7 @@ export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptio
 
     editingHomework.value = {
       ...homework,
+      content: toHomeworkEditorText(homework.content),
       dueTime: toDateInputValue(homework.dueTime),
       tags: homework.tags.filter((tag) => editorTags.value.includes(tag)),
     };
