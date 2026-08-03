@@ -66,8 +66,8 @@ async function confirmImport() {
     const result = await importLegacyData(profileContents, settingsContents);
     const changes = [
       result.legacyRichTextCount ? `${result.legacyRichTextCount} 项旧版富文本将按纯文本降级显示` : "",
-      result.removedTagReferenceCount ? `已移除 ${result.removedTagReferenceCount} 个词库外标签` : "",
-      result.replacedSubjectCount ? `${result.replacedSubjectCount} 项作业科目已改为其它` : "",
+      result.removedTagReferenceCount ? `已覆盖 ${result.removedTagReferenceCount} 个词库外标签` : "",
+      result.replacedSubjectCount ? `${result.replacedSubjectCount} 项作业科目被移除` : "",
     ].filter(Boolean);
     const changeMessage = changes.length ? `${changes.join("；")}。` : "";
     importMessage.value = profileFile.value
@@ -119,7 +119,7 @@ async function confirmImport() {
 
     <m3e-dialog ref="confirmDialog" alert disable-close>
       <m3e-heading slot="header" variant="headline" size="small" level="2">导入旧版数据？</m3e-heading>
-      {{ profileFile ? "导入会替换当前的作业和设置，并按导入词库整理标签和科目，无法撤销。" : "导入会替换当前设置，保留现有作业，并按导入词库整理标签和科目。" }}
+      {{ profileFile ? "导入会替换当前的作业和设置，并导入标签和科目，无法撤销。" : "导入会覆盖当前设置，保留现有作业，并导入标签和科目。" }}
       <div slot="actions" end>
         <m3e-button variant="text" :disabled="isImporting" @click="closeConfirmDialog">取消</m3e-button>
         <m3e-button variant="filled" :disabled="isImporting" @click="confirmImport">导入并替换</m3e-button>
