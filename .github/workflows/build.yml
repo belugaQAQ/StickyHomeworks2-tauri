@@ -34,11 +34,12 @@ jobs:
               src-tauri/target/release/bundle/dmg/*.dmg
           - name: Linux
             os: ubuntu-22.04
-            bundles: deb,rpm
+            bundles: deb,rpm,appimage
             artifact: stickyhomeworks2-linux
             path: |
               src-tauri/target/release/bundle/deb/*.deb
               src-tauri/target/release/bundle/rpm/*.rpm
+              src-tauri/target/release/bundle/appimage/*.appimage
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -54,7 +55,8 @@ jobs:
             libgtk-3-dev \
             libwebkit2gtk-4.1-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            libfuse2
 
       - uses: actions/setup-node@v4
         with:
@@ -126,7 +128,7 @@ jobs:
           if-no-files-found: error
 
   ios:
-    name: iOS (unsigned archive)
+    name: iOS (unsigned IPA)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -147,45 +149,15 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      # The generated Apple project is a CI build product, not application source.
       - name: Initialize iOS target
         run: npm run tauri -- ios init --ci --skip-targets-install
 
-      - name: Build unsigned iOS archive
-        shell: bash
-        run: |
-          npm run build
-          project_path="$(find "$GITHUB_WORKSPACE/src-tauri/gen/apple" -maxdepth 1 -name '*.xcodeproj' -print -quit)"
-          test -n "$project_path" || { echo "Tauri iOS initialization did not create an Xcode project"; exit 1; }
-          scheme_list_path="$RUNNER_TEMP/xcode-schemes.json"
-          xcodebuild -list -json -project "$project_path" > "$scheme_list_path"
-          scheme="$(plutil -extract project.schemes.0 raw -o - "$scheme_list_path")"
-          test -n "$scheme" || { echo "Xcode project has no shared scheme"; exit 1; }
-          archive_path="$RUNNER_TEMP/stickyhomeworks2.xcarchive"
-          build_settings_path="$RUNNER_TEMP/ios-build-settings.txt"
-
-          xcodebuild \
-            -project "$project_path" \
-            -scheme "$scheme" \
-            -configuration release \
-            -sdk iphoneos \
-            -showBuildSettings > "$build_settings_path"
-          grep -Eq '^[[:space:]]*CONFIGURATION = release$' "$build_settings_path" \
-            || { echo "Expected the Tauri release configuration before archiving"; cat "$build_settings_path"; exit 1; }
-
-          xcodebuild \
-            -project "$project_path" \
-            -scheme "$scheme" \
-            -configuration release \
-            -sdk iphoneos \
-            -archivePath "$archive_path" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            archive
+      - name: Build unsigned IPA
+        run: npm run tauri -- ios build --no-sign
 
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: stickyhomeworks2-ios-unsigned
-          path: ${{ runner.temp }}/stickyhomeworks2.xcarchive
+          path: src-tauri/gen/apple/build/ios/**/*.ipa
           if-no-files-found: error
