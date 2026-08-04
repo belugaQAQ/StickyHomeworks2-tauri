@@ -5,10 +5,11 @@ import { toHomeworkEditorText } from "../utils/homework-content";
 
 type HomeworkEditorOptions = {
   appData: Ref<AppData>;
+  isHomeworkFrozen: Ref<boolean>;
   saveHomework: (homework: HomeworkRecord) => Promise<void>;
 };
 
-export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptions) {
+export function useHomeworkEditor({ appData, isHomeworkFrozen, saveHomework }: HomeworkEditorOptions) {
   const editingHomework = ref<HomeworkRecord | null>(null);
   const saveError = ref("");
   const editorSubjects = computed(() => uniqueVocabulary([
@@ -19,6 +20,8 @@ export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptio
   const editorTags = computed(() => appData.value.settings.tags);
 
   function openCreate() {
+    if (isHomeworkFrozen.value) return false;
+
     const lastHomework = appData.value.homeworks[appData.value.homeworks.length - 1];
     editingHomework.value = {
       id: createHomeworkId(),
@@ -29,9 +32,12 @@ export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptio
       firstExpiredShowTime: null,
     };
     resetFormMessages();
+    return true;
   }
 
   function openEdit(id: string) {
+    if (isHomeworkFrozen.value) return false;
+
     const homework = appData.value.homeworks.find((item) => item.id === id);
     if (!homework) return false;
 
@@ -66,6 +72,10 @@ export function useHomeworkEditor({ appData, saveHomework }: HomeworkEditorOptio
 
   async function save() {
     if (!editingHomework.value) return false;
+    if (isHomeworkFrozen.value) {
+      saveError.value = "作业操作已冻结。";
+      return false;
+    }
 
     try {
       await saveHomework(editingHomework.value);

@@ -6,6 +6,7 @@ export type AppContext = {
   appData: Ref<AppData>;
   homeworkGroups: ComputedRef<SubjectGroup[]>;
   isMobileRuntime: Ref<boolean>;
+  isHomeworkFrozen: Ref<boolean>;
   settingsError: Ref<string>;
   openEditHomework: (id: string) => void;
   requestDeleteHomework: (id: string) => void;

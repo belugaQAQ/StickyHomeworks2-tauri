@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from "@tauri-apps/api/core";
-import { computed, nextTick, onMounted, provide, ref } from "vue";
+import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
 import HomeworkEditorDialog from "../components/HomeworkEditorDialog.vue";
@@ -30,6 +30,7 @@ const route = useRoute();
 const router = useRouter();
 const isDrawerOpen = ref(false);
 const isMobileRuntime = ref(false);
+const isHomeworkFrozen = ref(false);
 const loadError = ref("");
 const deleteError = ref("");
 const settingsError = ref("");
@@ -72,7 +73,8 @@ const {
   updateDueDate,
   updateTagSelection,
   save: saveHomeworkEditor,
-} = useHomeworkEditor({ appData, saveHomework });
+  reset: resetHomeworkEditor,
+} = useHomeworkEditor({ appData, isHomeworkFrozen, saveHomework });
 
 useLinuxClipboardWorkaround();
 useWebKitGtkDialogExit(deleteDialog);
@@ -95,6 +97,10 @@ const currentTitle = computed(() =>
 
 const currentContext = computed(() => activeNavigation.value === "homeworks" ? "今日任务" : currentTitle.value);
 
+function toggleHomeworkFrozen() {
+  isHomeworkFrozen.value = !isHomeworkFrozen.value;
+}
+
 function selectNavigation(id: NavigationItem) {
   const path = id === "homeworks" ? "/" : `/${id}`;
   void router.push(path);
@@ -102,8 +108,7 @@ function selectNavigation(id: NavigationItem) {
 }
 
 function openCreateHomework() {
-  openCreate();
-  editorDialog.value?.show();
+  if (openCreate()) editorDialog.value?.show();
 }
 
 function openEditHomework(id: string) {
@@ -119,6 +124,8 @@ async function saveEditedHomework() {
 }
 
 function requestDeleteHomework(id: string) {
+  if (isHomeworkFrozen.value) return;
+
   deleteHomeworkId.value = id;
   deleteError.value = "";
   void nextTick(() => deleteDialog.value?.show());
@@ -129,6 +136,13 @@ function closeDeleteDialog() {
   deleteHomeworkId.value = null;
   deleteError.value = "";
 }
+
+watch(isHomeworkFrozen, (frozen) => {
+  if (!frozen) return;
+  editorDialog.value?.hide();
+  resetHomeworkEditor();
+  closeDeleteDialog();
+});
 
 function requestCloseWindow() {
   exitDialog.value?.show();
@@ -181,6 +195,7 @@ provide(appContextKey, {
   appData,
   homeworkGroups,
   isMobileRuntime,
+  isHomeworkFrozen,
   settingsError,
   openEditHomework,
   requestDeleteHomework,
@@ -264,6 +279,16 @@ onMounted(async () => {
         </m3e-icon-button>
         <span slot="title">{{ appData.settings.title }}</span>
         <span slot="subtitle">{{ currentContext }}</span>
+        <m3e-icon-button
+          class="homework-freeze-button"
+          slot="trailing"
+          :aria-label="isHomeworkFrozen ? '解除作业冻结' : '冻结作业操作'"
+          :title="isHomeworkFrozen ? '解除作业冻结' : '冻结作业操作'"
+          :variant="isHomeworkFrozen ? 'filled' : 'tonal'"
+          @click="toggleHomeworkFrozen"
+        >
+          <m3e-icon name="ac_unit"></m3e-icon>
+        </m3e-icon-button>
         <m3e-icon-button slot="trailing" aria-label="更多选项" variant="tonal">
           <m3e-bottom-sheet-trigger for="More-Sheet">
             <m3e-icon name="more_horiz"></m3e-icon>
@@ -305,7 +330,7 @@ onMounted(async () => {
         </main>
       </m3e-drawer-container>
 
-      <template v-if="activeNavigation === 'homeworks'">
+      <template v-if="activeNavigation === 'homeworks' && !isHomeworkFrozen">
         <m3e-fab
           variant="primary"
           size="medium"

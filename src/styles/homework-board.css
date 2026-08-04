@@ -7,6 +7,17 @@
   color: var(--md-sys-color-on-background);
 }
 
+.homework-board--readonly,
+.homework-board--readonly * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.homework-board--readonly .subject-group,
+.homework-board--readonly .homework-empty-state {
+  pointer-events: none;
+}
+
 .homework-scroll-region {
   height: 100%;
   box-sizing: border-box;

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, toRef } from "vue";
+import { computed, ref, toRef, watch } from "vue";
 import { useHomeworkMasonry } from "../composables/useHomeworkMasonry";
 import type { SubjectGroup } from "../types/homework-board";
 import "../styles/homework-board.css";
 
 const selectedHomeworkId = ref<string | null>(null);
-const props = defineProps<{ mobileLayout: boolean; groups: SubjectGroup[]; maxPanelWidth: number }>();
+const props = defineProps<{ mobileLayout: boolean; groups: SubjectGroup[]; maxPanelWidth: number; readonly: boolean }>();
 const emit = defineEmits<{
   edit: [id: string];
   delete: [id: string];
@@ -18,23 +18,30 @@ const { masonryColumns, setBoardElement, setGroupElement, setScrollElement } = u
 );
 
 function selectHomework(id: string) {
+  if (props.readonly) return;
   selectedHomeworkId.value = selectedHomeworkId.value === id ? null : id;
 }
 
 function editHomework(id: string) {
+  if (props.readonly) return;
   selectedHomeworkId.value = id;
   emit("edit", id);
 }
 
 function deleteHomework(id: string) {
+  if (props.readonly) return;
   selectedHomeworkId.value = id;
   emit("delete", id);
 }
 
+watch(() => props.readonly, (readonly) => {
+  if (readonly) selectedHomeworkId.value = null;
+});
+
 </script>
 
 <template>
-  <section :ref="setBoardElement" class="homework-board" aria-label="作业列表">
+  <section :ref="setBoardElement" class="homework-board" :class="{ 'homework-board--readonly': readonly }" aria-label="作业列表">
     <div :ref="setScrollElement" class="homework-scroll-region">
       <div v-if="groups.length === 0" class="homework-empty-state">
         <m3e-icon name="assignment"></m3e-icon>
@@ -73,7 +80,7 @@ function deleteHomework(id: string) {
               <div slot="supporting-text" class="homework-tags">
                 <m3e-chip v-for="tag in homework.tags" :key="tag" variant="outlined">{{ tag }}</m3e-chip>
               </div>
-              <div v-if="selectedHomeworkId === homework.id" slot="trailing" class="homework-actions">
+              <div v-if="!readonly && selectedHomeworkId === homework.id" slot="trailing" class="homework-actions">
                 <m3e-icon-button aria-label="编辑作业" title="编辑作业" @click.stop="editHomework(homework.id)">
                   <m3e-icon name="edit"></m3e-icon>
                 </m3e-icon-button>
