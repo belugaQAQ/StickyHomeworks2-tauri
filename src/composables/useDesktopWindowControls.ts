@@ -1,7 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow, type Window } from "@tauri-apps/api/window";
 import { onUnmounted, ref } from "vue";
-
+import { logError } from "../services/logging";
 export function useDesktopWindowControls() {
   const isDesktopWindow = ref(false);
   const isUnlocked = ref(false);
@@ -9,7 +9,8 @@ export function useDesktopWindowControls() {
   const error = ref("");
   let unlistenResized: (() => void) | undefined;
 
-  function reportFailure() {
+  function reportFailure(reason?: unknown) {
+    logError("window-control", reason ?? "窗口操作失败");
     error.value = "窗口操作失败，请重试。";
   }
 
@@ -24,8 +25,8 @@ export function useDesktopWindowControls() {
       await action(getCurrentWindow());
       error.value = "";
       return true;
-    } catch {
-      reportFailure();
+    } catch (reason) {
+      reportFailure(reason);
       return false;
     }
   }
@@ -42,8 +43,8 @@ export function useDesktopWindowControls() {
       unlistenResized = await appWindow.onResized(() => {
         void syncMaximized(appWindow).catch(reportFailure);
       });
-    } catch {
-      reportFailure();
+    } catch (reason) {
+      reportFailure(reason);
     }
   }
 

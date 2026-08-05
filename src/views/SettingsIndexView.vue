@@ -8,6 +8,7 @@ const settingsSections = [
   { path: "/settings/expiry", icon: "event_busy", title: "过期作业", detail: "清理和标记" },
   { path: "/settings/board", icon: "view_column", title: "看板", detail: "最大面板宽度" },
   { path: "/settings/import", icon: "upload_file", title: "导入旧版数据", detail: "Profile.json 和 Settings.json" },
+  { path: "/settings/diagnostics", icon: "content_copy", title: "诊断信息", detail: "反馈、诊断包与运行日志" },
 ];
 </script>
 

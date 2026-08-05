@@ -1,35 +1,62 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { normalizeSettings } from "../domain/settings";
+import { createRequestId, logError } from "./logging";
 import { createDefaultAppData, type AppData, type LegacyImportResult } from "../types/app-data";
-
 const browserStorageKey = "stickyhomeworks2.app-data.v1";
 
 export async function loadAppData(): Promise<AppData> {
-  if (!isTauri()) return loadBrowserFallback();
-  return invoke<AppData>("load_app_data");
+  const requestId = createRequestId("app-data.load");
+  if (isTauri()) {
+    try {
+      return await invoke<AppData>("load_app_data", { requestId });
+    } catch (error) {
+      logError("app-data.load", error, requestId);
+      throw error;
+    }
+  }
+  return loadBrowserFallback(requestId);
 }
 
-export async function saveAppData(data: AppData): Promise<void> {
-  if (isTauri()) return invoke("save_app_data", { data });
-  window.localStorage.setItem(browserStorageKey, JSON.stringify(data));
+
+export async function saveAppData(data: AppData, requestId = createRequestId("app-data.save")): Promise<void> {
+  if (isTauri()) {
+    try {
+      await invoke("save_app_data", { data, requestId });
+      return;
+    } catch (error) {
+      logError("app-data.save", error, requestId);
+      throw error;
+    }
+  }
+  try {
+    window.localStorage.setItem(browserStorageKey, JSON.stringify(data));
+  } catch (error) {
+    logError("browser-data.save", error, requestId);
+    throw error;
+  }
 }
 
-export async function importLegacyData(profileContents: string | undefined, settingsContents: string): Promise<LegacyImportResult> {
+
+export async function importLegacyData(
+  profileContents: string | undefined,
+  settingsContents: string,
+  requestId = createRequestId("legacy-import"),
+): Promise<LegacyImportResult> {
   if (!isTauri()) throw new Error("旧版数据导入仅可在 Tauri 应用中使用。");
-
   return invoke<LegacyImportResult>("import_legacy_data_contents", {
     profileContents,
     settingsContents,
+    requestId,
   });
 }
 
-function loadBrowserFallback(): AppData {
+function loadBrowserFallback(requestId: string): AppData {
   try {
     const saved = window.localStorage.getItem(browserStorageKey);
     if (!saved) return createDefaultAppData();
-
     return normalizeAppData(JSON.parse(saved));
-  } catch {
+  } catch (error) {
+    logError("browser-data.load", error, requestId);
     return createDefaultAppData();
   }
 }

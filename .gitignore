@@ -24,13 +24,15 @@ StickyHomeworks2-old
 *.sln
 *.sw?
 
-/m3e-mcp/
 /m3e/
 /MIGRATION_PLAN.md
-/docs/phase-two-original-project-scope.md
 /AGENTS.md
 /scripts/*.test.ts
 /scripts/*.browser.test.py
 /scripts/run-browser-test.sh
 /src-tauri/src/local_tests/
 /CONTEXT.md
+/m3e-mcp/
+/docs/phase-two-original-project-scope.md
+/.Classworks-main/
+/docs/classworks-feedback-research.md

@@ -131,3 +131,58 @@
     padding-top: 1.5rem;
   }
 }
+.settings-status {
+  color: var(--md-sys-color-primary);
+}
+
+.settings-diagnostics {
+  gap: 1rem;
+}
+
+.settings-diagnostics__content {
+  display: grid;
+  gap: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.5;
+}
+
+.settings-diagnostics__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.settings-diagnostics__content p,
+.settings-diagnostics__dialog-intro {
+  margin: 0;
+}
+
+.settings-diagnostics__dialog-intro {
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.5;
+}
+
+
+
+
+.settings-diagnostics__report {
+  box-sizing: border-box;
+  max-width: min(42rem, calc(100vw - 4rem));
+  max-height: min(24rem, 50vh);
+  margin: 1rem 0 0;
+  padding: 1rem;
+  overflow: auto;
+  border-radius: 0.75rem;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  font: 0.8125rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 599px) {
+  .settings-diagnostics__report {
+    max-width: calc(100vw - 3rem);
+    max-height: 45vh;
+  }
+}

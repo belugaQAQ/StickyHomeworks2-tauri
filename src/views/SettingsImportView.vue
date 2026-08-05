@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 import SettingsPage from "../components/SettingsPage.vue";
 import { useAppContext } from "../app-context";
+import { logError } from "../services/logging";
 import "../styles/settings-view.css";
 
 type DialogElement = HTMLElement & {
@@ -58,11 +59,21 @@ async function confirmImport() {
   isImporting.value = true;
   importError.value = "";
   importMessage.value = "";
+  let profileContents: string | undefined;
+  let settingsContents: string;
   try {
-    const [profileContents, settingsContents] = await Promise.all([
+    [profileContents, settingsContents] = await Promise.all([
       profileFile.value?.text(),
       settingsFile.value.text(),
     ]);
+  } catch (error) {
+    logError("legacy-import.file-read", error);
+    importError.value = "无法读取所选文件，请确认文件可访问后重试。";
+    isImporting.value = false;
+    return;
+  }
+
+  try {
     const result = await importLegacyData(profileContents, settingsContents);
     const changes = [
       result.legacyRichTextCount ? `${result.legacyRichTextCount} 项旧版富文本将按纯文本降级显示` : "",
@@ -74,8 +85,8 @@ async function confirmImport() {
       ? `已导入 ${result.data.homeworks.length} 项作业和设置。${changeMessage}`
       : `已导入旧版设置，保留当前作业。${changeMessage}`;
     closeConfirmDialog();
-  } catch (error) {
-    importError.value = error instanceof Error ? error.message : "导入失败，请检查所选文件。";
+  } catch {
+    importError.value = "导入失败，请检查所选文件后重试。";
   } finally {
     isImporting.value = false;
   }

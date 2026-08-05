@@ -12,6 +12,7 @@ import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWor
 import { useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import type { AppSettings } from "../types/app-data";
 import { routeTransitionName } from "../router";
+import { logInfo, logWarn } from "../services/logging";
 import "../styles/app-shell.css";
 
 type NavigationItem = "homeworks" | "templates" | "settings";
@@ -186,7 +187,8 @@ async function importLegacyData(profileContents: string | undefined, settingsCon
   try {
     return await importLegacyDataFromStore(profileContents, settingsContents);
   } catch (error) {
-    settingsError.value = error instanceof Error ? error.message : "导入失败，请检查所选文件。";
+    logWarn("legacy-import.submit", error instanceof Error ? error.message : "legacy import failed");
+    settingsError.value = "导入失败，请检查所选文件后重试。";
     throw error;
   }
 }
@@ -236,7 +238,8 @@ async function detectMobileRuntime() {
 
   try {
     return (await invoke<"desktop" | "mobile">("runtime_layout")) === "mobile";
-  } catch {
+  } catch (error) {
+    logWarn("runtime-layout", error instanceof Error ? error.message : "runtime layout command failed");
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
   }
 }
@@ -251,6 +254,7 @@ onMounted(async () => {
 
   try {
     await load();
+    logInfo("app.start", "应用数据加载完成");
   } catch {
     loadError.value = "无法读取本地数据。请检查应用数据目录后重试。";
   }

@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { onBeforeUnmount, onMounted, ref } from "vue";
-
+import { logError, logWarn } from "../services/logging";
 export function useLinuxClipboardWorkaround() {
   const enabled = ref(false);
 
@@ -34,7 +34,7 @@ export function useLinuxClipboardWorkaround() {
 
     event.preventDefault();
     void writeText(text).catch((error: unknown) => {
-      console.error("Failed to copy text through Tauri clipboard manager", error);
+      logError("clipboard.copy", error);
     });
   }
 
@@ -48,14 +48,15 @@ export function useLinuxClipboardWorkaround() {
     void writeText(text)
       .then(() => removeSelectedInputText(event.target))
       .catch((error: unknown) => {
-        console.error("Failed to cut text through Tauri clipboard manager", error);
+        logError("clipboard.cut", error);
       });
   }
 
   onMounted(async () => {
     try {
       enabled.value = await invoke<boolean>("clipboard_workaround_required");
-    } catch {
+    } catch (error) {
+      logWarn("clipboard.workaround-detect", error instanceof Error ? error.message : "clipboard workaround detection failed");
       enabled.value = false;
     }
     document.addEventListener("copy", copyThroughTauri, true);

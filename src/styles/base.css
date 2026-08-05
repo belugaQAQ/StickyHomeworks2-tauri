@@ -102,6 +102,11 @@
   -webkit-text-size-adjust: 100%;
 }
 
+m3e-snackbar {
+  background: transparent;
+}
+
+
 * {
   box-sizing: border-box;
 }
