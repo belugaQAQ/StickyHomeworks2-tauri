@@ -115,9 +115,93 @@ jobs:
       - name: Initialize Android target
         run: npm run tauri -- android init --ci --skip-targets-install
 
-      - name: Build Android APK and AAB
+      - name: Restore Android signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          chmod 600 "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          cat > src-tauri/gen/android/keystore.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=$RUNNER_TEMP/stickyhomeworks2-release.jks
+          EOF
+
+      - name: Configure Android release signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src-tauri/gen/android/app/build.gradle.kts")
+          text = path.read_text()
+          if "import java.io.FileInputStream" not in text:
+              text = "import java.io.FileInputStream\nimport java.util.Properties\n" + text
+          signing = '''
+          signingConfigs {
+              create("release") {
+                  val keystorePropertiesFile = rootProject.file("keystore.properties")
+                  val keystoreProperties = Properties()
+                  if (keystorePropertiesFile.exists()) {
+                      keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+                  }
+                  keyAlias = keystoreProperties["keyAlias"] as String
+                  keyPassword = keystoreProperties["keyPassword"] as String
+                  storeFile = file(keystoreProperties["storeFile"] as String)
+                  storePassword = keystoreProperties["storePassword"] as String
+              }
+          }
+          '''
+          if 'create("release")' not in text:
+              if "buildTypes {" not in text:
+                  raise SystemExit("Android Gradle template has no buildTypes block")
+              text = text.replace("buildTypes {", signing + "\nbuildTypes {", 1)
+          if 'signingConfigs.getByName("release")' not in text:
+              marker = 'getByName("release") {'
+              if marker not in text:
+                  raise SystemExit("Android Gradle template has no release build type")
+              text = text.replace(
+                  marker,
+                  marker + '\n                  signingConfig = signingConfigs.getByName("release")',
+                  1,
+              )
+          if 'signingConfigs.getByName("release")' not in text:
+              raise SystemExit("Failed to configure Android release signing")
+          path.write_text(text)
+          PY
+
+      - name: Build signed Android APK and AAB
         run: npm run tauri -- android build
 
+      - name: Verify Android APK signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' -print)
+          test "${#apks[@]}" -gt 0
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$apksigner"
+          for apk in "${apks[@]}"; do
+            "$apksigner" verify --verbose "$apk"
+
+          done
+
+      - name: Remove temporary Android signing files
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          rm -f src-tauri/gen/android/keystore.properties
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
