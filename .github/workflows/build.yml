@@ -128,9 +128,25 @@ jobs:
           test -n "$ANDROID_KEYSTORE_PASSWORD"
           test -n "$ANDROID_KEY_PASSWORD"
           test -n "$ANDROID_KEY_ALIAS"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode --strict > "$RUNNER_TEMP/stickyhomeworks2-release.jks"
           chmod 600 "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          keystore_type=""
+          for candidate in JKS PKCS12; do
+            if keytool -list -keystore "$RUNNER_TEMP/stickyhomeworks2-release.jks" \
+                -storetype "$candidate" \
+                -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+                -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+              keystore_type="$candidate"
+              break
+            fi
+          done
+          if [ -z "$keystore_type" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 is unreadable, or its type/password/alias is wrong" >&2
+            exit 1
+          fi
+          echo "Detected Android keystore type: $keystore_type"
           cat > src-tauri/gen/android/keystore.properties <<EOF
+          storeType=$keystore_type
           storePassword=$ANDROID_KEYSTORE_PASSWORD
           keyPassword=$ANDROID_KEY_PASSWORD
           keyAlias=$ANDROID_KEY_ALIAS
@@ -162,6 +178,7 @@ jobs:
                   keyPassword = keystoreProperties["keyPassword"] as String
                   storeFile = file(keystoreProperties["storeFile"] as String)
                   storePassword = keystoreProperties["storePassword"] as String
+                  storeType = keystoreProperties["storeType"] as String
               }
           }
           '''
