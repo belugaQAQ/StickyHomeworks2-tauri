@@ -128,7 +128,7 @@ jobs:
           test -n "$ANDROID_KEYSTORE_PASSWORD"
           test -n "$ANDROID_KEY_PASSWORD"
           test -n "$ANDROID_KEY_ALIAS"
-          python - <<'PY'
+          python - <<'PY' > "$RUNNER_TEMP/stickyhomeworks2-release.jks"
           import base64
           import binascii
           import os
