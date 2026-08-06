@@ -128,8 +128,25 @@ jobs:
           test -n "$ANDROID_KEYSTORE_PASSWORD"
           test -n "$ANDROID_KEY_PASSWORD"
           test -n "$ANDROID_KEY_ALIAS"
-          python -c 'import base64, os, sys; raw="".join(os.environ["ANDROID_KEYSTORE_BASE64"].split()); sys.stdout.buffer.write(base64.b64decode(raw, validate=True))' \
-            > "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          python - <<'PY'
+          import base64
+          import binascii
+          import os
+          import sys
+
+          raw = "".join(os.environ["ANDROID_KEYSTORE_BASE64"].split())
+          try:
+              decoded = base64.b64decode(raw, validate=True)
+          except (binascii.Error, ValueError) as error:
+              print(
+                  f"ANDROID_KEYSTORE_BASE64 is not strict Base64 ({error}); "
+                  "replace the secret with the output of: base64 -w 0 <keystore>",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          sys.stdout.buffer.write(decoded)
+          PY
+
           chmod 600 "$RUNNER_TEMP/stickyhomeworks2-release.jks"
           keystore_type=""
           for candidate in JKS PKCS12; do
