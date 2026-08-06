@@ -128,7 +128,8 @@ jobs:
           test -n "$ANDROID_KEYSTORE_PASSWORD"
           test -n "$ANDROID_KEY_PASSWORD"
           test -n "$ANDROID_KEY_ALIAS"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode --strict > "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          python -c 'import base64, os, sys; raw="".join(os.environ["ANDROID_KEYSTORE_BASE64"].split()); sys.stdout.buffer.write(base64.b64decode(raw, validate=True))' \
+            > "$RUNNER_TEMP/stickyhomeworks2-release.jks"
           chmod 600 "$RUNNER_TEMP/stickyhomeworks2-release.jks"
           keystore_type=""
           for candidate in JKS PKCS12; do
