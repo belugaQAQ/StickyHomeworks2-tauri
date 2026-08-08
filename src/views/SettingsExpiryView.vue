@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { useSettingsAutosave } from "../composables/useSettingsAutosave";
 import SettingsPage from "../components/SettingsPage.vue";
+import { logInfo } from "../services/logging";
 import "../styles/settings-view.css";
-
 type SwitchElement = HTMLElement & { checked: boolean };
 
 const { appData, save, settingsError } = useSettingsAutosave();
 
 function updateSwitch(key: "autoOutwork" | "delayedCleanupEnabled" | "isExpiredMarkEnabled", event: Event) {
+  logInfo(`settings.${key}.change`, "过期设置开关已修改");
   void save({ [key]: (event.currentTarget as SwitchElement).checked });
 }
 
 function updateColor(event: Event) {
+  logInfo("settings.expired.mark.color.change", "过期标记颜色已修改");
   void save({ expiredMarkColor: (event.currentTarget as HTMLInputElement).value });
 }
 </script>

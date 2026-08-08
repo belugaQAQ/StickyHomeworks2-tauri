@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import SettingsPage from "../components/SettingsPage.vue";
 import { useSettingsAutosave } from "../composables/useSettingsAutosave";
-import "../styles/settings-view.css";
+import { logInfo } from "../services/logging";
 
 const { appData, save, settingsError } = useSettingsAutosave();
 const title = ref(appData.value.settings.title);
@@ -12,6 +12,7 @@ watch(() => appData.value.settings.title, (value) => {
 });
 
 function saveTitle() {
+  logInfo("settings.title.change", "应用标题已修改");
   void save({ title: title.value });
 }
 </script>

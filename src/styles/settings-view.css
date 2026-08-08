@@ -14,19 +14,6 @@
   min-height: 3rem;
 }
 
-.settings-back-link {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  color: var(--md-sys-color-on-surface);
-  text-decoration: none;
-}
-
-.settings-back-link:hover {
-  background: var(--md-sys-color-secondary-container);
-}
 
 .settings-group {
   display: grid;
@@ -160,6 +147,23 @@
 .settings-diagnostics__dialog-intro {
   color: var(--md-sys-color-on-surface-variant);
   line-height: 1.5;
+}
+.settings-diagnostics__disclosure {
+  display: grid;
+  gap: 0.625rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.settings-diagnostics__disclosure-help {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.settings-diagnostics__disclosure m3e-segmented-button {
+  max-width: 100%;
 }
 
 

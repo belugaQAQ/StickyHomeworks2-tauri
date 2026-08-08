@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
+import { M3eSnackbar } from "@m3e/web/snackbar";
 import SettingsPage from "../components/SettingsPage.vue";
 import { useAppContext } from "../app-context";
-import { logError } from "../services/logging";
+import { logError, logInfo } from "../services/logging";
 import "../styles/settings-view.css";
 
 type DialogElement = HTMLElement & {
@@ -17,48 +18,55 @@ const settingsInput = ref<HTMLInputElement | null>(null);
 const confirmDialog = ref<DialogElement | null>(null);
 const profileFile = ref<File | null>(null);
 const settingsFile = ref<File | null>(null);
-const importError = ref("");
-const importMessage = ref("");
 const isImporting = ref(false);
 const canImport = computed(() => isTauri() && settingsFile.value && !isImporting.value);
 
 function selectProfile() {
-  if (!isTauri()) return;
+  if (!isTauri()) {
+    logInfo("legacy.import.select.profile.blocked", "浏览器模式下选择 Profile.json 被阻止");
+    return;
+  }
+  logInfo("legacy.import.select.profile", "已请求选择 Profile.json");
   profileInput.value?.click();
 }
 
 function selectSettings() {
-  if (!isTauri()) return;
+  if (!isTauri()) {
+    logInfo("legacy.import.select.settings.blocked", "浏览器模式下选择 Settings.json 被阻止");
+    return;
+  }
+  logInfo("legacy.import.select.settings", "已请求选择 Settings.json");
   settingsInput.value?.click();
 }
 
 function updateProfile(event: Event) {
   profileFile.value = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
-  importError.value = "";
-  importMessage.value = "";
+  logInfo(profileFile.value ? "legacy.import.profile.selected" : "legacy.import.profile.cleared", profileFile.value ? "已选择 Profile.json" : "已清除 Profile.json 选择");
 }
 
 function updateSettings(event: Event) {
   settingsFile.value = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
-  importError.value = "";
-  importMessage.value = "";
+  logInfo(settingsFile.value ? "legacy.import.settings.selected" : "legacy.import.settings.cleared", settingsFile.value ? "已选择 Settings.json" : "已清除 Settings.json 选择");
 }
 
 function requestImport() {
-  if (!canImport.value) return;
+  if (!canImport.value) {
+    logInfo("legacy.import.request.blocked", "未选择必要文件或导入正在进行");
+    return;
+  }
+  logInfo("legacy.import.confirm.open", "已打开导入确认");
   confirmDialog.value?.show();
 }
 
 function closeConfirmDialog() {
   confirmDialog.value?.hide();
+  if (!isImporting.value) logInfo("legacy.import.cancel", "导入已取消");
 }
 
 async function confirmImport() {
   if (!settingsFile.value || isImporting.value) return;
 
   isImporting.value = true;
-  importError.value = "";
-  importMessage.value = "";
   let profileContents: string | undefined;
   let settingsContents: string;
   try {
@@ -67,8 +75,8 @@ async function confirmImport() {
       settingsFile.value.text(),
     ]);
   } catch (error) {
-    logError("legacy-import.file-read", error);
-    importError.value = "无法读取所选文件，请确认文件可访问后重试。";
+    logError("legacy.import.file.read", error);
+    M3eSnackbar.open("无法读取所选文件，请确认文件可访问后重试。");
     isImporting.value = false;
     return;
   }
@@ -81,12 +89,14 @@ async function confirmImport() {
       result.replacedSubjectCount ? `${result.replacedSubjectCount} 项作业科目被移除` : "",
     ].filter(Boolean);
     const changeMessage = changes.length ? `${changes.join("；")}。` : "";
-    importMessage.value = profileFile.value
+    const message = profileFile.value
       ? `已导入 ${result.data.homeworks.length} 项作业和设置。${changeMessage}`
       : `已导入旧版设置，保留当前作业。${changeMessage}`;
+    M3eSnackbar.open(message);
     closeConfirmDialog();
-  } catch {
-    importError.value = "导入失败，请检查所选文件后重试。";
+  } catch (error) {
+    logError("legacy.import.data", error);
+    M3eSnackbar.open("导入失败，请检查所选文件后重试。");
   } finally {
     isImporting.value = false;
   }
@@ -94,7 +104,7 @@ async function confirmImport() {
 </script>
 
 <template>
-  <SettingsPage title="导入旧版数据" heading-id="settings-import-title" :error="settingsError || importError" show-back>
+  <SettingsPage title="导入旧版数据" heading-id="settings-import-title" :error="settingsError" show-back>
     <section class="settings-group settings-import" aria-labelledby="settings-import-files-title">
       <m3e-heading id="settings-import-files-title" variant="title" size="large" level="2">选择文件</m3e-heading>
       <input ref="profileInput" class="settings-file-input" type="file" accept="application/json,.json" @change="updateProfile" />
@@ -122,7 +132,6 @@ async function confirmImport() {
     </section>
 
     <p v-if="!isTauri()" class="settings-import__notice" role="status">旧版数据导入仅可在 Tauri 应用中使用。</p>
-    <p v-if="importMessage" class="settings-import__notice" role="status">{{ importMessage }}</p>
     <m3e-button variant="filled" :disabled="!canImport" @click="requestImport">
       <m3e-icon slot="icon" name="file_upload"></m3e-icon>
       导入

@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { useSettingsAutosave } from "../composables/useSettingsAutosave";
 import SettingsPage from "../components/SettingsPage.vue";
-import "../styles/settings-view.css";
+import { logInfo } from "../services/logging";
 
 const { appData, save, settingsError } = useSettingsAutosave();
 
 function updatePanelWidth(event: Event) {
   const width = Number((event.currentTarget as HTMLInputElement).value);
-  if (Number.isFinite(width)) void save({ maxPanelWidth: width });
+  if (Number.isFinite(width)) {
+    logInfo("settings.panel.width.change", "看板最大宽度已修改");
+    void save({ maxPanelWidth: width });
+  }
 }
 </script>
 

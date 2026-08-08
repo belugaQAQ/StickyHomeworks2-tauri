@@ -7,31 +7,20 @@ const browserStorageKey = "stickyhomeworks2.app-data.v1";
 export async function loadAppData(): Promise<AppData> {
   const requestId = createRequestId("app-data.load");
   if (isTauri()) {
-    try {
-      return await invoke<AppData>("load_app_data", { requestId });
-    } catch (error) {
-      logError("app-data.load", error, requestId);
-      throw error;
-    }
+    return invoke<AppData>("load_app_data", { requestId });
   }
   return loadBrowserFallback(requestId);
 }
 
-
 export async function saveAppData(data: AppData, requestId = createRequestId("app-data.save")): Promise<void> {
   if (isTauri()) {
-    try {
-      await invoke("save_app_data", { data, requestId });
-      return;
-    } catch (error) {
-      logError("app-data.save", error, requestId);
-      throw error;
-    }
+    await invoke("save_app_data", { data, requestId });
+    return;
   }
   try {
     window.localStorage.setItem(browserStorageKey, JSON.stringify(data));
   } catch (error) {
-    logError("browser-data.save", error, requestId);
+    logError("browser.data.save", error, requestId);
     throw error;
   }
 }
@@ -56,7 +45,7 @@ function loadBrowserFallback(requestId: string): AppData {
     if (!saved) return createDefaultAppData();
     return normalizeAppData(JSON.parse(saved));
   } catch (error) {
-    logError("browser-data.load", error, requestId);
+    logError("browser.data.load", error, requestId);
     return createDefaultAppData();
   }
 }

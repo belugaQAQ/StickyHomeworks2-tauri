@@ -3,8 +3,8 @@ import { ref } from "vue";
 import SettingsPage from "../components/SettingsPage.vue";
 import { uniqueVocabulary } from "../domain/vocabulary";
 import { useSettingsAutosave } from "../composables/useSettingsAutosave";
+import { logInfo } from "../services/logging";
 import "../styles/settings-view.css";
-
 const { appData, update, deleteGlobalTag, settingsError } = useSettingsAutosave();
 const newSubject = ref("");
 const newTag = ref("");
@@ -15,6 +15,7 @@ function addVocabulary(key: "subjects" | "tags") {
   if (!value) return;
 
   input.value = "";
+  logInfo(key === "subjects" ? "settings.subject.add" : "settings.tag.add", "设置词库项已添加");
   void update((settings) => ({
     ...settings,
     [key]: uniqueVocabulary([...settings[key], value]),
@@ -22,6 +23,7 @@ function addVocabulary(key: "subjects" | "tags") {
 }
 
 function removeVocabulary(key: "subjects" | "tags", value: string) {
+  logInfo(key === "subjects" ? "settings.subject.remove" : "settings.tag.remove", "设置词库项已移除");
   if (key === "tags") {
     void deleteGlobalTag(value);
     return;

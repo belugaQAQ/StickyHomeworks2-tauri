@@ -1,7 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow, type Window } from "@tauri-apps/api/window";
 import { onUnmounted, ref } from "vue";
-import { logError } from "../services/logging";
+import { flushLogs, logError, logInfo } from "../services/logging";
 export function useDesktopWindowControls() {
   const isDesktopWindow = ref(false);
   const isUnlocked = ref(false);
@@ -10,7 +10,7 @@ export function useDesktopWindowControls() {
   let unlistenResized: (() => void) | undefined;
 
   function reportFailure(reason?: unknown) {
-    logError("window-control", reason ?? "窗口操作失败");
+    logError("window.control.failure", reason ?? "窗口操作失败");
     error.value = "窗口操作失败，请重试。";
   }
 
@@ -18,12 +18,13 @@ export function useDesktopWindowControls() {
     isMaximized.value = await window.isMaximized();
   }
 
-  async function runWindowAction(action: (window: Window) => Promise<void>) {
+  async function runWindowAction(operation: string, action: (window: Window) => Promise<void>) {
     if (!isDesktopWindow.value) return false;
 
     try {
       await action(getCurrentWindow());
       error.value = "";
+      logInfo(operation, "窗口操作完成");
       return true;
     } catch (reason) {
       reportFailure(reason);
@@ -41,6 +42,7 @@ export function useDesktopWindowControls() {
       await syncMaximized(appWindow);
       unlistenResized?.();
       unlistenResized = await appWindow.onResized(() => {
+        logInfo("window.resize", "窗口尺寸已变化");
         void syncMaximized(appWindow).catch(reportFailure);
       });
     } catch (reason) {
@@ -49,22 +51,23 @@ export function useDesktopWindowControls() {
   }
 
   async function close() {
-    await runWindowAction((window) => window.close());
+    await flushLogs();
+    await runWindowAction("window.close", (window) => window.close());
   }
 
   async function minimize() {
-    await runWindowAction((window) => window.minimize());
+    await runWindowAction("window.minimize", (window) => window.minimize());
   }
 
   async function toggleMaximize() {
-    await runWindowAction(async (window) => {
+    await runWindowAction("window.maximize-toggle", async (window) => {
       await window.toggleMaximize();
       await syncMaximized(window);
     });
   }
 
   async function toggleUnlocked() {
-    await runWindowAction(async (window) => {
+    await runWindowAction("window.unlock-toggle", async (window) => {
       const nextUnlocked = !isUnlocked.value;
 
       await window.setResizable(nextUnlocked);

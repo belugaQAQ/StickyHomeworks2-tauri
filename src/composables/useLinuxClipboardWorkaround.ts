@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { logError, logWarn } from "../services/logging";
+import { logError, logInfo, logWarn } from "../services/logging";
 export function useLinuxClipboardWorkaround() {
   const enabled = ref(false);
 
@@ -33,9 +33,11 @@ export function useLinuxClipboardWorkaround() {
     if (!text) return;
 
     event.preventDefault();
-    void writeText(text).catch((error: unknown) => {
-      logError("clipboard.copy", error);
-    });
+    void writeText(text)
+      .then(() => logInfo("clipboard.copy", "文本已复制"))
+      .catch((error: unknown) => {
+        logError("clipboard.copy", error);
+      });
   }
 
   function cutThroughTauri(event: ClipboardEvent) {
@@ -46,7 +48,10 @@ export function useLinuxClipboardWorkaround() {
 
     event.preventDefault();
     void writeText(text)
-      .then(() => removeSelectedInputText(event.target))
+      .then(() => {
+        removeSelectedInputText(event.target);
+        logInfo("clipboard.cut", "文本已剪切");
+      })
       .catch((error: unknown) => {
         logError("clipboard.cut", error);
       });
@@ -56,7 +61,7 @@ export function useLinuxClipboardWorkaround() {
     try {
       enabled.value = await invoke<boolean>("clipboard_workaround_required");
     } catch (error) {
-      logWarn("clipboard.workaround-detect", error instanceof Error ? error.message : "clipboard workaround detection failed");
+      logWarn("clipboard.workaround.detect", error instanceof Error ? error.message : "clipboard workaround detection failed");
       enabled.value = false;
     }
     document.addEventListener("copy", copyThroughTauri, true);

@@ -5,10 +5,11 @@ use serde::Serialize;
 
 use crate::data::AppData;
 use crate::diagnostics::{
-    diagnostic_report as create_diagnostic_report, export_diagnostic_bundle, DiagnosticEnvironment,
+    diagnostic_report as create_diagnostic_report, export_diagnostic_bundle, DiagnosticDisclosure,
+    DiagnosticEnvironment,
 };
 use crate::legacy_import::import_legacy_data_from_sources;
-use crate::logger::{append_event, LogEvent};
+use crate::logger::{append_event, clear_logs, LogEvent};
 use crate::persistence::{read_app_data as read_persisted_app_data, write_app_data};
 
 const APP_STATE_FILE: &str = "app-state.json";
@@ -97,17 +98,14 @@ pub(crate) fn log_event(app: AppHandle, event: LogEvent) -> Result<(), String> {
 pub(crate) fn diagnostic_report(
     app: AppHandle,
     environment: DiagnosticEnvironment,
+    disclosure: Option<DiagnosticDisclosure>,
+    app_data: Option<AppData>,
     request_id: Option<String>,
 ) -> Result<String, String> {
-    let report = create_diagnostic_report(&app, environment).map_err(|error| {
+    let report = create_diagnostic_report(&app, environment, disclosure.unwrap_or_default(), app_data).map_err(|error| {
         record_error(&app, "diagnostic-report.build", error, request_id.clone())
     })?;
-    record_info(
-        &app,
-        "diagnostic-report.build",
-        "诊断报告已生成",
-        request_id,
-    );
+    record_info(&app, "diagnostic-report.build", "诊断报告已生成", request_id);
     Ok(report)
 }
 
@@ -116,12 +114,25 @@ pub(crate) fn export_diagnostic_bundle_to_path(
     app: AppHandle,
     destination: PathBuf,
     environment: DiagnosticEnvironment,
+    disclosure: Option<DiagnosticDisclosure>,
+    app_data: Option<AppData>,
     request_id: Option<String>,
 ) -> Result<(), String> {
-    export_diagnostic_bundle(&app, &destination, environment).map_err(|error| {
+    export_diagnostic_bundle(&app, &destination, environment, disclosure.unwrap_or_default(), app_data).map_err(|error| {
         record_error(&app, "diagnostic-bundle.export", error, request_id.clone())
     })?;
     record_info(&app, "diagnostic-bundle.export", "诊断包已导出", request_id);
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn clear_diagnostic_logs(
+    app: AppHandle,
+    request_id: Option<String>,
+) -> Result<(), String> {
+    clear_logs(&app).map_err(|error| {
+        record_error(&app, "diagnostic.log.clear", error, request_id.clone())
+    })?;
     Ok(())
 }
 
@@ -133,6 +144,7 @@ fn record_info(app: &AppHandle, operation: &str, message: &str, request_id: Opti
             operation: operation.to_owned(),
             message: message.to_owned(),
             request_id,
+            details: None,
         },
     );
 }
@@ -149,9 +161,11 @@ fn record_error(
             operation: operation.to_owned(),
             message: error.clone(),
             request_id,
+            details: None,
         },
     );
     error
+
 }
 
 fn app_state_path(app: &AppHandle) -> Result<PathBuf, String> {

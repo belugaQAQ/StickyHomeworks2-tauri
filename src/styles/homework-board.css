@@ -114,6 +114,15 @@
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
+.homework-supporting-content {
+  display: block;
+  min-width: 0;
+}
+
+.homework-actions--mobile {
+  justify-content: flex-start;
+  margin-top: 0.5rem;
+}
 
 .homework-tags {
   display: flex;

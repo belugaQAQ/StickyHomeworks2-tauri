@@ -2,6 +2,7 @@
 import { computed, ref, toRef, watch } from "vue";
 import { useHomeworkMasonry } from "../composables/useHomeworkMasonry";
 import type { SubjectGroup } from "../types/homework-board";
+import { logInfo } from "../services/logging";
 import "../styles/homework-board.css";
 
 const selectedHomeworkId = ref<string | null>(null);
@@ -18,19 +19,31 @@ const { masonryColumns, setBoardElement, setGroupElement, setScrollElement } = u
 );
 
 function selectHomework(id: string) {
-  if (props.readonly) return;
+  if (props.readonly) {
+    logInfo("homework.select.blocked", "冻结状态下选择作业被阻止");
+    return;
+  }
   selectedHomeworkId.value = selectedHomeworkId.value === id ? null : id;
+  logInfo(selectedHomeworkId.value ? "homework.select" : "homework.deselect", "作业选择状态已变化");
 }
 
 function editHomework(id: string) {
-  if (props.readonly) return;
+  if (props.readonly) {
+    logInfo("homework.edit.blocked", "冻结状态下编辑作业被阻止");
+    return;
+  }
   selectedHomeworkId.value = id;
+  logInfo("homework.edit.open", "作业编辑已请求");
   emit("edit", id);
 }
 
 function deleteHomework(id: string) {
-  if (props.readonly) return;
+  if (props.readonly) {
+    logInfo("homework.delete.blocked", "冻结状态下删除作业被阻止");
+    return;
+  }
   selectedHomeworkId.value = id;
+  logInfo("homework.delete.request", "作业删除已请求");
   emit("delete", id);
 }
 
@@ -77,10 +90,20 @@ watch(() => props.readonly, (readonly) => {
             >
               <span slot="leading" class="homework-marker" aria-hidden="true"></span>
               <span class="homework-content">{{ homework.content }}</span>
-              <div slot="supporting-text" class="homework-tags">
-                <m3e-chip v-for="tag in homework.tags" :key="tag" variant="outlined">{{ tag }}</m3e-chip>
+              <div slot="supporting-text" class="homework-supporting-content">
+                <div class="homework-tags">
+                  <m3e-chip v-for="tag in homework.tags" :key="tag" variant="outlined">{{ tag }}</m3e-chip>
+                </div>
+                <div v-if="mobileLayout && !readonly && selectedHomeworkId === homework.id" class="homework-actions homework-actions--mobile">
+                  <m3e-icon-button aria-label="编辑作业" title="编辑作业" @click.stop="editHomework(homework.id)">
+                    <m3e-icon name="edit"></m3e-icon>
+                  </m3e-icon-button>
+                  <m3e-icon-button aria-label="删除作业" title="删除作业" @click.stop="deleteHomework(homework.id)">
+                    <m3e-icon name="delete"></m3e-icon>
+                  </m3e-icon-button>
+                </div>
               </div>
-              <div v-if="!readonly && selectedHomeworkId === homework.id" slot="trailing" class="homework-actions">
+              <div v-if="!mobileLayout && !readonly && selectedHomeworkId === homework.id" slot="trailing" class="homework-actions">
                 <m3e-icon-button aria-label="编辑作业" title="编辑作业" @click.stop="editHomework(homework.id)">
                   <m3e-icon name="edit"></m3e-icon>
                 </m3e-icon-button>

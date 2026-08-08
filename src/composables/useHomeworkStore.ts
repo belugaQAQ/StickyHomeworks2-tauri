@@ -29,13 +29,18 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
   function commit(operation: string, mutate: AppDataMutator) {
     return enqueueCommit(async () => {
       const requestId = createRequestId(operation);
+      const before = appData.value;
+      await logInfo(`${operation}.start`, "应用数据变更开始", requestId);
       try {
-        const nextData = mutate(appData.value);
+        const nextData = mutate(before);
         await saveData(nextData, requestId);
         appData.value = nextData;
-        logInfo(operation, "应用数据变更已提交", requestId);
+        await logInfo(`${operation}.success`, "应用数据变更已提交", requestId, {
+          homeworkCountBefore: before.homeworks.length,
+          homeworkCountAfter: nextData.homeworks.length,
+        });
       } catch (error) {
-        logError(operation, error, requestId);
+        await logError(`${operation}.failure`, error, requestId);
         throw error;
       }
     });
@@ -63,10 +68,10 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
       try {
         const result = await importData(profileContents, settingsContents, requestId);
         appData.value = result.data;
-        logInfo("legacy-import.complete", "旧版数据导入完成", requestId);
+        await logInfo("legacy-import.success", "旧版数据导入完成", requestId);
         return result;
       } catch (error) {
-        logError("legacy-import.failed", error, requestId);
+        await logError("legacy-import.failure", error, requestId);
         throw error;
       }
     });

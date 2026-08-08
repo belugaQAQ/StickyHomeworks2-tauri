@@ -1,17 +1,24 @@
-use std::fs::{self, File};
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::{LazyLock, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use serde::Deserialize;
 
-use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
-const LOG_DIRECTORY: &str = "logs";
-const LOG_FILE: &str = "app.log";
+use crate::data::AppData;
+use crate::diagnostic_archive::write_diagnostic_bundle;
+use crate::logger::diagnostic_log_snapshot;
+
 const MAX_REPORT_ENTRIES: usize = 80;
-const APP_STATE_FILE: &str = "app-state.json";
-static DIAGNOSTIC_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum DiagnosticDisclosure {
+    Standard,
+    Extended,
+    Full,
+}
+
+impl Default for DiagnosticDisclosure {
+    fn default() -> Self { Self::Standard }
+}
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,168 +31,72 @@ pub(crate) struct DiagnosticEnvironment {
     pub(crate) schema_version: u32,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LogEntry {
-    timestamp: String,
-    level: String,
-    operation: String,
-    message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    request_id: Option<String>,
-}
-
 pub(crate) fn diagnostic_report(
     app: &AppHandle,
     environment: DiagnosticEnvironment,
+    disclosure: DiagnosticDisclosure,
+    app_data: Option<AppData>,
 ) -> Result<String, String> {
-    let _guard = DIAGNOSTIC_LOCK.lock().map_err(|error| error.to_string())?;
-    create_diagnostic_report(app, &environment)
+    let snapshot = diagnostic_log_snapshot(app, MAX_REPORT_ENTRIES)?;
+    Ok(format_report(&environment, &snapshot.entries, disclosure, app_data.as_ref()))
 }
 
 pub(crate) fn export_diagnostic_bundle(
     app: &AppHandle,
-    destination: &Path,
+    destination: &std::path::Path,
     environment: DiagnosticEnvironment,
+    disclosure: DiagnosticDisclosure,
+    app_data: Option<AppData>,
 ) -> Result<(), String> {
-    let _guard = DIAGNOSTIC_LOCK.lock().map_err(|error| error.to_string())?;
-    let report = create_diagnostic_report(app, &environment)?;
-    let app_state_path = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?
-        .join(APP_STATE_FILE);
-    write_diagnostic_bundle(destination, &app_state_path, &log_directory(app)?, &report)
+    let snapshot = diagnostic_log_snapshot(app, MAX_REPORT_ENTRIES)?;
+    let report = format_report(&environment, &snapshot.entries, disclosure, app_data.as_ref());
+    let app_state = if disclosure == DiagnosticDisclosure::Full {
+        app_data.map(|data| serde_json::to_vec_pretty(&data).map_err(|error| error.to_string())).transpose()?
+    } else {
+        None
+    };
+    let log_files = if disclosure == DiagnosticDisclosure::Full { snapshot.files } else { Vec::new() };
+    write_diagnostic_bundle(destination, app_state.as_deref(), &log_files, &report)
 }
 
-fn create_diagnostic_report(
-    app: &AppHandle,
+fn format_report(
     environment: &DiagnosticEnvironment,
-) -> Result<String, String> {
-    let mut entries = Vec::new();
-    let directory = log_directory(app)?;
-    for suffix in [".2", ".1", ""] {
-        let path = directory.join(format!("{LOG_FILE}{suffix}"));
-        if !path.exists() {
-            continue;
-        }
-        let source = fs::read_to_string(path).map_err(|error| error.to_string())?;
-        for line in source.lines() {
-            let Ok(entry) = serde_json::from_str::<LogEntry>(line) else {
-                continue;
-            };
-            if matches!(entry.level.as_str(), "WARN" | "ERROR") {
-                entries.push(entry);
-            }
-        }
-    }
-    let report_entries = &entries[entries.len().saturating_sub(MAX_REPORT_ENTRIES)..];
+    entries: &[crate::logger::LogEntry],
+    disclosure: DiagnosticDisclosure,
+    app_data: Option<&AppData>,
+) -> String {
     let mut report = format!(
-        "StickyHomeworks2 诊断信息\n应用版本：{}\n操作系统：{}\nTauri 运行时：{}\nWebView 运行时：{}\n视口：{}\nschemaVersion：{}\n日志条目：{}\n\n",
-        environment.app_version, environment.operating_system, environment.tauri_runtime,
-        environment.web_view, environment.viewport, environment.schema_version, report_entries.len()
+        "StickyHomeworks2 诊断信息\n应用版本：{}\n操作系统：{}\nTauri 运行时：{}\nWebView 运行时：{}\n视口：{}\nschemaVersion：{}\n诊断级别：{}\n日志条目：{}\n\n",
+        environment.app_version,
+        environment.operating_system,
+        environment.tauri_runtime,
+        environment.web_view,
+        environment.viewport,
+        environment.schema_version,
+        disclosure_name(disclosure),
+        entries.len()
     );
-    for entry in report_entries {
-        let request_id = entry
-            .request_id
-            .as_deref()
-            .map(|value| format!(" [{value}]"))
-            .unwrap_or_default();
-        report.push_str(&format!(
-            "{} {} {}{}：{}\n",
-            entry.timestamp, entry.level, entry.operation, request_id, entry.message
-        ));
+    for entry in entries {
+        let request_id = if disclosure == DiagnosticDisclosure::Standard { String::new() } else {
+            entry.request_id.as_deref().map(|value| format!(" [{value}]" )).unwrap_or_default()
+        };
+        let details = if disclosure == DiagnosticDisclosure::Standard { String::new() } else {
+            entry.details.as_ref().map(|value| format!(" {}", value)).unwrap_or_default()
+        };
+        report.push_str(&format!("{} {} {}{}：{}{}\n", entry.timestamp, entry.level, entry.operation, request_id, entry.message, details));
     }
-    Ok(report)
-}
-
-fn log_directory(app: &AppHandle) -> Result<PathBuf, String> {
-    app.path()
-        .app_data_dir()
-        .map(|directory| directory.join(LOG_DIRECTORY))
-        .map_err(|error| error.to_string())
-}
-
-fn write_diagnostic_bundle(
-    destination: &Path,
-    app_state_path: &Path,
-    log_directory: &Path,
-    report: &str,
-) -> Result<(), String> {
-    let parent = destination.parent().ok_or("诊断包路径没有父目录")?;
-    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-    let temporary = parent.join(format!(
-        ".diagnostic-bundle-{}.tmp",
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|error| error.to_string())?
-            .as_nanos()
-    ));
-    let output = File::create(&temporary).map_err(|error| error.to_string())?;
-    let mut archive = zip::ZipWriter::new(output);
-    let options = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
-    let result = (|| -> Result<(), String> {
-        archive
-            .start_file("diagnostic-report.txt", options)
-            .map_err(|error| error.to_string())?;
-        archive
-            .write_all(report.as_bytes())
-            .map_err(|error| error.to_string())?;
-        if app_state_path.exists() {
-            write_bundle_file(&mut archive, "app-state.json", app_state_path, options)?;
-        }
-        for suffix in [".2", ".1", ""] {
-            let path = log_directory.join(format!("{LOG_FILE}{suffix}"));
-            if path.exists() {
-                write_bundle_file(
-                    &mut archive,
-                    &format!("logs/{LOG_FILE}{suffix}"),
-                    &path,
-                    options,
-                )?;
+    if disclosure == DiagnosticDisclosure::Full {
+        if let Some(data) = app_data {
+            if let Ok(contents) = serde_json::to_string_pretty(data) {
+                report.push_str("\n当前 AppData：\n");
+                report.push_str(&contents);
+                report.push('\n');
             }
         }
-        archive.finish().map_err(|error| error.to_string())?;
-        replace_bundle_file(&temporary, destination)
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(&temporary);
     }
-    result
+    report
 }
 
-fn replace_bundle_file(temporary: &Path, destination: &Path) -> Result<(), String> {
-    match fs::rename(temporary, destination) {
-        Ok(()) => Ok(()),
-        Err(error) if destination.exists() => {
-            let backup = temporary.with_extension("previous");
-            fs::rename(destination, &backup).map_err(|_| error.to_string())?;
-            match fs::rename(temporary, destination) {
-                Ok(()) => {
-                    let _ = fs::remove_file(backup);
-                    Ok(())
-                }
-                Err(replace_error) => {
-                    let _ = fs::rename(&backup, destination);
-                    Err(replace_error.to_string())
-                }
-            }
-        }
-        Err(error) => Err(error.to_string()),
-    }
-}
-
-fn write_bundle_file(
-    archive: &mut zip::ZipWriter<File>,
-    archive_path: &str,
-    source_path: &Path,
-    options: zip::write::SimpleFileOptions,
-) -> Result<(), String> {
-    archive
-        .start_file(archive_path, options)
-        .map_err(|error| error.to_string())?;
-    archive
-        .write_all(&fs::read(source_path).map_err(|error| error.to_string())?)
-        .map_err(|error| error.to_string())
+fn disclosure_name(disclosure: DiagnosticDisclosure) -> &'static str {
+    match disclosure { DiagnosticDisclosure::Standard => "standard", DiagnosticDisclosure::Extended => "extended", DiagnosticDisclosure::Full => "full" }
 }

@@ -1,72 +1,61 @@
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
-const LOG_DIRECTORY: &str = "logs";
-const LOG_FILE: &str = "app.log";
+pub(crate) const LOG_DIRECTORY: &str = "logs";
+pub(crate) const LOG_FILE: &str = "app.log";
 const MAX_LOG_BYTES: u64 = 1024 * 1024;
-const MAX_LOG_FILES: usize = 3;
-
 static LOG_FILE_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
-pub(crate) fn install_panic_hook(app: &tauri::AppHandle) {
+pub(crate) struct DiagnosticLogSnapshot {
+    pub(crate) entries: Vec<LogEntry>,
+    pub(crate) files: Vec<(String, Vec<u8>)>,
+}
+
+pub(crate) fn install_panic_hook(app: &AppHandle) {
     let app = app.clone();
     let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |panic_info| {
-        let payload = panic_info
+    std::panic::set_hook(Box::new(move |info| {
+        let payload = info
             .payload()
             .downcast_ref::<&str>()
             .copied()
-            .or_else(|| {
-                panic_info
-                    .payload()
-                    .downcast_ref::<String>()
-                    .map(String::as_str)
-            })
+            .or_else(|| info.payload().downcast_ref::<String>().map(String::as_str))
             .unwrap_or("panic payload unavailable");
-        let location = panic_info
-            .location()
-            .map(|value| format!(" at {}:{}", value.file(), value.line()))
-            .unwrap_or_default();
-        let _ = append_event(
-            &app,
-            LogEvent {
-                level: "error".to_owned(),
-                operation: "rust.panic".to_owned(),
-                message: format!("{payload}{location}"),
-                request_id: None,
-            },
-        );
-        previous(panic_info);
+        let location = "";
+        let _ = append_event(&app, LogEvent {
+            level: "error".into(),
+            operation: "rust.panic".into(),
+            message: format!("{payload}{location}"),
+            request_id: None,
+            details: None,
+        });
+        previous(info);
     }));
 }
-
-pub(crate) fn record_startup_event(app: &tauri::AppHandle, message: &str) {
-    let _ = append_event(
-        app,
-        LogEvent {
-            level: "info".to_owned(),
-            operation: "app.startup".to_owned(),
-            message: message.to_owned(),
-            request_id: None,
-        },
-    );
+pub(crate) fn record_startup_event(app: &AppHandle, message: &str) {
+    let _ = append_event(app, LogEvent {
+        level: "info".into(),
+        operation: "app.startup".into(),
+        message: message.into(),
+        request_id: None,
+        details: None,
+    });
 }
-pub(crate) fn record_startup_error(app: &tauri::AppHandle, error: &str) {
-    let _ = append_event(
-        app,
-        LogEvent {
-            level: "error".to_owned(),
-            operation: "app.startup".to_owned(),
-            message: error.to_owned(),
-            request_id: None,
-        },
-    );
+
+pub(crate) fn record_startup_error(app: &AppHandle, error: &str) {
+    let _ = append_event(app, LogEvent {
+        level: "error".into(),
+        operation: "app.startup".into(),
+        message: error.into(),
+        request_id: None,
+        details: None,
+    });
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -76,153 +65,168 @@ pub(crate) struct LogEvent {
     pub(crate) operation: String,
     pub(crate) message: String,
     pub(crate) request_id: Option<String>,
+    pub(crate) details: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct LogEntry {
-    timestamp: String,
-    level: String,
-    operation: String,
-    message: String,
+pub(crate) struct LogEntry {
+    pub(crate) timestamp: String,
+    pub(crate) level: String,
+    pub(crate) operation: String,
+    pub(crate) message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    request_id: Option<String>,
+    pub(crate) request_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) details: Option<serde_json::Value>,
 }
 
 pub(crate) fn append_event(app: &AppHandle, event: LogEvent) -> Result<(), String> {
     let entry = LogEntry {
         timestamp: timestamp(),
         level: normalize_level(&event.level),
-        operation: event.operation.trim().to_owned(),
-        message: event.message.trim().to_owned(),
-        request_id: event.request_id.map(|value| value.trim().to_owned()),
+        operation: limit_text(event.operation.trim(), 256),
+        message: limit_text(&event.message.replace(['\r', '\n'], " "), 4096),
+        request_id: event.request_id.map(|value| limit_text(value.trim(), 128)),
+        details: event.details,
     };
     append_entry(&log_path(app)?, entry)
+}
+
+pub(crate) fn clear_logs(app: &AppHandle) -> Result<(), String> {
+    let _guard = LOG_FILE_LOCK.lock().map_err(|error| error.to_string())?;
+    let directory = log_directory(app)?;
+    for suffix in [".2", ".1", "", ".3"] {
+        let path = directory.join(format!("{LOG_FILE}{suffix}"));
+        if path.exists() {
+            fs::remove_file(path).map_err(|error| error.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn diagnostic_log_snapshot(
+    app: &AppHandle,
+    max_entries: usize,
+) -> Result<DiagnosticLogSnapshot, String> {
+    let _guard = LOG_FILE_LOCK.lock().map_err(|error| error.to_string())?;
+    let directory = log_directory(app)?;
+    let mut entries = Vec::new();
+    let mut files = Vec::new();
+    for suffix in [".2", ".1", ""] {
+        let path = directory.join(format!("{LOG_FILE}{suffix}"));
+        if !path.exists() {
+            continue;
+        }
+        let contents = fs::read(&path).map_err(|error| error.to_string())?;
+        for line in String::from_utf8_lossy(&contents).lines() {
+            if let Ok(entry) = serde_json::from_str::<LogEntry>(line) {
+                if matches!(entry.level.as_str(), "WARN" | "ERROR") {
+                    entries.push(entry);
+                }
+            }
+        }
+        files.push((format!("logs/{LOG_FILE}{suffix}"), contents));
+    }
+    if entries.len() > max_entries {
+        let start = entries.len() - max_entries;
+        entries.drain(..start);
+    }
+    Ok(DiagnosticLogSnapshot { entries, files })
 }
 
 fn append_entry(path: &Path, entry: LogEntry) -> Result<(), String> {
     let _guard = LOG_FILE_LOCK.lock().map_err(|error| error.to_string())?;
     let line = serde_json::to_string(&entry).map_err(|error| error.to_string())? + "\n";
-    let line_size = line.len() as u64;
     let directory = path.parent().ok_or("日志路径没有父目录")?;
     fs::create_dir_all(directory).map_err(|error| error.to_string())?;
-
-    if path.exists() {
-        let current_size = fs::metadata(path).map_err(|error| error.to_string())?.len();
-        if current_size.saturating_add(line_size) > MAX_LOG_BYTES {
-            rotate_logs(directory)?;
-        }
+    if path.exists()
+        && fs::metadata(path).map_err(|error| error.to_string())?.len()
+            .saturating_add(line.len() as u64) > MAX_LOG_BYTES
+    {
+        rotate_logs(directory)?;
     }
-
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
         .open(path)
         .map_err(|error| error.to_string())?;
-    file.write_all(line.as_bytes())
-        .map_err(|error| error.to_string())?;
+    file.write_all(line.as_bytes()).map_err(|error| error.to_string())?;
     file.flush().map_err(|error| error.to_string())
 }
-fn log_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
-    app.path()
-        .app_data_dir()
-        .map(|directory| directory.join(LOG_DIRECTORY).join(LOG_FILE))
-        .map_err(|error| error.to_string())
-}
 
+fn log_path(app: &AppHandle) -> Result<PathBuf, String> { Ok(log_directory(app)?.join(LOG_FILE)) }
+fn log_directory(app: &AppHandle) -> Result<PathBuf, String> { app.path().app_data_dir().map(|directory| directory.join(LOG_DIRECTORY)).map_err(|error| error.to_string()) }
 fn rotate_logs(directory: &Path) -> Result<(), String> {
-    for index in (1..MAX_LOG_FILES).rev() {
-        let source = directory.join(format!("{LOG_FILE}.{index}"));
-        let target = directory.join(format!("{LOG_FILE}.{}", index + 1));
-        if source.exists() {
-            fs::rename(source, target).map_err(|error| error.to_string())?;
-        }
-    }
     let current = directory.join(LOG_FILE);
-    if current.exists() {
-        fs::rename(current, directory.join(format!("{LOG_FILE}.1")))
-            .map_err(|error| error.to_string())?;
+    let one = directory.join(format!("{LOG_FILE}.1"));
+    let two = directory.join(format!("{LOG_FILE}.2"));
+    let stale = directory.join(format!("{LOG_FILE}.3"));
+    let backup_current = directory.join(format!(".{LOG_FILE}.rotate-current"));
+    let backup_one = directory.join(format!(".{LOG_FILE}.rotate-one"));
+    let backup_two = directory.join(format!(".{LOG_FILE}.rotate-two"));
+    for backup in [&backup_current, &backup_one, &backup_two] {
+        if backup.exists() { fs::remove_file(backup).map_err(|error| error.to_string())?; }
     }
-    Ok(())
+    if current.exists() { fs::rename(&current, &backup_current).map_err(|error| error.to_string())?; }
+    if one.exists() { fs::rename(&one, &backup_one).map_err(|error| error.to_string())?; }
+    if two.exists() { fs::rename(&two, &backup_two).map_err(|error| error.to_string())?; }
+    let result = (|| {
+        if backup_one.exists() { fs::rename(&backup_one, &two).map_err(|error| error.to_string())?; }
+        if backup_current.exists() { fs::rename(&backup_current, &one).map_err(|error| error.to_string())?; }
+        if stale.exists() { fs::remove_file(&stale).map_err(|error| error.to_string())?; }
+        if backup_two.exists() { fs::remove_file(&backup_two).map_err(|error| error.to_string())?; }
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&current);
+        let _ = fs::remove_file(&one);
+        let _ = fs::remove_file(&two);
+        if backup_current.exists() { let _ = fs::rename(&backup_current, &current); }
+        if backup_one.exists() { let _ = fs::rename(&backup_one, &one); }
+        if backup_two.exists() { let _ = fs::rename(&backup_two, &two); }
+    }
+    result
 }
 
-fn timestamp() -> String {
-    let duration = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
-    format!("{}.{:03}Z", duration.as_secs(), duration.subsec_millis())
-}
-fn normalize_level(level: &str) -> String {
-    match level.to_ascii_uppercase().as_str() {
-        "DEBUG" => "DEBUG".to_owned(),
-        "WARN" | "WARNING" => "WARN".to_owned(),
-        "ERROR" => "ERROR".to_owned(),
-        _ => "INFO".to_owned(),
-    }
-}
+fn timestamp() -> String { let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default(); format!("{}.{:03}Z", duration.as_secs(), duration.subsec_millis()) }
+fn normalize_level(level: &str) -> String { match level.to_ascii_uppercase().as_str() { "DEBUG" => "DEBUG".into(), "WARN" | "WARNING" => "WARN".into(), "ERROR" => "ERROR".into(), _ => "INFO".into() } }
+fn limit_text(value: &str, max: usize) -> String { value.chars().take(max).collect() }
 
 #[cfg(test)]
 mod tests {
-
+    use super::{append_entry, normalize_level, rotate_logs, LogEntry, MAX_LOG_BYTES};
     use std::fs;
     use std::path::PathBuf;
-    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{append_entry, normalize_level, LogEntry, MAX_LOG_BYTES};
     #[test]
-    fn normalizes_unknown_levels_to_info() {
-        assert_eq!(normalize_level("trace"), "INFO");
-        assert_eq!(normalize_level("warning"), "WARN");
-    }
+    fn levels_normalize() { assert_eq!(normalize_level("trace"), "INFO"); assert_eq!(normalize_level("warning"), "WARN"); }
 
     #[test]
-    fn concurrent_appends_after_rotation_preserve_complete_entries() {
-        let directory = temporary_test_directory();
-        fs::create_dir_all(&directory).expect("create test directory");
-        let path = directory.join("app.log");
-        fs::write(&path, vec![b'x'; MAX_LOG_BYTES as usize])
-            .expect("fill log to rotation threshold");
-        let mut workers = Vec::new();
-
-        for index in 0..16 {
-            let path = path.clone();
-            workers.push(thread::spawn(move || {
-                append_entry(
-                    &path,
-                    LogEntry {
-                        timestamp: index.to_string(),
-                        level: "INFO".to_owned(),
-                        operation: "logger.test".to_owned(),
-                        message: format!("entry-{index}"),
-                        request_id: None,
-                    },
-                )
-            }));
-        }
-
-        for worker in workers {
-            worker
-                .join()
-                .expect("worker panicked")
-                .expect("append failed");
-        }
-
-        let entries: Vec<LogEntry> = fs::read_to_string(&path)
-            .expect("read current log")
-            .lines()
-            .map(|line| serde_json::from_str(line).expect("valid log entry"))
-            .collect();
-        assert_eq!(entries.len(), 16);
+    fn rotation_keeps_only_expected_files() {
+        let directory = temp();
+        fs::create_dir_all(&directory).unwrap();
+        for suffix in ["", ".1", ".2", ".3"] { fs::write(directory.join(format!("app.log{suffix}")), b"old").unwrap(); }
+        rotate_logs(&directory).unwrap();
+        assert!(!directory.join("app.log").exists());
         assert!(directory.join("app.log.1").exists());
-        fs::remove_dir_all(directory).expect("remove test directory");
+        assert!(directory.join("app.log.2").exists());
+        assert!(!directory.join("app.log.3").exists());
+        fs::remove_dir_all(directory).unwrap();
     }
 
-    fn temporary_test_directory() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system time")
-            .as_nanos();
-        std::env::temp_dir().join(format!("stickyhomeworks2-logger-{unique}"))
+    #[test]
+    fn concurrent_appends_preserve_entries() {
+        let directory = temp();
+        fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("app.log");
+        fs::write(&path, vec![b'x'; MAX_LOG_BYTES as usize]).unwrap();
+        let workers: Vec<_> = (0..16).map(|index| { let path = path.clone(); std::thread::spawn(move || append_entry(&path, LogEntry { timestamp: index.to_string(), level: "INFO".into(), operation: "logger.test".into(), message: format!("entry-{index}"), request_id: None, details: None })) }).collect();
+        for worker in workers { worker.join().unwrap().unwrap(); }
+        assert_eq!(fs::read_to_string(&path).unwrap().lines().count(), 16);
+        fs::remove_dir_all(directory).unwrap();
     }
+
+    fn temp() -> PathBuf { let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos(); std::env::temp_dir().join(format!("stickyhomeworks2-logger-{nanos}")) }
 }

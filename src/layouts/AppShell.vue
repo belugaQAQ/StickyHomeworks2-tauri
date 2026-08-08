@@ -100,16 +100,21 @@ const currentContext = computed(() => activeNavigation.value === "homeworks" ? "
 
 function toggleHomeworkFrozen() {
   isHomeworkFrozen.value = !isHomeworkFrozen.value;
+  logInfo(isHomeworkFrozen.value ? "homework.freeze" : "homework.unfreeze", "作业冻结状态已变化");
 }
 
 function selectNavigation(id: NavigationItem) {
   const path = id === "homeworks" ? "/" : `/${id}`;
   void router.push(path);
   isDrawerOpen.value = false;
+  logInfo("navigation.select", `已进入导航：${id}`);
 }
 
 function openCreateHomework() {
-  if (openCreate()) editorDialog.value?.show();
+  if (openCreate()) {
+    logInfo("homework.create.request", "已请求新建作业");
+    editorDialog.value?.show();
+  }
 }
 
 function openEditHomework(id: string) {
@@ -118,24 +123,33 @@ function openEditHomework(id: string) {
 
 function closeHomeworkEditor() {
   editorDialog.value?.hide();
+  logInfo("homework.editor.cancel", "作业编辑已取消");
 }
 
 async function saveEditedHomework() {
-  if (await saveHomeworkEditor()) closeHomeworkEditor();
+  if (await saveHomeworkEditor()) {
+    editorDialog.value?.hide();
+    logInfo("homework.editor.close.after.save", "作业编辑已在保存后关闭");
+  }
 }
 
 function requestDeleteHomework(id: string) {
-  if (isHomeworkFrozen.value) return;
+  if (isHomeworkFrozen.value) {
+    logInfo("homework.delete.blocked", "冻结状态下删除作业被阻止");
+    return;
+  }
 
   deleteHomeworkId.value = id;
   deleteError.value = "";
+  logInfo("homework.delete.confirm.open", "已打开删除确认");
   void nextTick(() => deleteDialog.value?.show());
 }
 
-function closeDeleteDialog() {
+function closeDeleteDialog(logCancellation = true) {
   deleteDialog.value?.hide();
   deleteHomeworkId.value = null;
   deleteError.value = "";
+  if (logCancellation) logInfo("homework.delete.cancel", "删除作业已取消");
 }
 
 watch(isHomeworkFrozen, (frozen) => {
@@ -147,10 +161,12 @@ watch(isHomeworkFrozen, (frozen) => {
 
 function requestCloseWindow() {
   exitDialog.value?.show();
+  logInfo("window.close.request", "已打开关闭确认");
 }
 
 function closeExitDialog() {
   exitDialog.value?.hide();
+  logInfo("window.close.cancel", "关闭应用已取消");
 }
 
 async function confirmDeleteHomework() {
@@ -158,7 +174,7 @@ async function confirmDeleteHomework() {
 
   try {
     await deleteHomework(deleteHomeworkId.value);
-    closeDeleteDialog();
+    closeDeleteDialog(false);
   } catch {
     deleteError.value = "删除失败，请重试。";
   }
@@ -187,12 +203,10 @@ async function importLegacyData(profileContents: string | undefined, settingsCon
   try {
     return await importLegacyDataFromStore(profileContents, settingsContents);
   } catch (error) {
-    logWarn("legacy-import.submit", error instanceof Error ? error.message : "legacy import failed");
     settingsError.value = "导入失败，请检查所选文件后重试。";
     throw error;
   }
 }
-
 provide(appContextKey, {
   appData,
   homeworkGroups,
@@ -239,7 +253,7 @@ async function detectMobileRuntime() {
   try {
     return (await invoke<"desktop" | "mobile">("runtime_layout")) === "mobile";
   } catch (error) {
-    logWarn("runtime-layout", error instanceof Error ? error.message : "runtime layout command failed");
+    logWarn("runtime.layout.failure", error instanceof Error ? error.message : "runtime layout command failed");
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
   }
 }

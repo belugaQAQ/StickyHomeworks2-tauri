@@ -1,5 +1,6 @@
 mod commands;
 mod data;
+mod diagnostic_archive;
 mod diagnostics;
 mod legacy_import;
 mod logger;
@@ -31,7 +32,8 @@ pub fn run() {
             commands::import_legacy_data_contents,
             commands::log_event,
             commands::diagnostic_report,
-            commands::export_diagnostic_bundle_to_path
+            commands::clear_diagnostic_logs,
+            commands::export_diagnostic_bundle_to_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
