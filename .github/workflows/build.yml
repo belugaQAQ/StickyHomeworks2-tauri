@@ -9,8 +9,61 @@ on:
 
 permissions:
   contents: read
-
 jobs:
+  release-metadata:
+    name: Release metadata
+    runs-on: ubuntu-22.04
+    outputs:
+      enabled: ${{ steps.metadata.outputs.enabled }}
+      version: ${{ steps.metadata.outputs.version }}
+      notes: ${{ steps.metadata.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+      - uses: actions/setup-node@v4
+        if: github.event_name == 'push'
+        with:
+          node-version: 20
+      - name: Detect release commit
+        id: metadata
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" != "push" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "普通构建：非 push 事件，不发布。"
+            exit 0
+          fi
+
+          title="$(printf '%s\n' "$COMMIT_MESSAGE" | sed -n '1p')"
+          if [[ ! "$title" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "普通构建：提交标题不是发版版本号，不发布。"
+            exit 0
+          fi
+
+          version="${title#v}"
+          base_version="${version%%[-+]*}"
+          package_version="$(node -p "require('./package.json').version")"
+          tauri_version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [[ "$package_version" != "$base_version" || "$tauri_version" != "$base_version" ]]; then
+            echo "版本不一致：提交标题=$title，要求基础版本=$base_version，package.json=$package_version，tauri.conf.json=$tauri_version" >&2
+            exit 1
+          fi
+
+          {
+            echo "enabled=true"
+            echo "version=$title"
+            echo 'notes<<RELEASE_NOTES'
+            printf '%s\n' "$COMMIT_MESSAGE" | sed '1d'
+            echo RELEASE_NOTES
+          } >> "$GITHUB_OUTPUT"
+          echo "发版构建：$title"
+
+
   desktop:
     name: Desktop (${{ matrix.name }})
     strategy:
