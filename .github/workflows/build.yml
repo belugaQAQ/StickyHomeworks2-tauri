@@ -3,7 +3,6 @@ name: Build Applications
 on:
   push:
     branches: [master]
-    tags: ["v*"]
   pull_request:
     branches: [master]
   workflow_dispatch:
@@ -12,6 +11,63 @@ permissions:
   contents: read
 
 jobs:
+  release-metadata:
+    name: Release metadata
+    runs-on: ubuntu-22.04
+    outputs:
+      enabled: ${{ steps.metadata.outputs.enabled }}
+      version: ${{ steps.metadata.outputs.version }}
+      notes: ${{ steps.metadata.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+      - uses: actions/setup-node@v4
+        if: github.event_name == 'push'
+        with:
+          node-version: 20
+      - name: Read release commit
+        id: metadata
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" != "push" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          title="$(printf '%s\n' "$COMMIT_MESSAGE" | sed -n '1p')"
+          if [[ ! "$title" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          version="${title#v}"
+          base_version="${version%%[-+]*}"
+          package_version="$(node -p "require('./package.json').version")"
+          tauri_version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [[ "$package_version" != "$base_version" || "$tauri_version" != "$base_version" ]]; then
+            echo "版本不一致：提交标题=$title，要求基础版本=$base_version，package.json=$package_version，tauri.conf.json=$tauri_version" >&2
+            exit 1
+          fi
+
+          {
+            echo "enabled=true"
+            echo "version=$title"
+            echo 'notes<<RELEASE_NOTES'
+            printf '%s\n' "$COMMIT_MESSAGE" | sed '1d'
+            echo RELEASE_NOTES
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Show release metadata
+        if: steps.metadata.outputs.enabled == 'true'
+        run: |
+          echo "Release: ${{ steps.metadata.outputs.version }}"
+          echo "Release notes extracted from commit body."
+
+
   desktop:
     name: Desktop (${{ matrix.name }})
     strategy:
@@ -282,3 +338,32 @@ jobs:
           name: stickyhomeworks2-ios-unsigned
           path: src-tauri/gen/apple/build/arm64/*.ipa
           if-no-files-found: error
+  publish-release:
+    name: Publish GitHub Release
+    needs: [release-metadata, desktop, android, ios]
+    if: needs.release-metadata.outputs.enabled == 'true' && needs.desktop.result == 'success' && needs.android.result == 'success' && needs.ios.result == 'success'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stickyhomeworks2-*
+          path: release-artifacts
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: release-artifacts
+        run: sha256sum $(find . -type f -not -name 'SHA256SUMS.txt' -print) > SHA256SUMS.txt
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.version }}
+          RELEASE_NOTES: ${{ needs.release-metadata.outputs.notes }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find release-artifacts -type f ! -name 'SHA256SUMS.txt' -print)
+          test "${#files[@]}" -gt 0
+          gh release create "$RELEASE_TAG" "${files[@]}" release-artifacts/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$RELEASE_TAG" \
+            --notes "$RELEASE_NOTES"
