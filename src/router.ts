@@ -8,6 +8,7 @@ import SettingsImportView from "./views/SettingsImportView.vue";
 import SettingsIndexView from "./views/SettingsIndexView.vue";
 import SettingsVocabularyView from "./views/SettingsVocabularyView.vue";
 import SettingsDiagnosticsView from "./views/SettingsDiagnosticsView.vue";
+import SettingsAboutView from "./views/SettingsAboutView.vue";
 import TemplatesView from "./views/TemplatesView.vue";
 
 export type RouteTransitionName = "route-fade" | "settings-forward" | "settings-back";
@@ -30,6 +31,7 @@ export const router = createRouter({
     { path: "/settings/expiry", name: "settings-expiry", component: SettingsExpiryView, meta: { settingsDepth: 1 } },
     { path: "/settings/board", name: "settings-board", component: SettingsBoardView, meta: { settingsDepth: 1 } },
     { path: "/settings/diagnostics", name: "settings-diagnostics", component: SettingsDiagnosticsView, meta: { settingsDepth: 1 } },
+    { path: "/settings/about", name: "settings-about", component: SettingsAboutView, meta: { settingsDepth: 1 } },
     { path: "/:pathMatch(.*)*", redirect: "/" },
   ],
 });

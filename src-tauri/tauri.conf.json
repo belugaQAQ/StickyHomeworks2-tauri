@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "stickyhomeworks2",
+  "productName": "stickyhomeworks2 · N",
   "version": "0.1.0",
   "identifier": "com.classisband.stickyhomeworks2",
   "build": {
