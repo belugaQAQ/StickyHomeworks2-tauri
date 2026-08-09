@@ -24,7 +24,7 @@ pub(crate) fn webkitgtk_dialog_exit_workaround_required() -> bool {
 pub(crate) fn create_main_window(app: &tauri::App) -> tauri::Result<()> {
     let window = tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
         .title("stickyhomeworks2")
-        .inner_size(800.0, 600.0)
+        //.inner_size(800.0, 600.0)
         // Required by Tauri/Wry for Linux and Windows WebView clipboard shortcuts.
         .enable_clipboard_access();
 
