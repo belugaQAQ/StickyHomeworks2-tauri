@@ -1,10 +1,9 @@
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { isTauri } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { save } from "@tauri-apps/plugin-dialog";
 import type { AppData } from "../types/app-data";
 import { createRequestId, getBrowserLogEntries } from "./logging";
+import { clearPersistedDiagnosticLogs, exportDiagnosticBundleToFile } from "./platform-adapter";
 import {
-  buildDiagnosticReport,
   collectDiagnosticEnvironment,
   formatDiagnosticReport,
   type DiagnosticDisclosure,
@@ -42,7 +41,7 @@ export async function copyDiagnosticReport(report: string): Promise<void> {
 
 export async function clearDiagnosticLogs(): Promise<void> {
   if (isTauri()) {
-    await invoke("clear_diagnostic_logs", { requestId: createRequestId("diagnostic.log.clear") });
+    await clearPersistedDiagnosticLogs(createRequestId("diagnostic.log.clear"));
   }
 }
 
@@ -76,30 +75,8 @@ export async function exportDiagnosticBundle(
     }
     return true;
   }
-  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-    const report = await buildDiagnosticReport(appData, disclosure);
-    if (navigator.share) {
-      try {
-        await navigator.share({ text: report, title: "StickyHomeworks2 诊断信息" });
-        return true;
-      } catch (error) {
-        throw new DiagnosticError("cancelled", "用户取消了诊断信息分享", error);
-      }
-    }
-    await copyDiagnosticReport(report);
-    return true;
-  }
-  const destination = await save({ title: "导出诊断信息", defaultPath: "stickyhomeworks2-diagnostics.zip", filters: [{ name: "ZIP 压缩包", extensions: ["zip"] }] });
-  if (!destination) return false;
   try {
-    await invoke("export_diagnostic_bundle_to_path", {
-      destination,
-      environment,
-      disclosure,
-      appData: disclosure === "full" ? appData : null,
-      requestId,
-    });
-    return true;
+    return await exportDiagnosticBundleToFile(environment, disclosure, appData, requestId);
   } catch (error) {
     throw new DiagnosticError("export-failed", "诊断包导出失败", error);
   }

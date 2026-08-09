@@ -3,7 +3,7 @@ use serde::Deserialize;
 use tauri::AppHandle;
 
 use crate::data::AppData;
-use crate::diagnostic_archive::write_diagnostic_bundle;
+use crate::diagnostic_archive::create_diagnostic_bundle;
 use crate::logger::diagnostic_log_snapshot;
 
 const MAX_REPORT_ENTRIES: usize = 80;
@@ -40,24 +40,21 @@ pub(crate) fn diagnostic_report(
     let snapshot = diagnostic_log_snapshot(app, MAX_REPORT_ENTRIES)?;
     Ok(format_report(&environment, &snapshot.entries, disclosure, app_data.as_ref()))
 }
-
-pub(crate) fn export_diagnostic_bundle(
+pub(crate) fn diagnostic_bundle(
     app: &AppHandle,
-    destination: &std::path::Path,
     environment: DiagnosticEnvironment,
     disclosure: DiagnosticDisclosure,
     app_data: Option<AppData>,
-) -> Result<(), String> {
+) -> Result<Vec<u8>, String> {
     let snapshot = diagnostic_log_snapshot(app, MAX_REPORT_ENTRIES)?;
     let report = format_report(&environment, &snapshot.entries, disclosure, app_data.as_ref());
     let app_state = if disclosure == DiagnosticDisclosure::Full {
         app_data.map(|data| serde_json::to_vec_pretty(&data).map_err(|error| error.to_string())).transpose()?
-    } else {
-        None
-    };
+    } else { None };
     let log_files = if disclosure == DiagnosticDisclosure::Full { snapshot.files } else { Vec::new() };
-    write_diagnostic_bundle(destination, app_state.as_deref(), &log_files, &report)
+    create_diagnostic_bundle(app_state.as_deref(), &log_files, &report)
 }
+
 
 fn format_report(
     environment: &DiagnosticEnvironment,

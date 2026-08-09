@@ -4,15 +4,13 @@ use tauri::{AppHandle, Manager};
 use serde::Serialize;
 
 use crate::data::AppData;
-use crate::diagnostics::{
-    diagnostic_report as create_diagnostic_report, export_diagnostic_bundle, DiagnosticDisclosure,
-    DiagnosticEnvironment,
-};
+use crate::diagnostics::{diagnostic_report as create_diagnostic_report, DiagnosticDisclosure, DiagnosticEnvironment};
 use crate::legacy_import::import_legacy_data_from_sources;
 use crate::logger::{append_event, clear_logs, LogEvent};
 use crate::persistence::{read_app_data as read_persisted_app_data, write_app_data};
 
 const APP_STATE_FILE: &str = "app-state.json";
+
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -110,19 +108,17 @@ pub(crate) fn diagnostic_report(
 }
 
 #[tauri::command]
-pub(crate) fn export_diagnostic_bundle_to_path(
+pub(crate) fn export_diagnostic_bundle(
     app: AppHandle,
-    destination: PathBuf,
     environment: DiagnosticEnvironment,
     disclosure: Option<DiagnosticDisclosure>,
     app_data: Option<AppData>,
     request_id: Option<String>,
-) -> Result<(), String> {
-    export_diagnostic_bundle(&app, &destination, environment, disclosure.unwrap_or_default(), app_data).map_err(|error| {
-        record_error(&app, "diagnostic-bundle.export", error, request_id.clone())
-    })?;
-    record_info(&app, "diagnostic-bundle.export", "诊断包已导出", request_id);
-    Ok(())
+) -> Result<Vec<u8>, String> {
+    let bundle = crate::diagnostics::diagnostic_bundle(&app, environment, disclosure.unwrap_or_default(), app_data)
+        .map_err(|error| record_error(&app, "diagnostic-bundle.build", error, request_id.clone()))?;
+    record_info(&app, "diagnostic-bundle.build", "诊断包已生成", request_id);
+    Ok(bundle)
 }
 
 #[tauri::command]

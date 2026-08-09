@@ -13,6 +13,7 @@
     "core:window:allow-toggle-maximize",
     "opener:default",
     "clipboard-manager:allow-write-text",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "fs:allow-write-file"
   ]
 }

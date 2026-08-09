@@ -13,6 +13,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             logger::install_panic_hook(app.handle());
             logger::record_startup_event(app.handle(), "Tauri 应用初始化开始");
@@ -32,8 +33,7 @@ pub fn run() {
             commands::import_legacy_data_contents,
             commands::log_event,
             commands::diagnostic_report,
-            commands::clear_diagnostic_logs,
-            commands::export_diagnostic_bundle_to_path,
+            commands::export_diagnostic_bundle,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
