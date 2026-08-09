@@ -9,7 +9,7 @@ import { clearDiagnosticLogs, copyDiagnosticReport, DiagnosticError, exportDiagn
 import { clearBrowserLogEntries, flushLogs, getLoggingStatus, logError, logInfo } from "../services/logging";
 import "../styles/settings-view.css";
 
-type DialogElement = HTMLElement & { open: boolean; show: () => void; hide: (returnValue?: string) => Promise<void> };
+type DialogElement = HTMLElement & { open: boolean; returnValue: string; show: () => void; hide: (returnValue?: string) => Promise<void> };
 const { appData } = useAppContext();
 const reportDialog = ref<DialogElement | null>(null);
 const exportConfirmDialog = ref<DialogElement | null>(null);
@@ -19,6 +19,7 @@ let reportBuildSequence = 0;
 const isExportingBundle = ref(false);
 const isClearingLogs = ref(false);
 const selectedDisclosure = ref<DiagnosticDisclosure>("standard");
+const disclosureControlKey = ref(0);
 const disclosureHelp = computed(() => {
   switch (selectedDisclosure.value) {
     case "extended":
@@ -31,6 +32,8 @@ const disclosureHelp = computed(() => {
 });
 const pendingDisclosure = ref<DiagnosticDisclosure | null>(null);
 const pendingDisclosureAction = ref<"select" | "export" | null>(null);
+const previousDisclosure = ref<DiagnosticDisclosure>("standard");
+const confirmationAccepted = ref(false);
 const disclosureConfirmationTitle = computed(() => pendingDisclosureAction.value === "select" ? "确认查看更多诊断内容？" : "确认导出更多诊断内容？");
 const disclosureConfirmationAction = computed(() => pendingDisclosureAction.value === "select" ? "确认切换" : "确认导出");
 const loggingStatus = getLoggingStatus();
@@ -95,32 +98,54 @@ async function updateDisclosure(value: DiagnosticDisclosure) {
     if (buildSequence === reportBuildSequence) isBuildingReport.value = false;
   }
 }
-
 async function selectDisclosure(value: DiagnosticDisclosure) {
   if (value === "full") {
+    previousDisclosure.value = selectedDisclosure.value;
     pendingDisclosure.value = value;
     pendingDisclosureAction.value = "select";
+    confirmationAccepted.value = false;
+    disclosureControlKey.value += 1;
     exportConfirmDialog.value?.show();
     return;
   }
   await updateDisclosure(value);
 }
+
+function cancelDisclosureConfirmation() {
+  if (pendingDisclosureAction.value === "select") {
+    selectedDisclosure.value = previousDisclosure.value;
+    disclosureControlKey.value += 1;
+  }
+  pendingDisclosure.value = null;
+  pendingDisclosureAction.value = null;
+}
+
+async function handleDisclosureConfirmationClosed() {
+  if (!confirmationAccepted.value) {
+    cancelDisclosureConfirmation();
+  }
+  confirmationAccepted.value = false;
+}
+
 async function exportBundle() {
   const disclosure = selectedDisclosure.value;
   if (disclosure !== "standard") {
     pendingDisclosure.value = disclosure;
     pendingDisclosureAction.value = "export";
+    confirmationAccepted.value = false;
     exportConfirmDialog.value?.show();
     return;
   }
   await performExport(disclosure);
 }
+
 async function confirmExport() {
   const disclosure = pendingDisclosure.value;
   const action = pendingDisclosureAction.value;
+  confirmationAccepted.value = true;
+  await exportConfirmDialog.value?.hide("confirm");
   pendingDisclosure.value = null;
   pendingDisclosureAction.value = null;
-  await exportConfirmDialog.value?.hide();
   if (!disclosure) return;
   if (action === "select") {
     await updateDisclosure(disclosure);
@@ -222,7 +247,7 @@ function openGitHub() {
       <pre class="settings-diagnostics__report">{{ report }}</pre>
       <div class="settings-diagnostics__disclosure" aria-labelledby="diagnostic-disclosure-label">
         <m3e-heading id="diagnostic-disclosure-label" variant="label" size="large" level="3">导出内容级别</m3e-heading>
-        <m3e-segmented-button aria-labelledby="diagnostic-disclosure-label">
+        <m3e-segmented-button :key="disclosureControlKey" aria-labelledby="diagnostic-disclosure-label">
           <m3e-button-segment value="standard" :checked="selectedDisclosure === 'standard'" @click="selectDisclosure('standard')">
             标准
           </m3e-button-segment>
@@ -248,11 +273,11 @@ function openGitHub() {
 
       </div>
     </m3e-dialog>
-    <m3e-dialog ref="exportConfirmDialog" alert dismissible>
+    <m3e-dialog ref="exportConfirmDialog" alert dismissible @closed="handleDisclosureConfirmationClosed">
       <m3e-heading slot="header" variant="headline" size="small" level="2">{{ disclosureConfirmationTitle }}</m3e-heading>
       <p>扩展级别包含请求标识和结构化诊断上下文；完整级别还包含当前作业、设置和完整轮转日志。请确认支持人员可信，并确认你要继续。</p>
       <div slot="actions" end class="settings-diagnostics__actions">
-        <m3e-button variant="text"><m3e-dialog-action return-value="cancel">取消</m3e-dialog-action></m3e-button>
+        <m3e-button variant="text" @click="cancelDisclosureConfirmation"><m3e-dialog-action return-value="cancel">取消</m3e-dialog-action></m3e-button>
         <m3e-button variant="filled" @click="confirmExport">{{ disclosureConfirmationAction }}</m3e-button>
       </div>
     </m3e-dialog>
