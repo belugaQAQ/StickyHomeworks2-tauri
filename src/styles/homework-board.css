@@ -168,7 +168,7 @@
 
 .app-frame--mobile .homework-scroll-region {
   height: auto;
-  padding-bottom: max(6rem, env(safe-area-inset-bottom));
+  padding-bottom: max(6rem, env(safe-area-inset-bottom, 0px));
   overflow: visible;
 }
 

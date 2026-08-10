@@ -4,7 +4,7 @@
   margin: 0 auto;
   display: grid;
   gap: 1.25rem;
-  padding: 2rem max(1.25rem, env(safe-area-inset-right)) 7rem max(1.25rem, env(safe-area-inset-left));
+  padding: 2rem max(1.25rem, env(safe-area-inset-right, 0px)) 7rem max(1.25rem, env(safe-area-inset-left, 0px));
 }
 
 .settings-page__header {
