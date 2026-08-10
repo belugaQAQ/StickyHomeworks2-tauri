@@ -20,7 +20,7 @@
   top: 0;
   z-index: 10;
   padding-block-start: env(safe-area-inset-top, 0px);
-  background: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-background);
 }
 
 .homework-freeze-button {
