@@ -2,9 +2,9 @@ name: Build Applications
 
 on:
   push:
-    branches: [master]
+    branches: [master,dev-cooperation]
   pull_request:
-    branches: [master]
+    branches: [master,dev-cooperation]
   workflow_dispatch:
 
 permissions:
