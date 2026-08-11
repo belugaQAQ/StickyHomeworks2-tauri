@@ -30,7 +30,7 @@
 
 ### 1. 检查设备需求
 
-StickyHomeworks2·N 基于 Tauri 2 开发，支持桌面端和移动端运行目标。
+StickyHomeworks2·N 基于 Tauri 2 开发，支持桌面端和移动端运行目标
 
 开发或从源码运行前，请确保设备已安装：
 
