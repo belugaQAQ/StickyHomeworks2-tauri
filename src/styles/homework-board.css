@@ -101,20 +101,32 @@
 
 .homework-marker {
   display: block;
+  grid-column: 1;
+  grid-row: 1;
   width: 0.375rem;
   height: 0.375rem;
+  margin-top: calc((1.55em - 0.375rem) / 2);
   border-radius: 50%;
   background: currentColor;
 }
 
+.homework-text {
+  grid-column: 2;
+  min-width: 0;
+}
+
 .homework-content {
-  display: block;
+  display: grid;
+  grid-template-columns: 0.375rem minmax(0, 1fr);
+  column-gap: 0.65rem;
+  align-items: start;
   min-width: 0;
   font-size: 1.125rem;
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
 .homework-supporting-content {
   display: block;
   min-width: 0;

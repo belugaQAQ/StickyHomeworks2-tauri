@@ -88,8 +88,7 @@ watch(() => props.readonly, (readonly) => {
               :style="homework.expired ? { '--homework-expired-color': homework.expiredMarkColor } : undefined"
               @click="selectHomework(homework.id)"
             >
-              <span slot="leading" class="homework-marker" aria-hidden="true"></span>
-              <span class="homework-content">{{ homework.content }}</span>
+              <span class="homework-content"><span class="homework-marker" aria-hidden="true"></span><span class="homework-text">{{ homework.content }}</span></span>
               <div slot="supporting-text" class="homework-supporting-content">
                 <div class="homework-tags">
                   <m3e-chip v-for="tag in homework.tags" :key="tag" variant="outlined">{{ tag }}</m3e-chip>

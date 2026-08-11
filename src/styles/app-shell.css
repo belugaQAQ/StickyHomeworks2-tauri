@@ -73,6 +73,10 @@
 .route-view {
   min-width: 0;
 }
+.app-content--settings {
+  overflow-x: hidden;
+}
+
 
 .settings-forward-enter-active,
 .settings-back-enter-active {

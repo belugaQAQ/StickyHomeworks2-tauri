@@ -336,7 +336,7 @@ onMounted(async () => {
           </m3e-nav-menu>
         </aside>
 
-        <main class="app-content">
+        <main class="app-content" :class="{ 'app-content--settings': activeNavigation === 'settings' }">
           <p v-if="loadError" class="editor-error" role="alert">{{ loadError }}</p>
           <RouterView v-slot="{ Component }">
             <Transition :name="routeTransitionName" mode="out-in">
