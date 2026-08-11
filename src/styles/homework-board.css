@@ -112,6 +112,7 @@
   min-width: 0;
   font-size: 1.125rem;
   line-height: 1.55;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .homework-supporting-content {
