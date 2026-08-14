@@ -1,7 +1,7 @@
 import { computed, ref, type Ref } from "vue";
 import { formatLocalDate, localDateValue, toDateInputValue, uniqueVocabulary } from "../domain/homework";
 import type { AppData, HomeworkRecord } from "../types/app-data";
-import { toHomeworkEditorText } from "../utils/homework-content";
+import { parseHomeworkContent } from "../types/homework-content";
 import { logError, logInfo } from "../services/logging";
 type HomeworkEditorOptions = {
   appData: Ref<AppData>;
@@ -28,7 +28,7 @@ export function useHomeworkEditor({ appData, isHomeworkFrozen, saveHomework }: H
     const lastHomework = appData.value.homeworks[appData.value.homeworks.length - 1];
     editingHomework.value = {
       id: createHomeworkId(),
-      content: "",
+      content: { kind: "plain-text", text: "" },
       subject: lastHomework?.subject ?? appData.value.settings.subjects[0] ?? "其它",
       dueTime: localDateValue(),
       tags: [],
@@ -53,7 +53,7 @@ export function useHomeworkEditor({ appData, isHomeworkFrozen, saveHomework }: H
 
     editingHomework.value = {
       ...homework,
-      content: toHomeworkEditorText(homework.content),
+      content: parseHomeworkContent(homework.content),
       dueTime: toDateInputValue(homework.dueTime),
       tags: homework.tags.filter((tag) => editorTags.value.includes(tag)),
     };
@@ -64,7 +64,13 @@ export function useHomeworkEditor({ appData, isHomeworkFrozen, saveHomework }: H
 
   function updateContent(content: string) {
     if (editingHomework.value) {
-      editingHomework.value.content = content;
+      let nextContent: HomeworkRecord["content"];
+      try {
+        nextContent = parseHomeworkContent(content);
+      } catch {
+        nextContent = { kind: "plain-text", text: content };
+      }
+      editingHomework.value.content = nextContent;
       logInfo("homework.edit.content.change", `作业内容已修改，长度：${content.length}`);
     }
   }

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
-import { M3eSnackbar } from "@m3e/web/snackbar";
+import { M3eSnackbar } from "@m3e/web/all";
 import SettingsPage from "../components/SettingsPage.vue";
 import { useAppContext } from "../app-context";
 import { logError, logInfo } from "../services/logging";
+import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import "../styles/settings-view.css";
 
 type DialogElement = HTMLElement & {
@@ -16,6 +17,7 @@ const { importLegacyData, settingsError } = useAppContext();
 const profileInput = ref<HTMLInputElement | null>(null);
 const settingsInput = ref<HTMLInputElement | null>(null);
 const confirmDialog = ref<DialogElement | null>(null);
+useWebKitGtkDialogExit(confirmDialog);
 const profileFile = ref<File | null>(null);
 const settingsFile = ref<File | null>(null);
 const isImporting = ref(false);
@@ -58,8 +60,8 @@ function requestImport() {
   confirmDialog.value?.show();
 }
 
-function closeConfirmDialog() {
-  confirmDialog.value?.hide();
+async function closeConfirmDialog() {
+  await hideWebKitGtkDialog(confirmDialog.value);
   if (!isImporting.value) logInfo("legacy.import.cancel", "导入已取消");
 }
 

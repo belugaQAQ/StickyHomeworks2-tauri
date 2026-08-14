@@ -7,6 +7,7 @@ export type BoardHomework = {
 };
 
 export type SubjectGroup = {
+  id: string;
   name: string;
   homeworks: BoardHomework[];
 };

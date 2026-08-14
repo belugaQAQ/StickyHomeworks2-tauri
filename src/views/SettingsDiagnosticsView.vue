@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { M3eSnackbar } from "@m3e/web/snackbar";
+import { M3eSnackbar } from "@m3e/web/all";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import SettingsPage from "../components/SettingsPage.vue";
+import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import { useAppContext } from "../app-context";
 import { buildDiagnosticReport, type DiagnosticDisclosure } from "../services/diagnostic-report";
 import { clearDiagnosticLogs, copyDiagnosticReport, DiagnosticError, exportDiagnosticBundle } from "../services/diagnostic-export";
@@ -13,6 +13,8 @@ type DialogElement = HTMLElement & { open: boolean; returnValue: string; show: (
 const { appData } = useAppContext();
 const reportDialog = ref<DialogElement | null>(null);
 const exportConfirmDialog = ref<DialogElement | null>(null);
+useWebKitGtkDialogExit(reportDialog);
+useWebKitGtkDialogExit(exportConfirmDialog);
 const report = ref("");
 const isBuildingReport = ref(false);
 let reportBuildSequence = 0;
@@ -67,7 +69,7 @@ async function showReport() {
 }
 
 async function closeAndNotify(message: string) {
-  await reportDialog.value?.hide();
+  await hideWebKitGtkDialog(reportDialog.value);
   logInfo("diagnostic.report.close", "诊断报告已关闭");
   M3eSnackbar.open(message);
 }
@@ -143,7 +145,7 @@ async function confirmExport() {
   const disclosure = pendingDisclosure.value;
   const action = pendingDisclosureAction.value;
   confirmationAccepted.value = true;
-  await exportConfirmDialog.value?.hide("confirm");
+  await hideWebKitGtkDialog(exportConfirmDialog.value);
   pendingDisclosure.value = null;
   pendingDisclosureAction.value = null;
   if (!disclosure) return;

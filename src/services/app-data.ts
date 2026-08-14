@@ -2,19 +2,21 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { normalizeSettings } from "../domain/settings";
 import { createRequestId, logError } from "./logging";
 import { createDefaultAppData, type AppData, type LegacyImportResult } from "../types/app-data";
+import { parseHomeworkContent, serializeHomeworkContent } from "../types/homework-content";
 const browserStorageKey = "stickyhomeworks2.app-data.v1";
 
 export async function loadAppData(): Promise<AppData> {
   const requestId = createRequestId("app-data.load");
   if (isTauri()) {
-    return invoke<AppData>("load_app_data", { requestId });
+    const data = await invoke<unknown>("load_app_data", { requestId });
+    return normalizeAppData(data);
   }
   return loadBrowserFallback(requestId);
 }
 
 export async function saveAppData(data: AppData, requestId = createRequestId("app-data.save")): Promise<void> {
   if (isTauri()) {
-    await invoke("save_app_data", { data, requestId });
+    await invoke("save_app_data", { data: serializeAppDataForTauri(data), requestId });
     return;
   }
   try {
@@ -50,14 +52,33 @@ function loadBrowserFallback(requestId: string): AppData {
   }
 }
 
-function normalizeAppData(value: unknown): AppData {
-  const defaults = createDefaultAppData();
-  if (!value || typeof value !== "object") return defaults;
+function serializeAppDataForTauri(data: AppData): AppData {
+  return {
+    ...data,
+    homeworks: data.homeworks.map((homework) => ({
+      ...homework,
+      content: JSON.parse(serializeHomeworkContent(parseHomeworkContent(homework.content))),
+    })),
+  };
+}
 
-  const candidate = value as Partial<AppData>;
+function normalizeHomeworkContent(data: unknown): AppData {
+  const defaults = createDefaultAppData();
+  if (!data || typeof data !== "object") return defaults;
+
+  const candidate = data as Partial<AppData>;
   return {
     schemaVersion: 1,
-    homeworks: Array.isArray(candidate.homeworks) ? candidate.homeworks : [],
+    homeworks: Array.isArray(candidate.homeworks)
+      ? candidate.homeworks.map((homework) => ({
+          ...(homework as AppData["homeworks"][number]),
+          content: parseHomeworkContent((homework as { content?: unknown }).content ?? ""),
+        }))
+      : [],
     settings: normalizeSettings({ ...defaults.settings, ...candidate.settings }),
   };
+}
+
+function normalizeAppData(value: unknown): AppData {
+  return normalizeHomeworkContent(value);
 }

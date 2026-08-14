@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { invoke } from "@tauri-apps/api/core";
-import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onMounted, provide, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
-import HomeworkEditorDialog from "../components/HomeworkEditorDialog.vue";
+const HomeworkEditorDialog = defineAsyncComponent(() => import("../components/HomeworkEditorDialog.vue"));
 import WindowUnlockOverlay from "../components/WindowUnlockOverlay.vue";
 import { useHomeworkEditor } from "../composables/useHomeworkEditor";
 import { useHomeworkStore } from "../composables/useHomeworkStore";
 import { useDesktopWindowControls } from "../composables/useDesktopWindowControls";
 import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWorkaround";
-import { useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
+import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import type { AppSettings } from "../types/app-data";
 import { routeTransitionName } from "../router";
 import { logInfo, logWarn } from "../services/logging";
@@ -24,7 +24,7 @@ type DialogElement = HTMLElement & {
 
 type HomeworkEditorDialogElement = {
   show: () => void;
-  hide: () => void;
+  hide: () => void | Promise<void>;
 };
 
 const route = useRoute();
@@ -79,6 +79,7 @@ const {
 
 useLinuxClipboardWorkaround();
 useWebKitGtkDialogExit(deleteDialog);
+useWebKitGtkDialogExit(exitDialog);
 
 const navigationItems: Array<{ id: NavigationItem; label: string; hint: string }> = [
   { id: "homeworks", label: "作业", hint: "home" },
@@ -111,24 +112,28 @@ function selectNavigation(id: NavigationItem) {
 }
 
 function openCreateHomework() {
-  if (openCreate()) {
-    logInfo("homework.create.request", "已请求新建作业");
-    editorDialog.value?.show();
-  }
+  if (openCreate()) logInfo("homework.create.request", "已请求新建作业");
 }
 
 function openEditHomework(id: string) {
-  if (openEdit(id)) editorDialog.value?.show();
+  if (openEdit(id)) logInfo("homework.edit.request", "已请求编辑作业");
+}
+function openMountedHomeworkEditor() {
+  void nextTick(() => editorDialog.value?.show());
 }
 
-function closeHomeworkEditor() {
-  editorDialog.value?.hide();
+
+
+async function closeHomeworkEditor() {
+  await hideWebKitGtkDialog(editorDialog.value);
+  resetHomeworkEditor();
   logInfo("homework.editor.cancel", "作业编辑已取消");
 }
 
 async function saveEditedHomework() {
   if (await saveHomeworkEditor()) {
-    editorDialog.value?.hide();
+    await hideWebKitGtkDialog(editorDialog.value);
+    resetHomeworkEditor();
     logInfo("homework.editor.close.after.save", "作业编辑已在保存后关闭");
   }
 }
@@ -145,18 +150,16 @@ function requestDeleteHomework(id: string) {
   void nextTick(() => deleteDialog.value?.show());
 }
 
-function closeDeleteDialog(logCancellation = true) {
-  deleteDialog.value?.hide();
+async function closeDeleteDialog(logCancellation = true) {
+  await hideWebKitGtkDialog(deleteDialog.value);
   deleteHomeworkId.value = null;
   deleteError.value = "";
   if (logCancellation) logInfo("homework.delete.cancel", "删除作业已取消");
 }
-
 watch(isHomeworkFrozen, (frozen) => {
   if (!frozen) return;
-  editorDialog.value?.hide();
-  resetHomeworkEditor();
-  closeDeleteDialog();
+  void closeHomeworkEditor();
+  void closeDeleteDialog();
 });
 
 function requestCloseWindow() {
@@ -164,8 +167,8 @@ function requestCloseWindow() {
   logInfo("window.close.request", "已打开关闭确认");
 }
 
-function closeExitDialog() {
-  exitDialog.value?.hide();
+async function closeExitDialog() {
+  await hideWebKitGtkDialog(exitDialog.value);
   logInfo("window.close.cancel", "关闭应用已取消");
 }
 
@@ -403,12 +406,15 @@ onMounted(async () => {
       <WindowUnlockOverlay v-if="isWindowUnlocked" />
 
       <HomeworkEditorDialog
+        v-if="editingHomework"
         ref="editorDialog"
+        @vue:mounted="openMountedHomeworkEditor"
         :homework="editingHomework"
         :subjects="editorSubjects"
         :tags="editorTags"
         :save-error="saveError"
         :is-editing="Boolean(editingHomework && appData.homeworks.some((item) => item.id === editingHomework?.id))"
+        :mobile-layout="isMobileRuntime"
         @cancel="closeHomeworkEditor"
         @save="saveEditedHomework"
         @update:content="updateContent"

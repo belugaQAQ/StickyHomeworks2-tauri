@@ -1,11 +1,15 @@
+import type { HomeworkContent } from "./homework-content";
+
 export type HomeworkRecord = {
   id: string;
-  content: string;
+  content: HomeworkContent | string;
   subject: string;
   dueTime: string;
   tags: string[];
   firstExpiredShowTime: string | null;
 };
+
+export type LegacyHomeworkRecord = Omit<HomeworkRecord, "content"> & { content: string | HomeworkContent };
 
 export type AppSettings = {
   title: string;

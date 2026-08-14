@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use uuid::Uuid;
 
 pub(crate) const OTHER_SUBJECT: &str = "其它";
@@ -8,8 +9,8 @@ pub(crate) const OTHER_SUBJECT: &str = "其它";
 pub(crate) struct HomeworkRecord {
     #[serde(default)]
     pub(crate) id: String,
-    #[serde(default, alias = "Content")]
-    pub(crate) content: String,
+    #[serde(default, alias = "Content", deserialize_with = "deserialize_homework_content")]
+    pub(crate) content: HomeworkContent,
     #[serde(default, alias = "Subject")]
     pub(crate) subject: String,
     #[serde(default = "default_due_time", alias = "DueTime")]
@@ -18,6 +19,37 @@ pub(crate) struct HomeworkRecord {
     pub(crate) tags: Vec<String>,
     #[serde(default, alias = "FirstExpiredShowTime")]
     pub(crate) first_expired_show_time: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
+pub(crate) enum HomeworkContent {
+    #[serde(rename = "plain-text")]
+    PlainText { text: String },
+    #[serde(rename = "tiptap-json@1")]
+    TiptapJson { document: Value },
+    #[serde(rename = "legacy-flowdocument-xaml")]
+    LegacyFlowDocumentXaml { xaml: String },
+}
+
+impl Default for HomeworkContent {
+    fn default() -> Self {
+        Self::PlainText { text: String::new() }
+    }
+}
+
+fn deserialize_homework_content<'de, D>(deserializer: D) -> Result<HomeworkContent, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+    if let Value::String(text) = value {
+        if text.trim_start().starts_with("<FlowDocument") {
+            return Ok(HomeworkContent::LegacyFlowDocumentXaml { xaml: text });
+        }
+        return Ok(HomeworkContent::PlainText { text });
+    }
+    serde_json::from_value(value).map_err(serde::de::Error::custom)
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

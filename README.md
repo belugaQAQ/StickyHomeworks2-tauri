@@ -16,14 +16,14 @@
 - [X] 桌面端和移动端响应式布局
 - [X] 导入原版 `Settings.json`
 - [X] 可选导入原版 `Profile.json`
-- [ ] 富文本编辑
+- [X] 富文本编辑
+- [X] 插入与管理表情包（编辑器原生 Emoji 输入）
+- [ ] 插入图片
+- [X] 插入链接
 - [ ] 自动清理过期作业
 - [ ] 导出作业截图
 - [ ] 时间机器
 - [ ] 托盘菜单
-- [ ] 插入与管理表情包
-- [ ] 插入图片
-- [ ] 插入链接
 - [ ] oobe
 
 ## 开始使用
@@ -95,15 +95,17 @@ npm run tauri dev
 
 ## 数据兼容
 
-StickyHomeworks2·N 支持导入原版 StickyHomeworks2 的部分数据：
+应用内容采用版本化联合模型：
 
-- 原版 `Settings.json` 为必选文件。
-- 原版 `Profile.json` 为可选文件。
-- 不选择 `Profile.json` 时，仅替换设置并保留当前作业。
-- 导入设置后，不可用的标签会被移除，不可用的科目会映射到“其它”。
-- 原版 WPF `FlowDocument` XAML 当前按纯文本显示和编辑，不会直接注入 WebView。
+- `plain-text`：旧纯文本以及编辑器降级文本。
+- `tiptap-json@1`：当前编辑器保存格式，文档存储为 Tiptap JSON。
+- `legacy-flowdocument-xaml`：旧 WPF FlowDocument 原文，仅作为迁移输入保存，不注入 WebView。
 
-应用正式运行时将数据保存到 Tauri 的 `app_data_dir`。
+旧字符串读取时会按内容识别为纯文本或 FlowDocument XAML；编辑并保存后转为新版本格式。FlowDocument 转换仅提取可见文本，无法映射的结构不得静默执行或注入。
+
+图片首版以内嵌 `data:image/*` 保存，允许 PNG/JPEG/GIF/WebP，大小上限 2 MB。链接仅允许 `http:` 和 `https:`，展示时经过协议校验并使用 `noopener noreferrer`。
+
+应用正式运行时将数据保存到 Tauri 的 `app_data_dir`；浏览器 `localStorage` 仅用于预览回退。
 
 ## 目录
 

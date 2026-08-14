@@ -1,7 +1,8 @@
 import type { AppData, AppSettings, HomeworkRecord } from "../types/app-data";
-import type { SubjectGroup } from "../types/homework-board";
-import { isHomeworkExpired, toHomeworkDisplayText } from "../utils/homework-content.ts";
+import { isHomeworkExpired, toTiptapHtml } from "../utils/homework-content.ts";
+import { parseHomeworkContent } from "../types/homework-content";
 import { uniqueVocabulary } from "./vocabulary.ts";
+import type { SubjectGroup } from "../types/homework-board";
 
 export { uniqueVocabulary } from "./vocabulary.ts";
 
@@ -23,7 +24,7 @@ export function formatLocalDate(value: Date) {
 export function normalizeHomework(homework: HomeworkRecord): HomeworkRecord {
   return {
     ...homework,
-    content: homework.content.trim(),
+    content: parseHomeworkContent(homework.content),
     subject: homework.subject.trim() || "其它",
     dueTime: `${toDateInputValue(homework.dueTime)}T00:00:00`,
     tags: uniqueVocabulary(homework.tags),
@@ -63,13 +64,13 @@ export function groupHomeworks(
   expiryMarkSettings: ExpiryMarkSettings = { isExpiredMarkEnabled: false, expiredMarkColor: "" },
 ): SubjectGroup[] {
   const groups = new Map<string, SubjectGroup>();
-
   for (const homework of homeworks) {
+
     const subject = homework.subject.trim() || "其它";
-    const group = groups.get(subject) ?? { name: subject, homeworks: [] };
+    const group = groups.get(subject) ?? { id: homework.id, name: subject, homeworks: [] };
     group.homeworks.push({
       id: homework.id,
-      content: toHomeworkDisplayText(homework.content),
+      content: toTiptapHtml(homework.content),
       tags: homework.tags,
       expired: expiryMarkSettings.isExpiredMarkEnabled && isHomeworkExpired(homework.dueTime),
       expiredMarkColor: expiryMarkSettings.expiredMarkColor,

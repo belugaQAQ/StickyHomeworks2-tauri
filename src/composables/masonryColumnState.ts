@@ -1,5 +1,5 @@
 export type MasonryColumnGroup = {
-  name: string;
+  id: string;
 };
 
 export function hasSameMasonryColumns(
@@ -8,7 +8,7 @@ export function hasSameMasonryColumns(
 ) {
   return current.length === next.length
     && current.every((column, columnIndex) => column.length === next[columnIndex].length
-      && column.every((group, groupIndex) => group.name === next[columnIndex][groupIndex].name));
+      && column.every((group, groupIndex) => group.id === next[columnIndex][groupIndex].id));
 }
 
 export function shouldRefreshMasonryColumns(

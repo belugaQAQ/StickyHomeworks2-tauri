@@ -161,11 +161,111 @@
 .homework-editor {
   display: grid;
   gap: 0.75rem;
-  height: max-content;
+  min-height: 0;
   width: min(40rem, calc(100vw - 5rem));
+  padding-bottom: 0.5rem;
+}
+.homework-editor-toolbar {
+  height: fit-content;
+  margin-bottom: -0.5rem;
+}
+.homework-editor-content {
+  display: block;
+  box-sizing: border-box;
+  height: 9rem;
+  min-height: 9rem;
+  max-height: 9rem;
+  overflow: auto;
+  scrollbar-color: var(--m3e-scrollbar-thumb-color, var(--md-sys-color-outline-variant)) transparent;
+  scrollbar-width: thin;
+  padding: 0.75rem;
+  border: 1px solid var(--m3e-form-field-outline-color, var(--md-sys-color-outline-variant));
+  border-radius: var(--m3e-outlined-form-field-container-shape, 0.75rem);
+  outline: none;
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface-container-low);
+  transition:
+    border-color var(--m3e-focus-ring-duration, 500ms)
+      var(--md-sys-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow var(--m3e-focus-ring-duration, 500ms)
+      var(--md-sys-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1));
+}
+.homework-editor-content {
+  margin-bottom: 0.5rem;
+}
+
+.homework-editor-content::-webkit-scrollbar {
+  width: var(--m3e-scrollbar-thin-width, 0.5rem);
+  height: var(--m3e-scrollbar-thin-width, 0.5rem);
+}
+
+.homework-editor-content::-webkit-scrollbar-track,
+.homework-editor-content::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.homework-editor-content::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: var(--m3e-scrollbar-thumb-color, var(--md-sys-color-outline-variant));
+}
+
+.homework-editor-content {
+  box-shadow: 0 0 0 0 transparent;
+}
+
+.homework-editor-content:focus-within {
+  border-color: var(--m3e-form-field-focused-outline-color, var(--md-sys-color-primary));
+  box-shadow: 0 0 0 2px var(--m3e-form-field-focused-outline-color, var(--md-sys-color-primary));
+}
+
+.homework-editor-content .ProseMirror {
+ min-height: 5.5rem;
+ height: max-content;
+ overflow-wrap: anywhere;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.homework-editor-content .ProseMirror:focus {
+  outline: none;
+}
+
+.homework-editor-content .ProseMirror p {
+  margin: 0;
+}
+
+.homework-editor-content :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 767px) {
+  .homework-editor {
+    width: min(40rem, calc(100vw - 2rem));
+  }
+
+  .homework-editor-content {
+    max-height: 30vh;
+  }
 }
 
 .homework-editor m3e-form-field {
+  width: 100%;
+}
+.homework-editor-toolbar {
+  --m3e-toolbar-size: 100%;
+  --m3e-toolbar-square-padding: 0.25rem;
+  --m3e-toolbar-standard-container-color: var(--md-sys-color-surface-container-high);
+  width: 100%;
+}
+
+.homework-editor-toolbar m3e-button-group {
+  display: flex;
   width: 100%;
 }
 
@@ -174,7 +274,7 @@
 }
 
 .editor-tags-title {
-  margin: 0;
+  margin: -0.5rem 0 0;
 }
 
 .editor-error {
@@ -182,6 +282,40 @@
   color: var(--md-sys-color-error);
 }
 
+.homework-link-form {
+  display: grid;
+  gap: 0.75rem;
+  min-width: min(32rem, calc(100vw - 3rem));
+  margin-top: 0.5rem;
+}
+.homework-link-confirm-content {
+  display: grid;
+  gap: 1rem;
+  min-width: min(32rem, calc(100vw - 3rem));
+  max-width: min(32rem, calc(100vw - 3rem));
+}
+.homework-link-confirm-content p {
+  margin: 0;
+}
+.homework-link-confirm-preview {
+  display: grid;
+  gap: 0.5rem;
+}
+.homework-link-confirm-title {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.homework-link-confirm-value {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  user-select: text;
+}
 @media (min-width: 768px) {
   .create-fab {
     right: 2rem;

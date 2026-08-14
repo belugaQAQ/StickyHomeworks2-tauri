@@ -24,20 +24,18 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
     scrollElement.value = element instanceof HTMLElement ? element : null;
   }
 
-  function setGroupElement(name: string, element: Element | ComponentPublicInstance | null) {
+  function setGroupElement(id: string, element: Element | ComponentPublicInstance | null) {
     const nextElement = element instanceof HTMLElement ? element : null;
-    const previousElement = groupElements.get(name);
-
-    if (previousElement && previousElement !== nextElement) {
+    const previousElement = groupElements.get(id);
+    if (previousElement === nextElement) return;
+    if (previousElement) {
       groupResizeObserver?.unobserve(previousElement);
-      groupElements.delete(name);
+      groupElements.delete(id);
     }
-
-    if (nextElement && previousElement !== nextElement) {
-      groupElements.set(name, nextElement);
+    if (nextElement) {
+      groupElements.set(id, nextElement);
       groupResizeObserver?.observe(nextElement);
     }
-
     scheduleLayout();
   }
 
@@ -50,30 +48,26 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
 
   async function updateLayout() {
     await nextTick();
-
     if (mobileLayout.value) {
-      masonryColumns.value = [groups.value];
-      previousColumns = new Map(groups.value.map((group) => [group.name, 0]));
+      const nextColumns = [groups.value];
+      if (shouldRefreshMasonryColumns(masonryColumns.value, nextColumns)) masonryColumns.value = nextColumns;
+      previousColumns = new Map(groups.value.map((group) => [group.id, 0]));
       return;
     }
-
     const maxHeight = getAvailableColumnHeight();
     const gap = getColumnGap();
-
     for (const group of groups.value) {
-      const element = groupElements.get(group.name);
-      if (element) groupHeights.set(group.name, element.getBoundingClientRect().height);
+      const element = groupElements.get(group.id);
+      if (element) groupHeights.set(group.id, element.getBoundingClientRect().height);
     }
-
     const items = groups.value.map((group) => ({
       group,
-      key: group.name,
+      key: group.id,
       // Before the first measurement, use a stable provisional height only to render every group.
-      height: groupHeights.get(group.name) ?? 160,
+      height: groupHeights.get(group.id) ?? 160,
     }));
     const distribution = distributeMasonry(items, maxHeight, gap, previousColumns);
     const nextColumns = distribution.columns.map((column) => column.map((item) => item.group));
-
     if (shouldRefreshMasonryColumns(masonryColumns.value, nextColumns)) masonryColumns.value = nextColumns;
     previousColumns = distribution.columnByKey;
   }
@@ -81,7 +75,6 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
   function getAvailableColumnHeight() {
     const element = scrollElement.value ?? boardElement.value;
     if (!element) return Math.max(240, window.innerHeight);
-
     const styles = getComputedStyle(element);
     const padding = Number.parseFloat(styles.paddingBlockStart) + Number.parseFloat(styles.paddingBlockEnd);
     return Math.max(1, element.clientHeight - padding);
@@ -97,10 +90,8 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
     resizeObserver = new ResizeObserver(scheduleLayout);
     if (boardElement.value) resizeObserver.observe(boardElement.value);
     if (scrollElement.value) resizeObserver.observe(scrollElement.value);
-
     groupResizeObserver = new ResizeObserver(scheduleLayout);
     for (const element of groupElements.values()) groupResizeObserver.observe(element);
-
     window.addEventListener("resize", scheduleLayout);
     scheduleLayout();
   });
