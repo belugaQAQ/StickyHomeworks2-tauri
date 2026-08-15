@@ -240,6 +240,13 @@
 .homework-editor-content .ProseMirror p {
   margin: 0;
 }
+.homework-editor-content em,
+.homework-text em {
+  display: inline-block;
+  transform: skewX(-6deg);
+  transform-origin: 0 50%;
+}
+
 
 .homework-editor-content :deep(img) {
   display: block;
