@@ -154,15 +154,18 @@
 }
 
 .homework-editor-dialog {
-  --m3e-dialog-min-width: min(32rem, calc(100vw - 2rem));
-  --m3e-dialog-max-width: min(44rem, calc(100vw - 2rem));
+  --m3e-dialog-min-width: min(40rem, calc(100vw - 2rem));
+  --m3e-dialog-max-width: min(56rem, calc(100vw - 2rem));
 }
 
 .homework-editor {
   display: grid;
+  box-sizing: border-box;
   gap: 0.75rem;
+  min-width: 0;
   min-height: 0;
-  width: min(40rem, calc(100vw - 5rem));
+  width: min(52rem, 100%);
+  max-width: 100%;
   padding-bottom: 0.5rem;
 }
 .homework-editor-toolbar {
@@ -246,7 +249,7 @@
 
 @media (max-width: 767px) {
   .homework-editor {
-    width: min(40rem, calc(100vw - 2rem));
+    width: 100%;
   }
 
   .homework-editor-content {
@@ -255,18 +258,26 @@
 }
 
 .homework-editor m3e-form-field {
+  min-width: 0;
   width: 100%;
+  max-width: 100%;
 }
 .homework-editor-toolbar {
   --m3e-toolbar-size: 100%;
   --m3e-toolbar-square-padding: 0.25rem;
   --m3e-toolbar-standard-container-color: var(--md-sys-color-surface-container-high);
+  box-sizing: border-box;
+  min-width: 0;
   width: 100%;
+  max-width: 100%;
 }
 
 .homework-editor-toolbar m3e-button-group {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   width: 100%;
+  max-width: 100%;
 }
 
 .editor-tag-set {
