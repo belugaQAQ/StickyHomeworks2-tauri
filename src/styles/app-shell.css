@@ -1,14 +1,21 @@
 .app-frame {
   display: block;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.app-frame {
-  position: relative;
-  min-height: 100dvh;
+.app-drawer {
+  height: calc(100dvh - 4rem);
+  min-height: 0;
+}
+
+.app-content {
+  min-height: 0;
+}
+
   color: var(--md-sys-color-on-background);
   background: var(--md-sys-color-background);
-}
 
 .app-frame--window-unlocked {
   user-select: none;
@@ -40,9 +47,7 @@
   color: var(--md-sys-color-error);
 }
 
-.app-drawer {
-  min-height: calc(100dvh - 7rem);
-}
+  min-height: 0;
 
 .navigation-panel {
   display: flex;

@@ -89,7 +89,6 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
   onMounted(() => {
     resizeObserver = new ResizeObserver(scheduleLayout);
     if (boardElement.value) resizeObserver.observe(boardElement.value);
-    if (scrollElement.value) resizeObserver.observe(scrollElement.value);
     groupResizeObserver = new ResizeObserver(scheduleLayout);
     for (const element of groupElements.values()) groupResizeObserver.observe(element);
     window.addEventListener("resize", scheduleLayout);
