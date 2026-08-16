@@ -7,9 +7,53 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
 import type { HomeworkContent, TiptapDocument } from "../types/homework-content";
-import { ALLOWED_HOMEWORK_IMAGE_MIME_TYPES, isSafeHomeworkLink } from "../utils/homework-content";
+import { ALLOWED_HOMEWORK_IMAGE_MIME_TYPES, clampHomeworkImageWidthPercent, isSafeHomeworkLink } from "../utils/homework-content";
 
+export { clampHomeworkImageWidthPercent } from "../utils/homework-content";
 export const MAX_HOMEWORK_IMAGE_BYTES = 2 * 1024 * 1024;
+
+export function findHomeworkImagePosition(editor: Editor): number | null {
+  const { $from, from, to } = editor.state.selection;
+  if (editor.isActive("image")) return from;
+  const nodeAfter = $from.nodeAfter;
+  if (nodeAfter?.type.name === "image") return from;
+  let found: number | null = null;
+  editor.state.doc.nodesBetween(from, to, (node, pos) => {
+    if (node.type.name !== "image" || found !== null) return found === null;
+    found = pos;
+    return false;
+  });
+  return found;
+}
+
+export function updateHomeworkImageWidthPercent(editor: Editor, value: number, position = findHomeworkImagePosition(editor)): number | null {
+  if (position === null) return null;
+  const image = editor.state.doc.nodeAt(position);
+  if (image?.type.name !== "image") return null;
+  const widthPercent = clampHomeworkImageWidthPercent(value);
+  if (image.attrs.widthPercent === widthPercent) return widthPercent;
+  editor.view.dispatch(editor.state.tr.setNodeMarkup(position, undefined, { ...image.attrs, widthPercent }));
+  return widthPercent;
+}
+
+const HomeworkImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      widthPercent: {
+        default: 100,
+        parseHTML: (element: HTMLElement) => {
+          const styleWidth = element.style.width.trim();
+          const match = /^(\d+(?:\.\d+)?)%$/.exec(styleWidth);
+          return clampHomeworkImageWidthPercent(match ? Number(match[1]) : Number.NaN);
+        },
+        renderHTML: (attributes: { widthPercent?: number }) => ({
+          style: `width: ${clampHomeworkImageWidthPercent(Number(attributes.widthPercent))}%`,
+        }),
+      },
+    };
+  },
+});
 
 export function createHomeworkEditor(onChange: (content: HomeworkContent) => void, onLinkRequest: (href: string, text: string) => void, mobileLayout = false): Editor {
   return new Editor({
@@ -19,7 +63,7 @@ export function createHomeworkEditor(onChange: (content: HomeworkContent) => voi
       TextStyle,
       Color,
       FontFamily,
-      Image.configure({ inline: false, allowBase64: true }),
+      HomeworkImage.configure({ inline: false, allowBase64: true }),
       Link.configure({ openOnClick: false, autolink: false, validate: isSafeHomeworkLink }),
     ],
     editorProps: {

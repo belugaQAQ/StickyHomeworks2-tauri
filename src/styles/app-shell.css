@@ -1,8 +1,11 @@
 .app-frame {
+  position: relative;
   display: block;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
+  color: var(--md-sys-color-on-background);
+  background: var(--md-sys-color-background);
 }
 
 .app-drawer {
@@ -12,10 +15,7 @@
 
 .app-content {
   min-height: 0;
-}
-
-  color: var(--md-sys-color-on-background);
-  background: var(--md-sys-color-background);
+} 
 
 .app-frame--window-unlocked {
   user-select: none;
@@ -47,7 +47,6 @@
   color: var(--md-sys-color-error);
 }
 
-  min-height: 0;
 
 .navigation-panel {
   display: flex;
@@ -171,18 +170,18 @@
   min-height: 0;
   width: min(52rem, 100%);
   max-width: 100%;
+  padding-top: 0.75rem;
   padding-bottom: 0.5rem;
 }
 .homework-editor-toolbar {
   height: fit-content;
-  margin-bottom: -0.5rem;
+  margin-bottom: 0;
 }
 .homework-editor-content {
   display: block;
   box-sizing: border-box;
-  height: 9rem;
   min-height: 9rem;
-  max-height: 9rem;
+  max-height: min(30rem, max(9rem, calc(100dvh - 24rem)));
   overflow: auto;
   scrollbar-color: var(--m3e-scrollbar-thumb-color, var(--md-sys-color-outline-variant)) transparent;
   scrollbar-width: thin;
@@ -253,7 +252,7 @@
 }
 
 
-.homework-editor-content :deep(img) {
+.homework-editor-content img {
   display: block;
   max-width: 100%;
   height: auto;
@@ -265,7 +264,7 @@
   }
 
   .homework-editor-content {
-    max-height: 30vh;
+    max-height: min(30rem, max(9rem, calc(100dvh - 20rem)));
   }
 }
 
@@ -291,6 +290,70 @@
   width: 100%;
   max-width: 100%;
 }
+.homework-editor-toolbar-pages {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  perspective: 40rem;
+}
+
+.homework-editor-toolbar-pages > .editor-toolbar-forward-enter-active,
+.homework-editor-toolbar-pages > .editor-toolbar-forward-leave-active,
+.homework-editor-toolbar-pages > .editor-toolbar-backward-enter-active,
+.homework-editor-toolbar-pages > .editor-toolbar-backward-leave-active {
+  transition: transform var(--md-sys-motion-duration-short-4, 250ms) var(--md-sys-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1)), opacity var(--md-sys-motion-duration-short-4, 250ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1));
+  transform-origin: center;
+}
+.homework-editor-toolbar-pages > .editor-toolbar-forward-enter-from,
+.homework-editor-toolbar-pages > .editor-toolbar-backward-leave-to { opacity: 0; transform: translateX(35%) rotateY(-12deg); }
+.homework-editor-toolbar-pages > .editor-toolbar-forward-leave-to,
+.homework-editor-toolbar-pages > .editor-toolbar-backward-enter-from { opacity: 0; transform: translateX(-35%) rotateY(12deg); }
+.homework-editor-toolbar-pages > .editor-toolbar-forward-enter-to,
+.homework-editor-toolbar-pages > .editor-toolbar-forward-leave-from,
+.homework-editor-toolbar-pages > .editor-toolbar-backward-enter-to,
+.homework-editor-toolbar-pages > .editor-toolbar-backward-leave-from { opacity: 1; transform: translateX(0) rotateY(0); }
+
+.homework-editor-image-tools {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  padding: 0.25rem;
+  border-radius: var(--m3e-toolbar-rounded-shape, 0.75rem);
+  background: var(--md-sys-color-surface-container-high);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .homework-editor-toolbar-pages > .editor-toolbar-page-enter-active,
+  .homework-editor-toolbar-pages > .editor-toolbar-page-leave-active {
+    transition-duration: 0.01ms;
+  }
+}
+
+.homework-editor-image-tools m3e-slider {
+  min-width: 0;
+  width: 100%;
+}
+
+.homework-editor-image-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  width: 100%;
+}
+
+.homework-editor-image-width-value {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 
 .editor-tag-set {
   margin-top: -0.25rem;

@@ -5,7 +5,7 @@ export type TiptapMark = {
 
 export type TiptapNode = {
   type: string;
-  attrs?: Record<string, unknown>;
+  attrs?: Record<string, unknown> & { widthPercent?: number };
   content?: TiptapNode[];
   text?: string;
   marks?: TiptapMark[];

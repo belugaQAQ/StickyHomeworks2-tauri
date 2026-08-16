@@ -1,5 +1,10 @@
 import { parseHomeworkContent, type HomeworkContent, type TiptapNode } from "../types/homework-content";
 
+export function clampHomeworkImageWidthPercent(value: number): number {
+  if (!Number.isFinite(value)) return 100;
+  return Math.min(100, Math.max(10, Math.round(value)));
+}
+
 export const ALLOWED_HOMEWORK_IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"] as const;
 
 export function toHomeworkDisplayText(content: HomeworkContent | string): string {
@@ -58,7 +63,10 @@ function renderTiptapNode(node: TiptapNode): string {
   if (node.type === "paragraph") return `<p>${inner}</p>`;
   if (node.type === "heading") return `<p>${inner}</p>`;
   if (node.type === "hardBreak") return "<br>";
-  if (node.type === "image" && typeof node.attrs?.src === "string" && isAllowedHomeworkImageSource(node.attrs.src)) return `<img src="${escapeHtml(node.attrs.src)}" alt="${escapeHtml(String(node.attrs.alt ?? "图片"))}">`;
+  if (node.type === "image" && typeof node.attrs?.src === "string" && isAllowedHomeworkImageSource(node.attrs.src)) {
+    const widthPercent = clampHomeworkImageWidthPercent(Number(node.attrs.widthPercent));
+    return `<img src="${escapeHtml(node.attrs.src)}" alt="${escapeHtml(String(node.attrs.alt ?? "图片"))}" style="width: ${widthPercent}%">`;
+  }
   return inner;
 }
 
