@@ -7,6 +7,7 @@ import { useAppContext } from "../app-context";
 import { buildDiagnosticReport, type DiagnosticDisclosure } from "../services/diagnostic-report";
 import { clearDiagnosticLogs, copyDiagnosticReport, DiagnosticError, exportDiagnosticBundle } from "../services/diagnostic-export";
 import { clearBrowserLogEntries, flushLogs, getLoggingStatus, logError, logInfo } from "../services/logging";
+import SettingsPage from "../components/SettingsPage.vue";
 import "../styles/settings-view.css";
 
 type DialogElement = HTMLElement & { open: boolean; returnValue: string; show: () => void; hide: (returnValue?: string) => Promise<void> };

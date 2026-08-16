@@ -52,7 +52,7 @@ function loadBrowserFallback(requestId: string): AppData {
   }
 }
 
-function serializeAppDataForTauri(data: AppData): AppData {
+export function serializeAppDataForTauri(data: AppData): AppData {
   return {
     ...data,
     homeworks: data.homeworks.map((homework) => ({

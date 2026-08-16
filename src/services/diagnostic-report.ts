@@ -2,6 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getVersion, getTauriVersion } from "@tauri-apps/api/app";
 import packageJson from "../../package.json";
 import type { AppData } from "../types/app-data";
+import { serializeAppDataForTauri } from "./app-data";
 import { createRequestId, getBrowserLogEntries, type LogEntry } from "./logging";
 
 export type DiagnosticDisclosure = "standard" | "extended" | "full";
@@ -37,7 +38,7 @@ export async function buildDiagnosticReport(
       return await invoke<string>("diagnostic_report", {
         environment,
         disclosure,
-        appData: disclosure === "full" ? appData : null,
+        appData: disclosure === "full" ? serializeAppDataForTauri(appData) : null,
         requestId: createRequestId("diagnostic-report.build"),
       });
     } catch (error) {

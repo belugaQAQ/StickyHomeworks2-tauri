@@ -2,6 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import type { AppData } from "../types/app-data";
+import { serializeAppDataForTauri } from "./app-data";
 import type { DiagnosticDisclosure, DiagnosticEnvironment } from "./diagnostic-report";
 
 export async function exportDiagnosticBundleToFile(
@@ -20,7 +21,7 @@ export async function exportDiagnosticBundleToFile(
   const bundle = await invoke<number[]>("export_diagnostic_bundle", {
     environment,
     disclosure,
-    appData: disclosure === "full" ? appData : null,
+    appData: disclosure === "full" ? serializeAppDataForTauri(appData) : null,
     requestId,
   });
   await writeFile(destination, new Uint8Array(bundle));
