@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { M3eSnackbar } from "@m3e/web/all";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 import { openExternalHomeworkLink } from "../services/external-link";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 type DialogElement = HTMLElement & {
@@ -36,6 +35,8 @@ async function confirm() {
   href.value = "";
   linkText.value = "";
   await hideWebKitGtkDialog(dialog.value);
+  await nextTick();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   try {
     await openExternalHomeworkLink(value);
     emit("opened", value);

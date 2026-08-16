@@ -25,19 +25,16 @@ export function createHomeworkEditor(onChange: (content: HomeworkContent) => voi
     editorProps: {
       handleDOMEvents: {
         click: (_view, event) => {
-          if (mobileLayout || !(event.target instanceof Element)) return false;
+          if (!(event.target instanceof Element)) return false;
           const link = event.target.closest<HTMLAnchorElement>("a[href]");
           if (!link) return false;
+          if (mobileLayout) {
+            event.preventDefault();
+            if (isSafeHomeworkLink(link.href)) onLinkRequest(link.href, link.textContent?.trim() ?? "");
+            return true;
+          }
           event.preventDefault();
           if ((event.ctrlKey || event.metaKey) && isSafeHomeworkLink(link.href)) onLinkRequest(link.href, link.textContent?.trim() ?? "");
-          return true;
-        },
-        dblclick: (_view, event) => {
-          if (!mobileLayout || !(event.target instanceof Element)) return false;
-          const link = event.target.closest<HTMLAnchorElement>("a[href]");
-          if (!link) return false;
-          event.preventDefault();
-          if (isSafeHomeworkLink(link.href)) onLinkRequest(link.href, link.textContent?.trim() ?? "");
           return true;
         },
       },
