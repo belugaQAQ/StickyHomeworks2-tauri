@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from "vue";
 import ExternalLinkConfirmDialog from "../components/ExternalLinkConfirmDialog.vue";
+
 import { useHomeworkMasonry } from "../composables/useHomeworkMasonry";
 import type { SubjectGroup } from "../types/homework-board";
 import { isSafeHomeworkLink } from "../utils/homework-content";
@@ -25,10 +26,11 @@ const { masonryColumns, setBoardElement, setGroupElement, setScrollElement } = u
 function selectHomework(id: string) {
   if (props.readonly) {
     logInfo("homework.select.blocked", "冻结状态下选择作业被阻止");
-    return;
+    return false;
   }
   selectedHomeworkId.value = selectedHomeworkId.value === id ? null : id;
   logInfo(selectedHomeworkId.value ? "homework.select" : "homework.deselect", "作业选择状态已变化");
+  return true;
 }
 
 function handleHomeworkClick(event: MouseEvent, id: string) {

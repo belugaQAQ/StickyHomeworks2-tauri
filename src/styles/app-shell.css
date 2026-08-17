@@ -147,8 +147,35 @@
 .create-fab {
   position: fixed;
   right: 1.25rem;
-  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   z-index: 8;
+  transform: scale(1) translateZ(0);
+  opacity: 1;
+  will-change: transform, opacity;
+  transition:
+    transform var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    visibility 0s linear 0s;
+}
+
+.create-fab--hidden,
+.app-frame--mobile:has(.homework-item--selected) .create-fab {
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0) translateZ(0);
+  opacity: 0;
+  transition:
+    transform var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    visibility 0s linear var(--md-sys-motion-duration-short-4, 200ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-fab,
+  .create-fab--hidden,
+  .app-frame--mobile:has(.homework-item--selected) .create-fab {
+    transition: none;
+  }
 }
 
 .sheet-header {

@@ -351,25 +351,24 @@ onMounted(async () => {
         </main>
       </m3e-drawer-container>
 
-      <template v-if="activeNavigation === 'homeworks' && !isHomeworkFrozen">
-        <m3e-fab
-          variant="primary"
-          size="medium"
-          class="create-fab"
-          aria-label="Create homework"
-          @pointerdown="preserveMobileScrollPosition"
-        >
-          <m3e-fab-menu-trigger for="fab-menu">
-            <m3e-icon name="edit" variant="rounded"></m3e-icon>
-          </m3e-fab-menu-trigger>
-        </m3e-fab>
-        <m3e-fab-menu id="fab-menu" variant="primary">
-          <m3e-fab-menu-item @click="openCreateHomework">
-            <m3e-icon slot="icon" name="add" filled></m3e-icon>
-            新建作业
-          </m3e-fab-menu-item>
-        </m3e-fab-menu>
-      </template>
+      <m3e-fab
+        variant="primary"
+        size="medium"
+        class="create-fab"
+        :class="{ 'create-fab--hidden': activeNavigation !== 'homeworks' || isHomeworkFrozen }"
+        aria-label="Create homework"
+        @pointerdown="preserveMobileScrollPosition"
+      >
+        <m3e-fab-menu-trigger for="fab-menu">
+          <m3e-icon name="edit" variant="rounded"></m3e-icon>
+        </m3e-fab-menu-trigger>
+      </m3e-fab>
+      <m3e-fab-menu id="fab-menu" variant="primary">
+        <m3e-fab-menu-item @click="openCreateHomework">
+          <m3e-icon slot="icon" name="add" filled></m3e-icon>
+          新建作业
+        </m3e-fab-menu-item>
+      </m3e-fab-menu>
 
       <m3e-bottom-sheet
         ref="moreSheet"

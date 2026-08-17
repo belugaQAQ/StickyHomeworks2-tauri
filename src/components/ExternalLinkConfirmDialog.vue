@@ -78,7 +78,7 @@ defineExpose({ open, cancel });
     <div class="homework-link-confirm-content">
       <p>链接将交给系统默认浏览器处理，请确认地址可信后再继续。</p>
       <m3e-card variant="filled">
-        <div slot="0" class="homework-link-confirm-preview">
+        <div slot="content" class="homework-link-confirm-preview">
           <m3e-heading v-if="linkText" variant="headline" size="small" emphasized>{{ linkText }}</m3e-heading>
           <span class="homework-link-confirm-value" tabindex="0">{{ href }}</span>
         </div>

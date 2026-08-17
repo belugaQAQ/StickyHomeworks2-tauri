@@ -222,9 +222,10 @@
 
 .app-frame--mobile .homework-scroll-region {
   height: auto;
-  padding-bottom: max(6rem, env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
   overflow: visible;
 }
+
 
 .app-frame--mobile .masonry-columns {
   width: auto;
