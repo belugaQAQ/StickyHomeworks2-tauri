@@ -169,6 +169,7 @@
   --m3e-dialog-max-width: min(56rem, calc(100vw - 2rem));
 }
 
+
 .homework-editor {
   display: grid;
   box-sizing: border-box;
@@ -177,7 +178,7 @@
   min-height: 0;
   width: min(52rem, 100%);
   max-width: 100%;
-  padding-top: 0.75rem;
+  padding-top: 0;
   padding-bottom: 0.5rem;
 }
 .homework-editor-toolbar {

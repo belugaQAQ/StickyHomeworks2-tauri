@@ -56,6 +56,21 @@ const HomeworkImage = Image.extend({
 });
 
 export function createHomeworkEditor(onChange: (content: HomeworkContent) => void, onLinkRequest: (href: string, text: string) => void, mobileLayout = false): Editor {
+  function interceptLink(event: MouseEvent): boolean {
+    if (!(event.target instanceof Element)) return false;
+    const link = event.target.closest<HTMLAnchorElement>("a[href]");
+    if (!link) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    if (mobileLayout) {
+      if (isSafeHomeworkLink(link.href)) onLinkRequest(link.href, link.textContent?.trim() ?? "");
+      return true;
+    }
+    if ((event.ctrlKey || event.metaKey) && isSafeHomeworkLink(link.href)) onLinkRequest(link.href, link.textContent?.trim() ?? "");
+    return true;
+  }
+
   return new Editor({
     extensions: [
       StarterKit,
@@ -67,20 +82,9 @@ export function createHomeworkEditor(onChange: (content: HomeworkContent) => voi
       Link.configure({ openOnClick: false, autolink: false, validate: isSafeHomeworkLink }),
     ],
     editorProps: {
+      handleClick: (_view, _pos, event) => interceptLink(event),
       handleDOMEvents: {
-        click: (_view, event) => {
-          if (!(event.target instanceof Element)) return false;
-          const link = event.target.closest<HTMLAnchorElement>("a[href]");
-          if (!link) return false;
-          if (mobileLayout) {
-            event.preventDefault();
-            if (isSafeHomeworkLink(link.href)) onLinkRequest(link.href, link.textContent?.trim() ?? "");
-            return true;
-          }
-          event.preventDefault();
-          if ((event.ctrlKey || event.metaKey) && isSafeHomeworkLink(link.href)) onLinkRequest(link.href, link.textContent?.trim() ?? "");
-          return true;
-        },
+        click: (_view, event) => interceptLink(event as MouseEvent),
       },
     },
     content: { type: "doc", content: [{ type: "paragraph" }] },

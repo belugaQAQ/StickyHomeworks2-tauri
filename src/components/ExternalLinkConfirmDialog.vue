@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { openExternalHomeworkLink } from "../services/external-link";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 type DialogElement = HTMLElement & {
@@ -16,25 +16,41 @@ const emit = defineEmits<{
 const dialog = ref<DialogElement | null>(null);
 const href = ref("");
 const linkText = ref("");
+const closingForExternal = ref(false);
+let closePromise: Promise<void> | null = null;
 useWebKitGtkDialogExit(dialog);
 
+function clearContent() {
+  href.value = "";
+  linkText.value = "";
+}
+
+async function closeAndClear() {
+  if (!closePromise) {
+    closePromise = hideWebKitGtkDialog(dialog.value)
+      .then(clearContent)
+      .finally(() => { closePromise = null; });
+  }
+  await closePromise;
+}
+
 function open(value: string, text = "") {
+  closingForExternal.value = false;
   href.value = value;
   linkText.value = text;
   void dialog.value?.show();
 }
 
 function cancel() {
-  href.value = "";
-  linkText.value = "";
-  void hideWebKitGtkDialog(dialog.value).then(() => emit("cancelled"));
+  closingForExternal.value = false;
+  void closeAndClear().then(() => emit("cancelled"));
 }
 
 async function confirm() {
   const value = href.value;
-  href.value = "";
-  linkText.value = "";
-  await hideWebKitGtkDialog(dialog.value);
+  closingForExternal.value = true;
+  await closeAndClear();
+  closingForExternal.value = false;
   await nextTick();
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   try {
@@ -46,6 +62,13 @@ async function confirm() {
   }
 }
 
+function handleVisibilityChange() {
+  if (document.visibilityState === "visible" && closingForExternal.value) void closeAndClear();
+}
+
+onMounted(() => document.addEventListener("visibilitychange", handleVisibilityChange));
+onBeforeUnmount(() => document.removeEventListener("visibilitychange", handleVisibilityChange));
+
 defineExpose({ open, cancel });
 </script>
 
@@ -55,7 +78,7 @@ defineExpose({ open, cancel });
     <div class="homework-link-confirm-content">
       <p>链接将交给系统默认浏览器处理，请确认地址可信后再继续。</p>
       <m3e-card variant="filled">
-        <div slot="content" class="homework-link-confirm-preview">
+        <div slot="0" class="homework-link-confirm-preview">
           <m3e-heading v-if="linkText" variant="headline" size="small" emphasized>{{ linkText }}</m3e-heading>
           <span class="homework-link-confirm-value" tabindex="0">{{ href }}</span>
         </div>

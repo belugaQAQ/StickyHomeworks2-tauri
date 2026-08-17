@@ -24,6 +24,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   cancel: [];
+  closed: [];
   save: [];
   "update:content": [content: string];
   "update:subject": [subject: string];
@@ -171,9 +172,9 @@ function updateSubject(event: Event) { const value = (event.currentTarget as Sel
 function updateTagSelection(tag: string, event: Event) { emit("update:tagSelection", tag, (event.currentTarget as FilterChipElement).selected); }
 defineExpose({ show, hide });
 </script>
-
 <template>
-  <m3e-dialog ref="dialog" class="homework-editor-dialog" dismissible disable-close>
+  <m3e-dialog ref="dialog" class="homework-editor-dialog" dismissible @closed="emit('closed')">
+    <span slot="header">编辑作业</span>
     <div v-if="homework" class="homework-editor">
       <div class="homework-editor-toolbar-pages">
         <Transition :name="toolbarTransition" mode="out-in">
