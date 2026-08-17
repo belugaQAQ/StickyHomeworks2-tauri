@@ -273,3 +273,55 @@
  outline: 2px solid var(--md-sys-color-primary);
  outline-offset: 3px;
 }
+.settings-about__sponsor-icon {
+  color: var(--md-sys-color-error);
+}
+
+.settings-about__contributors-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  width: 100%;
+  height: 100dvh;
+  pointer-events: none;
+}
+
+.settings-about__contributors-drawer[end] {
+  pointer-events: auto;
+}
+.settings-about__contributors-panel {
+  box-sizing: border-box;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  width: min(24rem, 90vw);
+  height: 100%;
+  padding: 1.5rem;
+  overflow: auto;
+  background: var(--md-sys-color-surface-container);
+}
+
+.settings-about__contributors-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settings-about__contributors-header m3e-heading {
+  margin: 0;
+}
+
+@media (max-width: 599px) {
+  .settings-about__contributors-panel {
+    width: min(22rem, 92vw);
+    padding: 1.25rem;
+  }
+}
+
+.settings-about__contributors-panel m3e-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

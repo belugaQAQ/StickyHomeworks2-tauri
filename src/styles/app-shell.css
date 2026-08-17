@@ -78,7 +78,14 @@
   min-width: 0;
 }
 .app-content--settings {
+  height: 100%;
+  min-height: 0;
   overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-content--settings .route-view {
+  min-height: 100%;
 }
 
 
