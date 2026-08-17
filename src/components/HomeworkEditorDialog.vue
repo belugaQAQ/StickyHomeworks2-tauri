@@ -127,6 +127,7 @@ function syncToolbarState(): void {
   syncedImagePosition = null;
   if (editor.isFocused) {
     selectedImage.value = null;
+    if (showImageTools.value) toolbarTransition.value = "editor-toolbar-backward";
     showImageTools.value = false;
   }
 }
