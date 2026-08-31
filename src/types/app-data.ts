@@ -20,6 +20,7 @@ export type AppSettings = {
   isExpiredMarkEnabled: boolean;
   expiredMarkColor: string;
   maxPanelWidth: number;
+  alwaysOnBottom: boolean;
 };
 
 export type AppData = {
@@ -48,6 +49,7 @@ export function createDefaultAppData(): AppData {
       isExpiredMarkEnabled: false,
       expiredMarkColor: "#333333",
       maxPanelWidth: 350,
+      alwaysOnBottom: false,
     },
   };
 }

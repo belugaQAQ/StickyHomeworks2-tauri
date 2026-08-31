@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from "@tauri-apps/api/core";
-import { computed, defineAsyncComponent, nextTick, onMounted, provide, ref, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
 const HomeworkEditorDialog = defineAsyncComponent(() => import("../components/HomeworkEditorDialog.vue"));
@@ -51,7 +51,10 @@ const {
   minimize: minimizeWindow,
   toggleMaximize: toggleWindowMaximize,
   toggleUnlocked: toggleWindowUnlocked,
+  setAlwaysOnBottom,
 } = useDesktopWindowControls();
+
+let stopAlwaysOnBottomWatch: (() => void) | undefined;
 const {
   appData,
   homeworkGroups,
@@ -263,11 +266,6 @@ async function detectMobileRuntime() {
 
 onMounted(async () => {
   isMobileRuntime.value = await detectMobileRuntime();
-  await initializeWindowControls(isMobileRuntime.value);
-  // M3E uses the attribute in Shadow DOM CSS, while Vue may set only the property.
-  await nextTick();
-  moreSheet.value?.setAttribute("handle", "");
-  moreSheet.value?.setAttribute("detents", "fit half full");
 
   try {
     await load();
@@ -275,7 +273,19 @@ onMounted(async () => {
   } catch {
     loadError.value = "无法读取本地数据。请检查应用数据目录后重试。";
   }
+
+  await initializeWindowControls(isMobileRuntime.value, appData.value.settings.alwaysOnBottom);
+  stopAlwaysOnBottomWatch = watch(() => appData.value.settings.alwaysOnBottom, (alwaysOnBottom) => {
+    void setAlwaysOnBottom(alwaysOnBottom);
+  });
+
+  // M3E uses the attribute in Shadow DOM CSS, while Vue may set only the property.
+  await nextTick();
+  moreSheet.value?.setAttribute("handle", "");
+  moreSheet.value?.setAttribute("detents", "fit half full");
 });
+
+onUnmounted(() => stopAlwaysOnBottomWatch?.());
 </script>
 
 <template>

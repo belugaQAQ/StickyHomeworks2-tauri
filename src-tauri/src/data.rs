@@ -71,6 +71,8 @@ pub(crate) struct AppSettings {
     pub(crate) expired_mark_color: String,
     #[serde(default = "default_max_panel_width", alias = "MaxPanelWidth")]
     pub(crate) max_panel_width: f64,
+    #[serde(default, alias = "AlwaysOnBottom")]
+    pub(crate) always_on_bottom: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -95,6 +97,7 @@ impl Default for AppSettings {
             is_expired_mark_enabled: false,
             expired_mark_color: default_expired_mark_color(),
             max_panel_width: default_max_panel_width(),
+            always_on_bottom: false,
         }
     }
 }
