@@ -24,7 +24,13 @@ export const router = createRouter({
   routes: [
     { path: "/", name: "homeworks", component: HomeworksView },
     { path: "/templates", name: "templates", component: TemplatesView },
-    { path: "/settings", name: "settings", component: SettingsIndexView, meta: { settingsDepth: 0 } },
+    {
+      path: "/settings",
+      name: "settings",
+      component: SettingsIndexView,
+      meta: { settingsDepth: 0 },
+      beforeEnter: () => window.innerWidth > 600 ? "/settings/general" : true,
+    },
     { path: "/settings/general", name: "settings-general", component: SettingsGeneralView, meta: { settingsDepth: 1 } },
     { path: "/settings/import", name: "settings-import", component: SettingsImportView, meta: { settingsDepth: 1 } },
     { path: "/settings/vocabulary", name: "settings-vocabulary", component: SettingsVocabularyView, meta: { settingsDepth: 1 } },

@@ -1,6 +1,24 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 import SettingsPage from "../components/SettingsPage.vue";
 import "../styles/settings-view.css";
+
+const router = useRouter();
+
+function redirectToGeneralOnWideWindow() {
+  if (window.innerWidth > 600) {
+    void router.replace("/settings/general");
+  }
+}
+
+onMounted(() => {
+  window.addEventListener("resize", redirectToGeneralOnWideWindow);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", redirectToGeneralOnWideWindow);
+});
 
 const settingsSections = [
   { path: "/settings/general", icon: "tune", title: "通用", detail: "应用标题" },
