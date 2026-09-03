@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::data::{normalize_app_data, normalize_settings, AppData, AppSettings, OTHER_SUBJECT};
+use crate::data::{normalize_app_data, normalize_settings, AppData, AppSettings, HomeworkContent, OTHER_SUBJECT};
 
 #[derive(Debug)]
 pub(crate) struct LegacyImport {
@@ -41,7 +41,7 @@ fn import_profile(source: &str) -> Result<(AppData, usize), String> {
     let rich_text_count = data
         .homeworks
         .iter()
-        .filter(|homework| homework.content.contains("<FlowDocument"))
+        .filter(|homework| matches!(homework.content, HomeworkContent::LegacyFlowDocumentXaml { .. }))
         .count();
     Ok((data, rich_text_count))
 }

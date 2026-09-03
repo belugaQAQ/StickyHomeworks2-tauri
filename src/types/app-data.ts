@@ -1,11 +1,15 @@
+import type { HomeworkContent } from "./homework-content";
+
 export type HomeworkRecord = {
   id: string;
-  content: string;
+  content: HomeworkContent | string;
   subject: string;
   dueTime: string;
   tags: string[];
   firstExpiredShowTime: string | null;
 };
+
+export type LegacyHomeworkRecord = Omit<HomeworkRecord, "content"> & { content: string | HomeworkContent };
 
 export type AppSettings = {
   title: string;
@@ -16,6 +20,7 @@ export type AppSettings = {
   isExpiredMarkEnabled: boolean;
   expiredMarkColor: string;
   maxPanelWidth: number;
+  alwaysOnBottom: boolean;
 };
 
 export type AppData = {
@@ -44,6 +49,7 @@ export function createDefaultAppData(): AppData {
       isExpiredMarkEnabled: false,
       expiredMarkColor: "#333333",
       maxPanelWidth: 350,
+      alwaysOnBottom: false,
     },
   };
 }

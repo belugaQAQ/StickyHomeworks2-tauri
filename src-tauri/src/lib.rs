@@ -34,6 +34,7 @@ pub fn run() {
             commands::log_event,
             commands::diagnostic_report,
             commands::export_diagnostic_bundle,
+            commands::clear_diagnostic_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

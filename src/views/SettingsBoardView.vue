@@ -16,11 +16,15 @@ function updatePanelWidth(event: Event) {
 
 <template>
   <SettingsPage title="看板" heading-id="settings-board-title" :error="settingsError" show-back>
-    <m3e-form-field variant="outlined" hide-subscript="never">
-      <label slot="label" for="settings-panel-width">最大面板宽度</label>
-        <input id="settings-panel-width" type="number" placeholder="0" min="160" max="2000" step="10" :value="appData.settings.maxPanelWidth" @change="updatePanelWidth"/>
-        <span slot="suffix">px</span>
-        <span slot="hint">区间160~2000，须为10的倍数</span>
-      </m3e-form-field>
+    <m3e-list class="settings-control-list">
+      <m3e-list-item class="settings-control-list__item">
+        最大面板宽度
+        <span slot="supporting-text">区间160~2000，须为10的倍数。</span>
+        <m3e-form-field slot="trailing" variant="outlined" hide-subscript="always">
+          <input id="settings-panel-width" aria-label="最大面板宽度" type="number" placeholder="0" min="160" max="2000" step="10" :value="appData.settings.maxPanelWidth" @change="updatePanelWidth" />
+          <span slot="suffix">px</span>
+        </m3e-form-field>
+      </m3e-list-item>
+    </m3e-list>
   </SettingsPage>
 </template>

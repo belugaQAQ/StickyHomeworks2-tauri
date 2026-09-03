@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { invoke } from "@tauri-apps/api/core";
-import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
-import HomeworkEditorDialog from "../components/HomeworkEditorDialog.vue";
+const HomeworkEditorDialog = defineAsyncComponent(() => import("../components/HomeworkEditorDialog.vue"));
 import WindowUnlockOverlay from "../components/WindowUnlockOverlay.vue";
 import { useHomeworkEditor } from "../composables/useHomeworkEditor";
 import { useHomeworkStore } from "../composables/useHomeworkStore";
 import { useDesktopWindowControls } from "../composables/useDesktopWindowControls";
 import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWorkaround";
-import { useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
+import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import type { AppSettings } from "../types/app-data";
 import { routeTransitionName } from "../router";
 import { logInfo, logWarn } from "../services/logging";
@@ -24,7 +24,7 @@ type DialogElement = HTMLElement & {
 
 type HomeworkEditorDialogElement = {
   show: () => void;
-  hide: () => void;
+  hide: () => void | Promise<void>;
 };
 
 const route = useRoute();
@@ -51,7 +51,10 @@ const {
   minimize: minimizeWindow,
   toggleMaximize: toggleWindowMaximize,
   toggleUnlocked: toggleWindowUnlocked,
+  setAlwaysOnBottom,
 } = useDesktopWindowControls();
+
+let stopAlwaysOnBottomWatch: (() => void) | undefined;
 const {
   appData,
   homeworkGroups,
@@ -79,6 +82,7 @@ const {
 
 useLinuxClipboardWorkaround();
 useWebKitGtkDialogExit(deleteDialog);
+useWebKitGtkDialogExit(exitDialog);
 
 const navigationItems: Array<{ id: NavigationItem; label: string; hint: string }> = [
   { id: "homeworks", label: "作业", hint: "home" },
@@ -111,24 +115,28 @@ function selectNavigation(id: NavigationItem) {
 }
 
 function openCreateHomework() {
-  if (openCreate()) {
-    logInfo("homework.create.request", "已请求新建作业");
-    editorDialog.value?.show();
-  }
+  if (openCreate()) logInfo("homework.create.request", "已请求新建作业");
 }
 
 function openEditHomework(id: string) {
-  if (openEdit(id)) editorDialog.value?.show();
+  if (openEdit(id)) logInfo("homework.edit.request", "已请求编辑作业");
+}
+function openMountedHomeworkEditor() {
+  void nextTick(() => editorDialog.value?.show());
 }
 
-function closeHomeworkEditor() {
-  editorDialog.value?.hide();
+
+
+async function closeHomeworkEditor() {
+  await hideWebKitGtkDialog(editorDialog.value);
+  resetHomeworkEditor();
   logInfo("homework.editor.cancel", "作业编辑已取消");
 }
 
 async function saveEditedHomework() {
   if (await saveHomeworkEditor()) {
-    editorDialog.value?.hide();
+    await hideWebKitGtkDialog(editorDialog.value);
+    resetHomeworkEditor();
     logInfo("homework.editor.close.after.save", "作业编辑已在保存后关闭");
   }
 }
@@ -145,18 +153,16 @@ function requestDeleteHomework(id: string) {
   void nextTick(() => deleteDialog.value?.show());
 }
 
-function closeDeleteDialog(logCancellation = true) {
-  deleteDialog.value?.hide();
+async function closeDeleteDialog(logCancellation = true) {
+  await hideWebKitGtkDialog(deleteDialog.value);
   deleteHomeworkId.value = null;
   deleteError.value = "";
   if (logCancellation) logInfo("homework.delete.cancel", "删除作业已取消");
 }
-
 watch(isHomeworkFrozen, (frozen) => {
   if (!frozen) return;
-  editorDialog.value?.hide();
-  resetHomeworkEditor();
-  closeDeleteDialog();
+  void closeHomeworkEditor();
+  void closeDeleteDialog();
 });
 
 function requestCloseWindow() {
@@ -164,8 +170,8 @@ function requestCloseWindow() {
   logInfo("window.close.request", "已打开关闭确认");
 }
 
-function closeExitDialog() {
-  exitDialog.value?.hide();
+async function closeExitDialog() {
+  await hideWebKitGtkDialog(exitDialog.value);
   logInfo("window.close.cancel", "关闭应用已取消");
 }
 
@@ -260,11 +266,6 @@ async function detectMobileRuntime() {
 
 onMounted(async () => {
   isMobileRuntime.value = await detectMobileRuntime();
-  await initializeWindowControls(isMobileRuntime.value);
-  // M3E uses the attribute in Shadow DOM CSS, while Vue may set only the property.
-  await nextTick();
-  moreSheet.value?.setAttribute("handle", "");
-  moreSheet.value?.setAttribute("detents", "fit half full");
 
   try {
     await load();
@@ -272,7 +273,19 @@ onMounted(async () => {
   } catch {
     loadError.value = "无法读取本地数据。请检查应用数据目录后重试。";
   }
+
+  await initializeWindowControls(isMobileRuntime.value, appData.value.settings.alwaysOnBottom);
+  stopAlwaysOnBottomWatch = watch(() => appData.value.settings.alwaysOnBottom, (alwaysOnBottom) => {
+    void setAlwaysOnBottom(alwaysOnBottom);
+  });
+
+  // M3E uses the attribute in Shadow DOM CSS, while Vue may set only the property.
+  await nextTick();
+  moreSheet.value?.setAttribute("handle", "");
+  moreSheet.value?.setAttribute("detents", "fit half full");
 });
+
+onUnmounted(() => stopAlwaysOnBottomWatch?.());
 </script>
 
 <template>
@@ -336,7 +349,7 @@ onMounted(async () => {
           </m3e-nav-menu>
         </aside>
 
-        <main class="app-content">
+        <main class="app-content" :class="{ 'app-content--settings': activeNavigation === 'settings' }">
           <p v-if="loadError" class="editor-error" role="alert">{{ loadError }}</p>
           <RouterView v-slot="{ Component }">
             <Transition :name="routeTransitionName" mode="out-in">
@@ -348,25 +361,24 @@ onMounted(async () => {
         </main>
       </m3e-drawer-container>
 
-      <template v-if="activeNavigation === 'homeworks' && !isHomeworkFrozen">
-        <m3e-fab
-          variant="primary"
-          size="medium"
-          class="create-fab"
-          aria-label="Create homework"
-          @pointerdown="preserveMobileScrollPosition"
-        >
-          <m3e-fab-menu-trigger for="fab-menu">
-            <m3e-icon name="edit" variant="rounded"></m3e-icon>
-          </m3e-fab-menu-trigger>
-        </m3e-fab>
-        <m3e-fab-menu id="fab-menu" variant="primary">
-          <m3e-fab-menu-item @click="openCreateHomework">
-            <m3e-icon slot="icon" name="add" filled></m3e-icon>
-            新建作业
-          </m3e-fab-menu-item>
-        </m3e-fab-menu>
-      </template>
+      <m3e-fab
+        variant="primary"
+        size="medium"
+        class="create-fab"
+        :class="{ 'create-fab--hidden': activeNavigation !== 'homeworks' || isHomeworkFrozen }"
+        aria-label="Create homework"
+        @pointerdown="preserveMobileScrollPosition"
+      >
+        <m3e-fab-menu-trigger for="fab-menu">
+          <m3e-icon name="edit" variant="rounded"></m3e-icon>
+        </m3e-fab-menu-trigger>
+      </m3e-fab>
+      <m3e-fab-menu id="fab-menu" variant="primary">
+        <m3e-fab-menu-item @click="openCreateHomework">
+          <m3e-icon slot="icon" name="add" filled></m3e-icon>
+          新建作业
+        </m3e-fab-menu-item>
+      </m3e-fab-menu>
 
       <m3e-bottom-sheet
         ref="moreSheet"
@@ -403,12 +415,16 @@ onMounted(async () => {
       <WindowUnlockOverlay v-if="isWindowUnlocked" />
 
       <HomeworkEditorDialog
+        v-if="editingHomework"
         ref="editorDialog"
+        @vue:mounted="openMountedHomeworkEditor"
         :homework="editingHomework"
         :subjects="editorSubjects"
         :tags="editorTags"
         :save-error="saveError"
-        :is-editing="Boolean(editingHomework && appData.homeworks.some((item) => item.id === editingHomework?.id))"
+        :is-editing="true"
+        :mobile-layout="isMobileRuntime"
+        @closed="closeHomeworkEditor"
         @cancel="closeHomeworkEditor"
         @save="saveEditedHomework"
         @update:content="updateContent"

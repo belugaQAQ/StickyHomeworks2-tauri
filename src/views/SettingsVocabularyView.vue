@@ -41,13 +41,18 @@ function removeVocabulary(key: "subjects" | "tags", value: string) {
 
     <section class="settings-group" aria-labelledby="settings-subjects-title">
       <m3e-heading id="settings-subjects-title" variant="title" size="large" level="2">科目</m3e-heading>
-      <m3e-form-field variant="outlined">
-        <label slot="label" for="settings-subjects">新增科目</label>
-        <input id="settings-subjects" v-model="newSubject" @keydown.enter.prevent="addVocabulary('subjects')" />
-        <m3e-icon-button slot="suffix" aria-label="添加科目" @click="addVocabulary('subjects')">
-          <m3e-icon name="add"></m3e-icon>
-        </m3e-icon-button>
-      </m3e-form-field>
+      <m3e-list class="settings-control-list">
+        <m3e-list-item class="settings-control-list__item">
+          新增科目
+          <span slot="supporting-text">添加可用于编辑作业的科目。</span>
+          <m3e-form-field slot="trailing" variant="outlined" hide-subscript="always">
+            <input id="settings-subjects" v-model="newSubject" aria-label="新增科目" @keydown.enter.prevent="addVocabulary('subjects')" />
+            <m3e-icon-button slot="suffix" aria-label="添加科目" @click="addVocabulary('subjects')">
+              <m3e-icon name="add"></m3e-icon>
+            </m3e-icon-button>
+          </m3e-form-field>
+        </m3e-list-item>
+      </m3e-list>
       <m3e-chip-set v-if="appData.settings.subjects.length" class="settings-chip-set">
         <m3e-input-chip
           v-for="subject in appData.settings.subjects"
@@ -63,13 +68,18 @@ function removeVocabulary(key: "subjects" | "tags", value: string) {
 
     <section class="settings-group" aria-labelledby="settings-tags-title">
       <m3e-heading id="settings-tags-title" variant="title" size="large" level="2">标签</m3e-heading>
-      <m3e-form-field variant="outlined">
-        <label slot="label" for="settings-tags">新增标签</label>
-        <input id="settings-tags" v-model="newTag" @keydown.enter.prevent="addVocabulary('tags')" />
-        <m3e-icon-button slot="suffix" aria-label="添加标签" @click="addVocabulary('tags')">
-          <m3e-icon name="add"></m3e-icon>
-        </m3e-icon-button>
-      </m3e-form-field>
+      <m3e-list class="settings-control-list">
+        <m3e-list-item class="settings-control-list__item">
+          新增标签
+          <span slot="supporting-text">添加可用于标记作业的标签。</span>
+          <m3e-form-field slot="trailing" variant="outlined" hide-subscript="always">
+            <input id="settings-tags" v-model="newTag" aria-label="新增标签" @keydown.enter.prevent="addVocabulary('tags')" />
+            <m3e-icon-button slot="suffix" aria-label="添加标签" @click="addVocabulary('tags')">
+              <m3e-icon name="add"></m3e-icon>
+            </m3e-icon-button>
+          </m3e-form-field>
+        </m3e-list-item>
+      </m3e-list>
       <m3e-chip-set v-if="appData.settings.tags.length" class="settings-chip-set">
         <m3e-input-chip
           v-for="tag in appData.settings.tags"
@@ -82,5 +92,6 @@ function removeVocabulary(key: "subjects" | "tags", value: string) {
         </m3e-input-chip>
       </m3e-chip-set>
     </section>
+
   </SettingsPage>
 </template>

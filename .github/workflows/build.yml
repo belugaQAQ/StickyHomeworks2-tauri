@@ -349,7 +349,7 @@ jobs:
           merge-multiple: true
       - name: Create checksums
         working-directory: release-artifacts
-        run: sha256sum $(find . -type f -not -name 'SHA256SUMS.txt' -print) > SHA256SUMS.txt
+        run: find . -type f ! -name 'SHA256SUMS.txt' -print0 | xargs -0 sha256sum > SHA256SUMS.txt
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

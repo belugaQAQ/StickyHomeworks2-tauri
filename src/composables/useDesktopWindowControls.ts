@@ -32,13 +32,18 @@ export function useDesktopWindowControls() {
     }
   }
 
-  async function initialize(isMobileRuntime: boolean) {
+  async function setAlwaysOnBottom(alwaysOnBottom: boolean) {
+    return runWindowAction("window.always-on-bottom", (window) => window.setAlwaysOnBottom(alwaysOnBottom));
+  }
+
+  async function initialize(isMobileRuntime: boolean, alwaysOnBottom: boolean) {
     isDesktopWindow.value = isTauri() && !isMobileRuntime;
     if (!isDesktopWindow.value) return;
 
     try {
       const appWindow = getCurrentWindow();
       await appWindow.setResizable(false);
+      await appWindow.setAlwaysOnBottom(alwaysOnBottom);
       await syncMaximized(appWindow);
       unlistenResized?.();
       unlistenResized = await appWindow.onResized(() => {
@@ -85,6 +90,7 @@ export function useDesktopWindowControls() {
     error,
     initialize,
     close,
+    setAlwaysOnBottom,
     minimize,
     toggleMaximize,
     toggleUnlocked,
