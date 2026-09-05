@@ -1,5 +1,29 @@
+<script setup lang="ts">
+function preventTouchScroll(event: PointerEvent) {
+  if (event.pointerType !== "mouse") event.preventDefault();
+}
+
+function captureTouchPointer(event: PointerEvent) {
+  if (event.pointerType !== "mouse") {
+    event.currentTarget instanceof HTMLElement && event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+}
+</script>
+
 <template>
-  <aside class="window-unlock-overlay" aria-live="polite">
+  <aside
+    class="window-unlock-overlay"
+    aria-live="polite"
+    @pointerdown="captureTouchPointer"
+    @pointermove="preventTouchScroll"
+    @pointerup="preventTouchScroll"
+    @pointercancel="preventTouchScroll"
+    @touchstart.prevent
+    @touchmove.prevent
+    @touchend.prevent
+    @touchcancel.prevent
+  >
     <div class="window-unlock-overlay__guide">
       <div class="window-unlock-overlay__demo" aria-hidden="true">
         <div class="window-unlock-overlay__preview">
