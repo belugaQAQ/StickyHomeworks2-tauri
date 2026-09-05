@@ -11,7 +11,7 @@ import SettingsDiagnosticsView from "./views/SettingsDiagnosticsView.vue";
 import SettingsAboutView from "./views/SettingsAboutView.vue";
 import TemplatesView from "./views/TemplatesView.vue";
 
-export type RouteTransitionName = "route-fade" | "settings-forward" | "settings-back";
+export type RouteTransitionName = "route-fade" | "settings-forward" | "settings-back" | "settings-detail";
 
 declare module "vue-router" {
   interface RouteMeta {
@@ -54,5 +54,6 @@ function resolveRouteTransition(from: RouteLocationNormalizedLoaded, to: RouteLo
 
   if (fromDepth === 0 && toDepth === 1) return "settings-forward";
   if (fromDepth === 1 && toDepth === 0) return "settings-back";
+  if (fromDepth === 1 && toDepth === 1) return "settings-detail";
   return "route-fade";
 }

@@ -78,6 +78,7 @@
   min-width: 0;
 }
 .app-content--settings {
+  position: relative;
   height: 100%;
   min-height: 0;
   overflow-x: hidden;
@@ -85,7 +86,52 @@
 }
 
 .app-content--settings .route-view {
+  height: 100%;
+  min-height: 0;
+}
+
+.app-content--settings .route-view > .settings-page {
+  height: 100%;
+  min-height: 0;
+}
+
+.app-content--settings:has(.settings-page--split:not(.settings-page--mobile):not(.settings-page--narrow)) {
+  overflow: hidden;
+}
+
+.app-content--settings .settings-detail-enter-active,
+.app-content--settings .settings-detail-leave-active {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   min-height: 100%;
+}
+
+.app-content--settings .settings-detail-enter-active .settings-layout__content {
+  transition:
+    opacity var(--md-sys-motion-duration-medium-2, 300ms) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1)),
+    transform var(--md-sys-motion-duration-medium-2, 300ms) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1));
+}
+
+.app-content--settings .settings-detail-leave-active .settings-layout__content {
+  transition:
+    opacity var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15)),
+    transform var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15));
+}
+
+.app-content--settings .settings-detail-enter-from .settings-layout__content {
+  opacity: 0;
+  transform: translateX(1.5rem);
+}
+
+.app-content--settings .settings-detail-leave-to .settings-layout__content {
+  opacity: 0;
+  transform: translateX(-0.75rem);
+}
+
+.app-content--settings .settings-detail-enter-active .settings-layout__sidebar,
+.app-content--settings .settings-detail-leave-active .settings-layout__sidebar {
+  transform: none;
 }
 
 
@@ -123,6 +169,17 @@
 .route-fade-enter-from,
 .route-fade-leave-to {
   opacity: 0;
+}
+
+.route-static-enter-active,
+.route-static-leave-active {
+  transition: none;
+}
+
+.route-static-enter-from,
+.route-static-leave-to {
+  opacity: 1;
+  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -32,6 +32,7 @@
   display: grid;
   place-items: center;
   box-sizing: border-box;
+  touch-action: none;
   background: color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent);
   cursor: grab;
   user-select: none;

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useAppContext } from "../app-context";
 import "../styles/settings-view.css";
+import { useAppContext } from "../app-context";
+import { getSettingsSidebarScrollTop, setSettingsSidebarScrollTop } from "../services/settings-sidebar-scroll";
 
 const RIGHT_PANEL_MIN_WIDTH = 800;
 const SPLIT_LAYOUT_MIN_WIDTH = 600;
@@ -26,6 +27,7 @@ const router = useRouter();
 const route = useRoute();
 const { isMobileRuntime } = useAppContext();
 const viewportWidth = ref(0);
+const navigationList = ref<HTMLElement | null>(null);
 
 
 const isNarrowSplitLayout = computed(() =>
@@ -41,9 +43,29 @@ function updateAvailableWidth() {
   viewportWidth.value = window.innerWidth;
 }
 
+function saveNavigationScrollPosition() {
+  if (!navigationList.value) return;
+  const scrollTop = navigationList.value.scrollTop;
+  setSettingsSidebarScrollTop(scrollTop);
+  const restore = () => {
+    if (navigationList.value) navigationList.value.scrollTop = scrollTop;
+  };
+  requestAnimationFrame(() => {
+    restore();
+    requestAnimationFrame(restore);
+  });
+}
+
 onMounted(() => {
   updateAvailableWidth();
   window.addEventListener("resize", updateAvailableWidth);
+  void nextTick(() => {
+    if (navigationList.value) navigationList.value.scrollTop = getSettingsSidebarScrollTop();
+  });
+});
+
+onBeforeUnmount(() => {
+  if (navigationList.value) setSettingsSidebarScrollTop(navigationList.value.scrollTop);
 });
 
 onUnmounted(() => {
@@ -56,10 +78,10 @@ onUnmounted(() => {
     class="settings-page"
     :class="{ 'settings-page--split': showBack, 'settings-page--mobile': isMobileRuntime, 'settings-page--narrow': isNarrowSplitLayout }"
   >
-    <div v-if="showBack" ref="settingsLayout" class="settings-layout">
-      <nav class="settings-layout__sidebar" aria-label="设置分类">
+    <div v-if="showBack" class="settings-layout">
+      <nav ref="navigationList" class="settings-layout__sidebar" aria-label="设置分类">
         <m3e-heading variant="title" size="large" level="2">设置</m3e-heading>
-        <m3e-action-list variant="segmented" class="settings-navigation__list">
+        <m3e-action-list variant="segmented" class="settings-navigation__list" @click.capture="saveNavigationScrollPosition">
           <m3e-list-action
             v-for="section in settingsSections"
             :key="section.path"
@@ -85,13 +107,19 @@ onUnmounted(() => {
           <slot />
           <p v-if="error" class="editor-error" role="alert">{{ error }}</p>
         </div>
-        <div v-if="isRightPanelInsufficient" class="settings-layout__insufficient-overlay" role="alert" aria-live="polite">
-          <m3e-card variant="filled" class="settings-layout__insufficient-card">
-            <m3e-icon slot="header" name="open_in_full" aria-hidden="true"></m3e-icon>
-            <m3e-heading slot="content" variant="title" size="large" level="2">窗口空间不足</m3e-heading>
-            <p slot="content">当前窗口宽度不足以舒适显示设置内容，请继续缩放窗口后使用。</p>
-          </m3e-card>
-        </div>
+      <Teleport to="body">
+        <Transition name="settings-insufficient">
+          <div v-if="isRightPanelInsufficient" class="settings-insufficient-overlay" role="alert" aria-live="polite">
+            <m3e-card variant="elevated" class="settings-insufficient-content">
+              <div slot="header" class="settings-insufficient-header">
+                <m3e-heading class="settings-insufficient-title" variant="title" size="large" level="2">窗口空间不足</m3e-heading>
+                <m3e-icon class="settings-insufficient-arrow" name="arrow_forward" aria-hidden="true"></m3e-icon>
+              </div>
+              <p slot="content" class="settings-insufficient-desc">当前窗口宽度不足以舒适显示设置内容，请继续缩放窗口后使用。</p>
+            </m3e-card>
+          </div>
+        </Transition>
+      </Teleport>
       </section>
     </div>
 

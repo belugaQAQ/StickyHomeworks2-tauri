@@ -51,6 +51,7 @@ const {
   minimize: minimizeWindow,
   toggleMaximize: toggleWindowMaximize,
   toggleUnlocked: toggleWindowUnlocked,
+  startDragging: startWindowDragging,
   setAlwaysOnBottom,
 } = useDesktopWindowControls();
 
@@ -226,6 +227,12 @@ provide(appContextKey, {
   importLegacyData,
 });
 
+async function startWindowDrag(event: PointerEvent) {
+  if (event.pointerType === "mouse" || !isWindowUnlocked.value) return;
+  event.preventDefault();
+  await startWindowDragging();
+}
+
 function syncDrawerState(event: Event) {
   isDrawerOpen.value = (event.currentTarget as HTMLElement & { start: boolean }).start;
 }
@@ -352,7 +359,10 @@ onUnmounted(() => stopAlwaysOnBottomWatch?.());
         <main class="app-content" :class="{ 'app-content--settings': activeNavigation === 'settings' }">
           <p v-if="loadError" class="editor-error" role="alert">{{ loadError }}</p>
           <RouterView v-slot="{ Component }">
-            <Transition :name="routeTransitionName" mode="out-in">
+            <Transition
+              :name="routeTransitionName"
+              :mode="routeTransitionName === 'settings-detail' ? undefined : 'out-in'"
+            >
               <div :key="route.fullPath" class="route-view">
                 <component :is="Component" />
               </div>
@@ -412,7 +422,7 @@ onUnmounted(() => stopAlwaysOnBottomWatch?.());
         <p v-if="windowControlError" class="window-control-error" role="alert">{{ windowControlError }}</p>
       </m3e-bottom-sheet>
 
-      <WindowUnlockOverlay v-if="isWindowUnlocked" />
+      <WindowUnlockOverlay v-if="isWindowUnlocked" @pointerdown="startWindowDrag" />
 
       <HomeworkEditorDialog
         v-if="editingHomework"

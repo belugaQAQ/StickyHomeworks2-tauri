@@ -60,6 +60,11 @@ export function useDesktopWindowControls() {
     await runWindowAction("window.close", (window) => window.close());
   }
 
+async function startDragging() {
+  return runWindowAction("window.drag-start", (window) => window.startDragging());
+}
+
+
   async function minimize() {
     await runWindowAction("window.minimize", (window) => window.minimize());
   }
@@ -94,5 +99,6 @@ export function useDesktopWindowControls() {
     minimize,
     toggleMaximize,
     toggleUnlocked,
+    startDragging,
   };
 }
