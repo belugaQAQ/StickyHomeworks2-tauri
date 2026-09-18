@@ -123,6 +123,9 @@ assets/readme/       README 专用视觉资产
 本项目基于原版 [StickyHomeworks2](https://github.com/StickyHomeworks2/StickyHomeworks2) 进行跨平台迁移开发。  
 感谢原版项目及其贡献者为作业展示和管理场景提供的设计与实现基础。
 
+感谢这些同学的发电支持！！！
+![AFDIAN](https://github.com/belugaQAQ/belugaQAQ/raw/refs/heads/main/svg/afdian-sponsor.svg)
+
 ## 许可证
 
 本应用使用 ` GNU AGPL v3`许可协议
