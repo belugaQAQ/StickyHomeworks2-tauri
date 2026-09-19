@@ -4,6 +4,7 @@ import HomeworksView from "./views/HomeworksView.vue";
 import SettingsBoardView from "./views/SettingsBoardView.vue";
 import SettingsExpiryView from "./views/SettingsExpiryView.vue";
 import SettingsGeneralView from "./views/SettingsGeneralView.vue";
+import SettingsGlycoproteinView from "./views/SettingsGlycoproteinView.vue";
 import SettingsImportView from "./views/SettingsImportView.vue";
 import SettingsIndexView from "./views/SettingsIndexView.vue";
 import SettingsVocabularyView from "./views/SettingsVocabularyView.vue";
@@ -32,6 +33,7 @@ export const router = createRouter({
       beforeEnter: () => window.innerWidth > 600 ? "/settings/general" : true,
     },
     { path: "/settings/general", name: "settings-general", component: SettingsGeneralView, meta: { settingsDepth: 1 } },
+    { path: "/settings/glycoprotein", name: "settings-glycoprotein", component: SettingsGlycoproteinView, meta: { settingsDepth: 1 } },
     { path: "/settings/import", name: "settings-import", component: SettingsImportView, meta: { settingsDepth: 1 } },
     { path: "/settings/vocabulary", name: "settings-vocabulary", component: SettingsVocabularyView, meta: { settingsDepth: 1 } },
     { path: "/settings/expiry", name: "settings-expiry", component: SettingsExpiryView, meta: { settingsDepth: 1 } },

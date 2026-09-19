@@ -14,13 +14,15 @@ export async function loadAppData(): Promise<AppData> {
   return loadBrowserFallback(requestId);
 }
 
-export async function saveAppData(data: AppData, requestId = createRequestId("app-data.save")): Promise<void> {
+export async function saveAppData(data: AppData, requestId = createRequestId("app-data.save")): Promise<AppData> {
   if (isTauri()) {
-    await invoke("save_app_data", { data: serializeAppDataForTauri(data), requestId });
-    return;
+    const saved = await invoke<unknown>("save_app_data", { data: serializeAppDataForTauri(data), requestId });
+    return normalizeAppData(saved);
   }
   try {
-    window.localStorage.setItem(browserStorageKey, JSON.stringify(data));
+    const normalized = normalizeAppData(data);
+    window.localStorage.setItem(browserStorageKey, JSON.stringify(normalized));
+    return normalized;
   } catch (error) {
     logError("browser.data.save", error, requestId);
     throw error;
@@ -34,11 +36,12 @@ export async function importLegacyData(
   requestId = createRequestId("legacy-import"),
 ): Promise<LegacyImportResult> {
   if (!isTauri()) throw new Error("旧版数据导入仅可在 Tauri 应用中使用。");
-  return invoke<LegacyImportResult>("import_legacy_data_contents", {
+  const result = await invoke<LegacyImportResult>("import_legacy_data_contents", {
     profileContents,
     settingsContents,
     requestId,
   });
+  return { ...result, data: normalizeAppData(result.data) };
 }
 
 function loadBrowserFallback(requestId: string): AppData {

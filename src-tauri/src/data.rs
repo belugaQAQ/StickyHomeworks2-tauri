@@ -4,12 +4,16 @@ use uuid::Uuid;
 
 pub(crate) const OTHER_SUBJECT: &str = "其它";
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HomeworkRecord {
     #[serde(default)]
     pub(crate) id: String,
-    #[serde(default, alias = "Content", deserialize_with = "deserialize_homework_content")]
+    #[serde(
+        default,
+        alias = "Content",
+        deserialize_with = "deserialize_homework_content"
+    )]
     pub(crate) content: HomeworkContent,
     #[serde(default, alias = "Subject")]
     pub(crate) subject: String,
@@ -21,7 +25,7 @@ pub(crate) struct HomeworkRecord {
     pub(crate) first_expired_show_time: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "type")]
 pub(crate) enum HomeworkContent {
     #[serde(rename = "plain-text")]
@@ -34,7 +38,9 @@ pub(crate) enum HomeworkContent {
 
 impl Default for HomeworkContent {
     fn default() -> Self {
-        Self::PlainText { text: String::new() }
+        Self::PlainText {
+            text: String::new(),
+        }
     }
 }
 
@@ -52,7 +58,7 @@ where
     serde_json::from_value(value).map_err(serde::de::Error::custom)
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AppSettings {
     #[serde(default = "default_title", alias = "Title")]
@@ -71,7 +77,7 @@ pub(crate) struct AppSettings {
     pub(crate) expired_mark_color: String,
     #[serde(default = "default_max_panel_width", alias = "MaxPanelWidth")]
     pub(crate) max_panel_width: f64,
-    #[serde(default, alias = "AlwaysOnBottom")]
+    #[serde(default, alias = "AlwaysOnBottom", alias = "IsBottom")]
     pub(crate) always_on_bottom: bool,
     #[serde(default, alias = "AutoStart")]
     pub(crate) auto_start: bool,
@@ -79,9 +85,25 @@ pub(crate) struct AppSettings {
     pub(crate) background_opacity: f64,
     #[serde(default = "default_homework_scale", alias = "HomeworkScale")]
     pub(crate) homework_scale: f64,
+    #[serde(default, alias = "IsGlycoproteinEnabled")]
+    pub(crate) glycoprotein_enabled: bool,
+    #[serde(default = "default_glycoprotein_node_id", alias = "GlycoproteinNodeId")]
+    pub(crate) glycoprotein_node_id: String,
+    #[serde(default = "default_true", alias = "IsMainWindowVisible")]
+    pub(crate) window_visible: bool,
+    #[serde(default, alias = "IsMainWindowTopmost")]
+    pub(crate) window_topmost: bool,
+    #[serde(default, alias = "WindowX")]
+    pub(crate) window_x: Option<f64>,
+    #[serde(default, alias = "WindowY")]
+    pub(crate) window_y: Option<f64>,
+    #[serde(default, alias = "WindowWidth")]
+    pub(crate) window_width: Option<f64>,
+    #[serde(default, alias = "WindowHeight")]
+    pub(crate) window_height: Option<f64>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AppData {
     #[serde(default = "schema_version")]
@@ -107,6 +129,14 @@ impl Default for AppSettings {
             auto_start: false,
             background_opacity: default_background_opacity(),
             homework_scale: default_homework_scale(),
+            glycoprotein_enabled: false,
+            glycoprotein_node_id: default_glycoprotein_node_id(),
+            window_visible: true,
+            window_topmost: false,
+            window_x: None,
+            window_y: None,
+            window_width: None,
+            window_height: None,
         }
     }
 }
@@ -139,6 +169,14 @@ pub(crate) fn normalize_settings(settings: &mut AppSettings) {
     settings.max_panel_width = normalize_panel_width(settings.max_panel_width);
     settings.background_opacity = normalize_background_opacity(settings.background_opacity);
     settings.homework_scale = normalize_homework_scale(settings.homework_scale);
+    settings.glycoprotein_node_id = normalized_glycoprotein_node_id(&settings.glycoprotein_node_id);
+    settings.window_x = normalize_window_coordinate(settings.window_x);
+    settings.window_y = normalize_window_coordinate(settings.window_y);
+    settings.window_width = normalize_window_dimension(settings.window_width);
+    settings.window_height = normalize_window_dimension(settings.window_height);
+    if settings.window_topmost {
+        settings.always_on_bottom = false;
+    }
 }
 
 fn schema_version() -> u8 {
@@ -177,8 +215,18 @@ fn default_homework_scale() -> f64 {
     100.0
 }
 
+fn default_glycoprotein_node_id() -> String {
+    let uuid = Uuid::new_v4().to_string();
+    let random_segment = uuid.split('-').nth(1).unwrap_or("node");
+    format!("stickyHomeworks-{random_segment}")
+}
+
 fn normalize_homework_scale(value: f64) -> f64 {
-    let value = if value.is_finite() { value } else { default_homework_scale() };
+    let value = if value.is_finite() {
+        value
+    } else {
+        default_homework_scale()
+    };
     (value.clamp(75.0, 200.0) / 5.0).round() * 5.0
 }
 
@@ -193,6 +241,35 @@ fn normalized_title(value: &str) -> String {
     } else {
         title.to_owned()
     }
+}
+
+fn normalized_glycoprotein_node_id(value: &str) -> String {
+    let node_id = value.trim();
+    if node_id.is_empty() {
+        default_glycoprotein_node_id()
+    } else {
+        node_id.to_owned()
+    }
+}
+
+fn normalize_window_coordinate(value: Option<f64>) -> Option<f64> {
+    value
+        .filter(|coordinate| {
+            coordinate.is_finite()
+                && *coordinate >= i32::MIN as f64
+                && *coordinate <= i32::MAX as f64
+        })
+        .map(f64::round)
+}
+
+fn normalize_window_dimension(value: Option<f64>) -> Option<f64> {
+    value
+        .filter(|dimension| {
+            dimension.is_finite()
+                && dimension.round() >= 1.0
+                && dimension.round() <= u32::MAX as f64
+        })
+        .map(f64::round)
 }
 
 fn unique_vocabulary(values: Vec<String>) -> Vec<String> {
@@ -218,3 +295,69 @@ fn normalize_panel_width(value: f64) -> f64 {
 #[cfg(all(test, feature = "local-tests"))]
 #[path = "local_tests/data.rs"]
 mod local_tests;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn defaults_include_a_persistent_glycoprotein_identity() {
+        let settings = AppSettings::default();
+
+        assert!(!settings.glycoprotein_enabled);
+        assert!(settings
+            .glycoprotein_node_id
+            .starts_with("stickyHomeworks-"));
+        assert!(settings.window_visible);
+        assert!(!settings.window_topmost);
+    }
+
+    #[test]
+    fn normalizes_glycoprotein_and_physical_window_settings() {
+        let mut settings = AppSettings {
+            always_on_bottom: true,
+            glycoprotein_node_id: "  ".to_owned(),
+            window_topmost: true,
+            window_x: Some(12.6),
+            window_y: Some(f64::INFINITY),
+            window_width: Some(0.4),
+            window_height: Some(600.5),
+            ..AppSettings::default()
+        };
+
+        normalize_settings(&mut settings);
+
+        assert!(!settings.always_on_bottom);
+        assert!(settings
+            .glycoprotein_node_id
+            .starts_with("stickyHomeworks-"));
+        assert_eq!(settings.window_x, Some(13.0));
+        assert_eq!(settings.window_y, None);
+        assert_eq!(settings.window_width, None);
+        assert_eq!(settings.window_height, Some(601.0));
+    }
+
+    #[test]
+    fn reads_legacy_glycoprotein_and_window_aliases() {
+        let settings: AppSettings = serde_json::from_value(json!({
+            "IsBottom": true,
+            "IsGlycoproteinEnabled": true,
+            "GlycoproteinNodeId": "legacy-node",
+            "IsMainWindowVisible": false,
+            "IsMainWindowTopmost": true,
+            "WindowX": 10,
+            "WindowY": 20,
+            "WindowWidth": 300,
+            "WindowHeight": 400
+        }))
+        .expect("legacy settings should deserialize");
+
+        assert!(settings.glycoprotein_enabled);
+        assert_eq!(settings.glycoprotein_node_id, "legacy-node");
+        assert!(!settings.window_visible);
+        assert!(settings.window_topmost);
+        assert_eq!(settings.window_x, Some(10.0));
+        assert_eq!(settings.window_height, Some(400.0));
+    }
+}

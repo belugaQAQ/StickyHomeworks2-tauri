@@ -17,6 +17,7 @@ StickyHomeworks2·N 在作业大显身手，却不止于作业
 - [X] 冻结作业操作
 - [X] 桌面端和移动端响应式布局
 - [X] 导入原版配置文件
+- [X] 桌面端 Glycoprotein 本机 IPC 节点与窗口控制
 - [X] 富文本编辑
 - [x] 插入图片
 - [X] 插入链接
@@ -83,6 +84,7 @@ npm run tauri build
 - [Vue 3](https://vuejs.org/) + [TypeScript](https://www.typescriptlang.org/)：应用界面与状态编排
 - [M3E Web Components](https://matraic.github.io/m3e/)：Material 3 风格控件
 - [Tiptap](https://tiptap.dev/)：富文本文档编辑
+- [Glycoprotein 0.1.0](https://crates.io/crates/glycoprotein/0.1.0)：桌面端本机 IPC、窗口控制与作业变更事件
 
 ```text
 src/                 Vue 前端入口与路由

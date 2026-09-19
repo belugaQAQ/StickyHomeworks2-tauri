@@ -1,6 +1,8 @@
 use serde::Deserialize;
 
-use crate::data::{normalize_app_data, normalize_settings, AppData, AppSettings, HomeworkContent, OTHER_SUBJECT};
+use crate::data::{
+    normalize_app_data, normalize_settings, AppData, AppSettings, HomeworkContent, OTHER_SUBJECT,
+};
 
 #[derive(Debug)]
 pub(crate) struct LegacyImport {
@@ -41,7 +43,12 @@ fn import_profile(source: &str) -> Result<(AppData, usize), String> {
     let rich_text_count = data
         .homeworks
         .iter()
-        .filter(|homework| matches!(homework.content, HomeworkContent::LegacyFlowDocumentXaml { .. }))
+        .filter(|homework| {
+            matches!(
+                homework.content,
+                HomeworkContent::LegacyFlowDocumentXaml { .. }
+            )
+        })
         .count();
     Ok((data, rich_text_count))
 }
@@ -120,6 +127,41 @@ fn read_legacy_settings_source(source: &str) -> Result<AppSettings, String> {
     {
         settings.max_panel_width = value;
     }
+    if let Some(value) = object.get("IsBottom").and_then(serde_json::Value::as_bool) {
+        settings.always_on_bottom = value;
+    }
+    if let Some(value) = object
+        .get("IsGlycoproteinEnabled")
+        .and_then(serde_json::Value::as_bool)
+    {
+        settings.glycoprotein_enabled = value;
+    }
+    if let Some(value) = object
+        .get("GlycoproteinNodeId")
+        .and_then(serde_json::Value::as_str)
+    {
+        settings.glycoprotein_node_id = value.to_owned();
+    }
+    if let Some(value) = object
+        .get("IsMainWindowVisible")
+        .and_then(serde_json::Value::as_bool)
+    {
+        settings.window_visible = value;
+    }
+    if let Some(value) = object
+        .get("IsMainWindowTopmost")
+        .and_then(serde_json::Value::as_bool)
+    {
+        settings.window_topmost = value;
+    }
+    settings.window_x = object.get("WindowX").and_then(serde_json::Value::as_f64);
+    settings.window_y = object.get("WindowY").and_then(serde_json::Value::as_f64);
+    settings.window_width = object
+        .get("WindowWidth")
+        .and_then(serde_json::Value::as_f64);
+    settings.window_height = object
+        .get("WindowHeight")
+        .and_then(serde_json::Value::as_f64);
 
     Ok(settings)
 }
@@ -157,3 +199,39 @@ fn string_array(value: &serde_json::Value) -> Option<Vec<String>> {
 #[cfg(all(test, feature = "local-tests"))]
 #[path = "local_tests/legacy_import.rs"]
 mod local_tests;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn imports_glycoprotein_and_window_state_from_legacy_settings() {
+        let result = import_legacy_data_from_sources(
+            AppData::default(),
+            None,
+            r#"{
+                "IsBottom": true,
+                "IsGlycoproteinEnabled": true,
+                "GlycoproteinNodeId": "legacy-glyco",
+                "IsMainWindowVisible": false,
+                "IsMainWindowTopmost": true,
+                "WindowX": 101.4,
+                "WindowY": 202.6,
+                "WindowWidth": 500.2,
+                "WindowHeight": 700.8
+            }"#,
+        )
+        .expect("legacy settings should import");
+
+        let settings = result.data.settings;
+        assert!(settings.glycoprotein_enabled);
+        assert_eq!(settings.glycoprotein_node_id, "legacy-glyco");
+        assert!(!settings.window_visible);
+        assert!(settings.window_topmost);
+        assert!(!settings.always_on_bottom);
+        assert_eq!(settings.window_x, Some(101.0));
+        assert_eq!(settings.window_y, Some(203.0));
+        assert_eq!(settings.window_width, Some(500.0));
+        assert_eq!(settings.window_height, Some(701.0));
+    }
+}

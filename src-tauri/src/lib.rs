@@ -2,6 +2,7 @@ mod commands;
 mod data;
 mod diagnostic_archive;
 mod diagnostics;
+mod glycoprotein_service;
 mod legacy_import;
 mod logger;
 mod persistence;
@@ -9,7 +10,7 @@ mod platform;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
@@ -18,6 +19,8 @@ pub fn run() {
             Some(vec!["--autostart"]),
         ))
         .plugin(tauri_plugin_fs::init())
+        .manage(commands::AppDataCoordinator::default())
+        .manage(glycoprotein_service::GlycoproteinService::default())
         .setup(|app| {
             logger::install_panic_hook(app.handle());
             logger::record_startup_event(app.handle(), "Tauri 应用初始化开始");
@@ -31,11 +34,21 @@ pub fn run() {
             commands::load_app_data,
             commands::save_app_data,
             commands::import_legacy_data_contents,
+            commands::initialize_glycoprotein,
+            commands::glycoprotein_status,
             commands::log_event,
             commands::diagnostic_report,
             commands::export_diagnostic_bundle,
             commands::clear_diagnostic_logs,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app, event| {
+        if matches!(event, tauri::RunEvent::Exit) {
+            use tauri::Manager;
+            let service = app.state::<glycoprotein_service::GlycoproteinService>();
+            tauri::async_runtime::block_on(service.shutdown(app));
+        }
+    });
 }

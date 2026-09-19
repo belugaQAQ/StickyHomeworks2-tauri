@@ -13,6 +13,7 @@ const settingsSections = [
   { path: "/settings/vocabulary", icon: "category", title: "作业词库", detail: "科目和标签" },
   { path: "/settings/expiry", icon: "event_busy", title: "过期作业", detail: "清理和标记" },
   { path: "/settings/board", icon: "view_column", title: "看板", detail: "最大面板宽度" },
+  { path: "/settings/glycoprotein", icon: "hub", title: "Glycoprotein", detail: "本机节点与窗口控制", desktopOnly: true },
   { path: "/settings/import", icon: "upload_file", title: "导入旧版数据", detail: "Profile.json 和 Settings.json" },
   { path: "/settings/diagnostics", icon: "content_copy", title: "诊断信息", detail: "反馈、诊断包与运行日志" },
   { path: "/settings/about", icon: "info", title: "关于", detail: "版本、项目与许可证" },
@@ -28,6 +29,9 @@ const route = useRoute();
 const { isMobileRuntime } = useAppContext();
 const viewportWidth = ref(0);
 const navigationList = ref<HTMLElement | null>(null);
+const visibleSettingsSections = computed(() =>
+  settingsSections.filter((section) => !section.desktopOnly || !isMobileRuntime.value),
+);
 
 
 const isNarrowSplitLayout = computed(() =>
@@ -83,7 +87,7 @@ onUnmounted(() => {
         <m3e-heading variant="title" size="large" level="2">设置</m3e-heading>
         <m3e-action-list variant="segmented" class="settings-navigation__list" @click.capture="saveNavigationScrollPosition">
           <m3e-list-action
-            v-for="section in settingsSections"
+            v-for="section in visibleSettingsSections"
             :key="section.path"
             class="settings-navigation__item"
             :class="{ 'settings-navigation__item--active': route.path === section.path }"

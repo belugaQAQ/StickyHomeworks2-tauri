@@ -92,8 +92,11 @@
 }
 
 :root {
+  --app-font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+  --app-monospace-font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   color-scheme: light dark;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--app-font-family);
   color: CanvasText;
   background: transparent;
   font-synthesis: style;
@@ -113,11 +116,13 @@ m3e-snackbar {
 
 html,
 body,
-#app {
+#app,
+m3e-theme {
   min-width: 0;
   min-height: 100%;
   margin: 0;
   background: transparent;
+  font-family: var(--app-font-family);
 }
 
 body {

@@ -10,7 +10,7 @@ type AppDataMutator = (data: AppData) => AppData;
 
 type HomeworkStoreDependencies = {
   loadData: () => Promise<AppData>;
-  saveData: (data: AppData, requestId?: string) => Promise<void>;
+  saveData: (data: AppData, requestId?: string) => Promise<AppData | void>;
   importData: (profileContents: string | undefined, settingsContents: string, requestId?: string) => Promise<LegacyImportResult>;
 };
 
@@ -33,11 +33,15 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
       await logInfo(`${operation}.start`, "应用数据变更开始", requestId);
       try {
         const nextData = mutate(before);
-        await saveData(nextData, requestId);
-        appData.value = nextData;
+        if (nextData === before) {
+          await logInfo(`${operation}.noop`, "应用数据无需变更", requestId);
+          return;
+        }
+        const savedData = await saveData(nextData, requestId) ?? nextData;
+        appData.value = savedData;
         await logInfo(`${operation}.success`, "应用数据变更已提交", requestId, {
           homeworkCountBefore: before.homeworks.length,
-          homeworkCountAfter: nextData.homeworks.length,
+          homeworkCountAfter: savedData.homeworks.length,
         });
       } catch (error) {
         await logError(`${operation}.failure`, error, requestId);
@@ -55,7 +59,10 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
   }
 
   function updateSettings(mutate: SettingsMutator) {
-    return commit("settings.save", (data) => updateAppSettings(data, mutate));
+    return commit("settings.save", (data) => {
+      const settings = mutate(data.settings);
+      return settings === data.settings ? data : updateAppSettings(data, () => settings);
+    });
   }
 
   function deleteGlobalTag(tag: string) {

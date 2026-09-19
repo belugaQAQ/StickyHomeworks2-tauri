@@ -19,7 +19,11 @@ const homeworkScaleSlider = ref<HTMLElement | null>(null);
 const homeworkScaleThumb = ref<SliderThumbElement | null>(null);
 watch(() => appData.value.settings.title, (value) => { title.value = value; });
 function saveTitle() { logInfo("settings.title.change", "应用标题已修改"); void save({ title: title.value }); }
-function updateAlwaysOnBottom(event: Event) { logInfo("settings.always-on-bottom.change", "窗口置底设置已修改"); void save({ alwaysOnBottom: (event.currentTarget as SwitchElement).checked }); }
+function updateAlwaysOnBottom(event: Event) {
+  const alwaysOnBottom = (event.currentTarget as SwitchElement).checked;
+  logInfo("settings.always-on-bottom.change", "窗口置底设置已修改");
+  void save({ alwaysOnBottom, ...(alwaysOnBottom ? { windowTopmost: false } : {}) });
+}
 async function updateAutoStart(event: Event) {
   const checked = (event.currentTarget as SwitchElement).checked;
   try {

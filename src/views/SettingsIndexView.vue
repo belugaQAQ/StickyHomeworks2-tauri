@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
+import { useAppContext } from "../app-context";
 import SettingsPage from "../components/SettingsPage.vue";
 import "../styles/settings-view.css";
 
 const router = useRouter();
+const { isMobileRuntime } = useAppContext();
 
 function redirectToGeneralOnWideWindow() {
   if (window.innerWidth > 600) {
@@ -25,16 +27,20 @@ const settingsSections = [
   { path: "/settings/vocabulary", icon: "category", title: "作业词库", detail: "科目和标签" },
   { path: "/settings/expiry", icon: "event_busy", title: "过期作业", detail: "清理和标记" },
   { path: "/settings/board", icon: "view_column", title: "看板", detail: "最大面板宽度" },
+  { path: "/settings/glycoprotein", icon: "hub", title: "Glycoprotein", detail: "本机节点与窗口控制", desktopOnly: true },
   { path: "/settings/import", icon: "upload_file", title: "导入旧版数据", detail: "Profile.json 和 Settings.json" },
   { path: "/settings/diagnostics", icon: "content_copy", title: "诊断信息", detail: "反馈、诊断包与运行日志" },
   { path: "/settings/about", icon: "info", title: "关于", detail: "版本、项目与许可证" },
 ];
+const visibleSettingsSections = computed(() =>
+  settingsSections.filter((section) => !section.desktopOnly || !isMobileRuntime.value),
+);
 </script>
 
 <template>
   <SettingsPage title="设置" heading-id="settings-index-title">
     <m3e-action-list variant="segmented" class="settings-action-list">
-      <m3e-list-action v-for="section in settingsSections" :key="section.path" :href="`#${section.path}`">
+      <m3e-list-action v-for="section in visibleSettingsSections" :key="section.path" :href="`#${section.path}`">
         <m3e-icon slot="leading" :name="section.icon"></m3e-icon>
         {{ section.title }}
         <span slot="supporting-text">{{ section.detail }}</span>

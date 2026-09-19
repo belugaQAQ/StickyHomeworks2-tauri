@@ -506,7 +506,7 @@
   border-radius: 0.75rem;
   background: var(--md-sys-color-surface-container-highest);
   color: var(--md-sys-color-on-surface);
-  font: 0.8125rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font: 0.8125rem/1.45 var(--app-monospace-font-family);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -611,6 +611,152 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.settings-glycoprotein,
+.settings-glycoprotein__notice {
+  color: var(--md-sys-color-on-surface);
+}
+
+.settings-glycoprotein__notice p {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.5;
+}
+
+.settings-glycoprotein__settings-list {
+  container: glycoprotein-settings / inline-size;
+}
+
+.settings-glycoprotein__node-id-item {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(20rem, 26rem);
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.settings-glycoprotein__node-id-copy,
+.settings-glycoprotein__node-id-controls {
+  min-width: 0;
+}
+
+.settings-glycoprotein__node-id-label {
+  display: block;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--m3e-list-item-font-size, 1rem);
+  font-weight: var(--m3e-list-item-font-weight, 400);
+  line-height: var(--m3e-list-item-line-height, 1.5rem);
+  letter-spacing: var(--m3e-list-item-tracking, 0.03125rem);
+}
+
+.settings-glycoprotein__node-id-supporting-text {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--m3e-list-item-supporting-text-font-size, 0.875rem);
+  font-weight: var(--m3e-list-item-supporting-text-font-weight, 400);
+  line-height: 1.35;
+  letter-spacing: var(--m3e-list-item-supporting-text-tracking, 0.015625rem);
+}
+
+.settings-glycoprotein__node-id-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-glycoprotein__node-id-controls m3e-form-field {
+  width: 100%;
+  min-width: 0;
+  --m3e-form-field-width: 100%;
+  --m3e-form-field-font-size: 0.88rem;
+  --m3e-form-field-line-height: 1.32rem;
+  --m3e-form-field-label-font-size: 0.66rem;
+  --m3e-form-field-label-line-height: 0.88rem;
+  --md-sys-density-scale: -1.75;
+}
+
+.settings-glycoprotein__node-id-controls m3e-button {
+  min-width: max-content;
+}
+
+.settings-glycoprotein__status-content {
+  display: flex;
+  flex-direction: column;
+  container: glycoprotein-status / inline-size;
+}
+
+.settings-glycoprotein__status-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.settings-glycoprotein__status-row {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.settings-glycoprotein__status-row--path {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.25rem;
+}
+
+.settings-glycoprotein__status-row dt {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.settings-glycoprotein__status-row dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.settings-glycoprotein__status-row code {
+  font-family: var(--app-monospace-font-family);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  color: var(--md-sys-color-on-surface);
+}
+
+.settings-glycoprotein__running {
+  color: var(--md-sys-color-primary);
+}
+
+.settings-glycoprotein__error {
+  margin: 1rem 0 0;
+  color: var(--md-sys-color-error);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+@container glycoprotein-settings (max-width: 44rem) {
+  .settings-glycoprotein__node-id-item {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+@container glycoprotein-settings (max-width: 28rem) {
+  .settings-glycoprotein__node-id-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-glycoprotein__node-id-controls m3e-button {
+    justify-self: start;
+  }
+}
+
+@container glycoprotein-status (max-width: 32rem) {
+  .settings-glycoprotein__status-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
 }
 .settings-expiry-controls {
   display: grid;

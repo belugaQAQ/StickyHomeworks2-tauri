@@ -31,3 +31,9 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-autostart = "2"
 zip = "2"
+
+[target.'cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))'.dependencies]
+chrono = "0.4"
+glycoprotein = "=0.1.0"
+schemars = "1"
+tokio = { version = "1", features = ["sync"] }

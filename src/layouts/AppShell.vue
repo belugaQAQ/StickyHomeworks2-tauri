@@ -7,12 +7,16 @@ const HomeworkEditorDialog = defineAsyncComponent(() => import("../components/Ho
 import WindowUnlockOverlay from "../components/WindowUnlockOverlay.vue";
 import { useHomeworkEditor } from "../composables/useHomeworkEditor";
 import { useHomeworkStore } from "../composables/useHomeworkStore";
-import { useDesktopWindowControls } from "../composables/useDesktopWindowControls";
+import { useDesktopWindowControls, type WindowGeometryPatch } from "../composables/useDesktopWindowControls";
 import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWorkaround";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import type { AppSettings } from "../types/app-data";
 import { routeTransitionName } from "../router";
 import { logInfo, logWarn } from "../services/logging";
+import {
+  initializeGlycoprotein,
+  listenGlycoproteinWindowSettings,
+} from "../services/glycoprotein";
 import "../styles/app-shell.css";
 
 type NavigationItem = "homeworks" | "templates" | "settings";
@@ -56,6 +60,7 @@ const {
 } = useDesktopWindowControls();
 
 let stopAlwaysOnBottomWatch: (() => void) | undefined;
+let unlistenGlycoproteinWindowSettings: (() => void) | undefined;
 const {
   appData,
   homeworkGroups,
@@ -214,6 +219,18 @@ async function importLegacyData(profileContents: string | undefined, settingsCon
     throw error;
   }
 }
+
+function persistWindowGeometry(geometry: WindowGeometryPatch): Promise<void> {
+  return updateSettings((settings) => mergeSettingsPatch(settings, geometry));
+}
+
+function mergeSettingsPatch(settings: AppSettings, patch: Partial<AppSettings>): AppSettings {
+  const isUnchanged = Object.entries(patch).every(([key, value]) =>
+    settings[key as keyof AppSettings] === value,
+  );
+  return isUnchanged ? settings : { ...settings, ...patch };
+}
+
 provide(appContextKey, {
   appData,
   homeworkGroups,
@@ -275,6 +292,18 @@ async function detectMobileRuntime() {
 onMounted(async () => {
   isMobileRuntime.value = await detectMobileRuntime();
 
+  if (!isMobileRuntime.value) {
+    try {
+      unlistenGlycoproteinWindowSettings = await listenGlycoproteinWindowSettings((patch) => {
+        void updateSettings((settings) => mergeSettingsPatch(settings, patch)).catch((error) => {
+          logWarn("glycoprotein.window-settings.save.failure", error instanceof Error ? error.message : String(error));
+        });
+      });
+    } catch (error) {
+      logWarn("glycoprotein.window-settings.listen.failure", error instanceof Error ? error.message : String(error));
+    }
+  }
+
   try {
     await load();
     logInfo("app.start", "应用数据加载完成");
@@ -282,7 +311,19 @@ onMounted(async () => {
     loadError.value = "无法读取本地数据。请检查应用数据目录后重试。";
   }
 
-  await initializeWindowControls(isMobileRuntime.value, appData.value.settings.alwaysOnBottom);
+  if (!isMobileRuntime.value) {
+    try {
+      await initializeGlycoprotein();
+    } catch (error) {
+      logWarn("glycoprotein.initialize.failure", error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  await initializeWindowControls(
+    isMobileRuntime.value,
+    appData.value.settings.alwaysOnBottom,
+    persistWindowGeometry,
+  );
   stopAlwaysOnBottomWatch = watch(() => appData.value.settings.alwaysOnBottom, (alwaysOnBottom) => {
     void setAlwaysOnBottom(alwaysOnBottom);
   });
@@ -293,7 +334,10 @@ onMounted(async () => {
   moreSheet.value?.setAttribute("detents", "fit half full");
 });
 
-onUnmounted(() => stopAlwaysOnBottomWatch?.());
+onUnmounted(() => {
+  stopAlwaysOnBottomWatch?.();
+  unlistenGlycoproteinWindowSettings?.();
+});
 </script>
 
 <template>
