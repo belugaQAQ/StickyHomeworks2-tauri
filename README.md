@@ -126,7 +126,12 @@ assets/readme/       README 专用视觉资产
 感谢原版项目及其贡献者为作业展示和管理场景提供的设计与实现基础。
 
 感谢这些同学的发电支持！！！
-![AFDIAN](https://github.com/belugaQAQ/belugaQAQ/raw/refs/heads/main/svg/afdian-sponsor.svg)
+<img src="https://github.com/belugaQAQ/belugaQAQ/raw/refs/heads/main/svg/afdian-sponsor.svg" height="800"/>
+
+感谢这些同学的代码贡献！！！  
+<a href="https://github.com/belugaQAQ/stickyhomeworks2-tauri/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=belugaQAQ/stickyhomeworks2-tauri" />
+</a>
 
 ## 许可证
 
