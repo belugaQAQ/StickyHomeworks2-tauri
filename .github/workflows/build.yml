@@ -163,10 +163,12 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      # The generated Android project is a CI build product, not application source.
-      - name: Initialize Android target
-        run: npm run tauri -- android init --ci --skip-targets-install
-
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 12266719
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: true
+          packages: platform-tools
       - name: Restore Android signing key
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
