@@ -10,7 +10,6 @@ import {
   type GlycoproteinStatus,
 } from "../services/glycoprotein";
 import { logError, logInfo } from "../services/logging";
-import { createGlycoproteinNodeId } from "../types/app-data";
 import "../styles/settings-view.css";
 
 type SwitchElement = HTMLElement & { checked: boolean };
@@ -92,10 +91,6 @@ async function saveNodeId() {
   }
 }
 
-async function generateNodeId() {
-  nodeId.value = createGlycoproteinNodeId();
-  await saveNodeId();
-}
 
 onMounted(async () => {
   if (isMobileRuntime.value) return;
@@ -122,7 +117,7 @@ onBeforeUnmount(() => unlistenStatus?.());
     <m3e-list class="settings-control-list settings-glycoprotein__settings-list">
       <m3e-list-item class="settings-control-list__item">
         Glycoprotein 节点
-        <span slot="supporting-text">通过本机 Unix Domain Socket 向其他 Glycoprotein 节点公开窗口控制与作业变更事件。</span>
+        <span slot="supporting-text">通过本机 IPC 向其他节点公开窗口控制与作业变更事件。</span>
         <m3e-switch
           slot="trailing"
           icons="selected"
@@ -132,30 +127,21 @@ onBeforeUnmount(() => unlistenStatus?.());
         ></m3e-switch>
       </m3e-list-item>
       <m3e-divider inset></m3e-divider>
-      <div class="settings-glycoprotein__node-id-item" role="group" aria-labelledby="settings-glycoprotein-node-id-label">
-        <div class="settings-glycoprotein__node-id-copy">
-          <label
-            id="settings-glycoprotein-node-id-label"
-            class="settings-glycoprotein__node-id-label"
-            for="settings-glycoprotein-node-id"
-          >节点 ID</label>
-          <p id="settings-glycoprotein-node-id-help" class="settings-glycoprotein__node-id-supporting-text">
-            修改后会重建运行中的节点；同一设备上的 ID 必须唯一。
-          </p>
-        </div>
-        <div class="settings-glycoprotein__node-id-controls">
+      <m3e-list-item class="settings-control-list__item settings-glycoprotein__node-id-item">
+        节点 ID
+        <span slot="supporting-text">修改后会重建运行中的节点；同一设备上的 ID 必须唯一。</span>
+        <div slot="trailing" class="settings-glycoprotein__node-id-controls">
           <m3e-form-field variant="outlined" hide-subscript="always">
             <input
               id="settings-glycoprotein-node-id"
               v-model="nodeId"
-              aria-describedby="settings-glycoprotein-node-id-help"
+              aria-label="节点 ID"
               :disabled="unavailable || isSaving"
               @change="saveNodeId"
             />
           </m3e-form-field>
-          <m3e-button variant="text" :disabled="unavailable || isSaving" @click="generateNodeId">重新生成</m3e-button>
         </div>
-      </div>
+      </m3e-list-item>
     </m3e-list>
 
     <section class="settings-group settings-glycoprotein" aria-labelledby="settings-glycoprotein-status-title">

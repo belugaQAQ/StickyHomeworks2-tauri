@@ -59,6 +59,18 @@ fn load_current_app_data(app: &AppHandle) -> Result<AppData, String> {
 
     read_persisted_app_data(&path)
 }
+pub(crate) fn persisted_window_visibility(app: &AppHandle) -> Result<bool, String> {
+    Ok(load_current_app_data(app)?.settings.window_visible)
+}
+
+pub(crate) fn set_persisted_window_visibility(app: &AppHandle, visible: bool) -> Result<(), String> {
+    let mut data = load_current_app_data(app)?;
+    data.settings.window_visible = visible;
+    let path = app_state_path(app)?;
+    write_app_data(&path, &mut data)
+}
+
+
 
 #[tauri::command]
 pub(crate) async fn save_app_data(
@@ -253,7 +265,7 @@ async fn synchronize_runtime(
     request_id: Option<String>,
 ) -> Result<(AppData, GlycoproteinStatus), String> {
     let status = glycoprotein.reconcile(app, &data.settings).await;
-    if !status.running && !data.settings.window_visible {
+    if status.enabled && !status.running && !data.settings.window_visible {
         data.settings.window_visible = true;
         {
             let _guard = coordinator.operation.lock().map_err(|error| {
@@ -294,7 +306,7 @@ async fn synchronize_runtime(
         );
     }
 
-    if let Err(error) = apply_window_settings(app, &data.settings, status.running) {
+    if let Err(error) = apply_window_settings(app, &data.settings, status.running || !status.enabled) {
         let _ = record_error(app, "window.settings.apply", error, request_id);
     }
     Ok((data, status))

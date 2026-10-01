@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
@@ -60,6 +61,7 @@ const {
 } = useDesktopWindowControls();
 
 let stopAlwaysOnBottomWatch: (() => void) | undefined;
+let stopMainNavigate: (() => void) | undefined;
 let unlistenGlycoproteinWindowSettings: (() => void) | undefined;
 const {
   appData,
@@ -302,6 +304,7 @@ onMounted(async () => {
     } catch (error) {
       logWarn("glycoprotein.window-settings.listen.failure", error instanceof Error ? error.message : String(error));
     }
+    stopMainNavigate = await listen<string>("main-navigate", ({ payload }) => { void router.push(payload); });
   }
 
   try {
@@ -336,6 +339,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopAlwaysOnBottomWatch?.();
+  stopMainNavigate?.();
   unlistenGlycoproteinWindowSettings?.();
 });
 </script>

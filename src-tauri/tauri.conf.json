@@ -13,10 +13,24 @@
     "windows": [
       {
         "label": "main",
-        "title": "stickyhomeworks2",
+        "title": "stickyhomeworks2N",
         "transparent": true,
         "decorations": false,
         "resizable": false
+      },
+      {
+        "label": "tray-menu",
+        "title": "stickyhomeworks2N",
+        "url": "index.html#/tray-menu",
+        "width": 320,
+        "height": 260,
+        "visible": false,
+        "transparent": true,
+        "decorations": false,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false
       }
     ],
     "security": {

@@ -5,8 +5,8 @@ import "../styles/settings-view.css";
 import { useAppContext } from "../app-context";
 import { getSettingsSidebarScrollTop, setSettingsSidebarScrollTop } from "../services/settings-sidebar-scroll";
 
-const RIGHT_PANEL_MIN_WIDTH = 800;
-const SPLIT_LAYOUT_MIN_WIDTH = 600;
+const RIGHT_PANEL_MIN_WIDTH = 950;
+const SPLIT_LAYOUT_MIN_WIDTH = 700;
 
 const settingsSections = [
   { path: "/settings/general", icon: "tune", title: "通用", detail: "应用标题" },

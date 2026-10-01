@@ -628,59 +628,21 @@
   container: glycoprotein-settings / inline-size;
 }
 
-.settings-glycoprotein__node-id-item {
-  display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(20rem, 26rem);
-  align-items: center;
-  gap: 0.75rem 1.5rem;
-  min-width: 0;
-  padding: 1rem;
-}
-
-.settings-glycoprotein__node-id-copy,
 .settings-glycoprotein__node-id-controls {
+  width: min(100%, 24rem);
   min-width: 0;
-}
-
-.settings-glycoprotein__node-id-label {
-  display: block;
-  color: var(--md-sys-color-on-surface);
-  font-size: var(--m3e-list-item-font-size, 1rem);
-  font-weight: var(--m3e-list-item-font-weight, 400);
-  line-height: var(--m3e-list-item-line-height, 1.5rem);
-  letter-spacing: var(--m3e-list-item-tracking, 0.03125rem);
-}
-
-.settings-glycoprotein__node-id-supporting-text {
-  margin: 0;
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: var(--m3e-list-item-supporting-text-font-size, 0.875rem);
-  font-weight: var(--m3e-list-item-supporting-text-font-weight, 400);
-  line-height: 1.35;
-  letter-spacing: var(--m3e-list-item-supporting-text-tracking, 0.015625rem);
-}
-
-.settings-glycoprotein__node-id-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .settings-glycoprotein__node-id-controls m3e-form-field {
   width: 100%;
   min-width: 0;
-  --m3e-form-field-width: 100%;
-  --m3e-form-field-font-size: 0.88rem;
-  --m3e-form-field-line-height: 1.32rem;
-  --m3e-form-field-label-font-size: 0.66rem;
-  --m3e-form-field-label-line-height: 0.88rem;
-  --md-sys-density-scale: -1.75;
 }
 
 .settings-glycoprotein__node-id-controls m3e-button {
-  min-width: max-content;
+  flex: none;
+  white-space: nowrap;
 }
+
 
 .settings-glycoprotein__status-content {
   display: flex;
@@ -736,19 +698,8 @@
 }
 
 @container glycoprotein-settings (max-width: 44rem) {
-  .settings-glycoprotein__node-id-item {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-  }
-}
-
-@container glycoprotein-settings (max-width: 28rem) {
   .settings-glycoprotein__node-id-controls {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .settings-glycoprotein__node-id-controls m3e-button {
-    justify-self: start;
+    width: 100%;
   }
 }
 

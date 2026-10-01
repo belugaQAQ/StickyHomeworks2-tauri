@@ -272,12 +272,11 @@ mod desktop {
     pub(crate) fn apply_window_settings(
         app: &AppHandle,
         settings: &AppSettings,
-        allow_hidden: bool,
+        _allow_hidden: bool,
     ) -> Result<(), String> {
         let window = main_window(app).map_err(|error| error.to_string())?;
         let mut errors = Vec::new();
-
-        let should_show = settings.window_visible || !allow_hidden;
+        let should_show = settings.window_visible;
         let visibility_result = match window.is_visible() {
             Ok(is_visible) if is_visible == should_show => Ok(()),
             _ if should_show => window.show(),

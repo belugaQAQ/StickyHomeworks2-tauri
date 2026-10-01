@@ -10,6 +10,7 @@ export type WindowGeometryPatch = {
   windowHeight?: number;
 };
 
+
 export function useDesktopWindowControls() {
   const isDesktopWindow = ref(false);
   const isUnlocked = ref(false);
@@ -101,18 +102,21 @@ export function useDesktopWindowControls() {
       unlistenMoved = await appWindow.onMoved(({ payload }) => {
         void appWindow.isMaximized()
           .then((maximized) => {
-            if (!maximized) scheduleGeometrySave({ windowX: payload.x, windowY: payload.y }, onGeometryChanged);
+            if (!maximized && Number.isFinite(payload.x) && Number.isFinite(payload.y) && payload.x !== -32000 && payload.y !== -32000) {
+              scheduleGeometrySave({ windowX: payload.x, windowY: payload.y }, onGeometryChanged);
+            }
           })
           .catch(reportFailure);
       });
       if (!isMaximized.value) {
         const [position, size] = await Promise.all([appWindow.outerPosition(), appWindow.outerSize()]);
-        scheduleGeometrySave({
-          windowX: position.x,
-          windowY: position.y,
+        const initialGeometry: WindowGeometryPatch = {
           windowWidth: size.width,
           windowHeight: size.height,
-        }, onGeometryChanged);
+        };
+        if (Number.isFinite(position.x) && position.x !== -32000) initialGeometry.windowX = position.x;
+        if (Number.isFinite(position.y) && position.y !== -32000) initialGeometry.windowY = position.y;
+        scheduleGeometrySave(initialGeometry, onGeometryChanged);
       }
     } catch (reason) {
       reportFailure(reason);

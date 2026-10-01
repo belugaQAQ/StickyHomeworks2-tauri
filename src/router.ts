@@ -11,6 +11,7 @@ import SettingsVocabularyView from "./views/SettingsVocabularyView.vue";
 import SettingsDiagnosticsView from "./views/SettingsDiagnosticsView.vue";
 import SettingsAboutView from "./views/SettingsAboutView.vue";
 import TemplatesView from "./views/TemplatesView.vue";
+import TrayMenuView from "./views/TrayMenuView.vue";
 
 export type RouteTransitionName = "route-fade" | "settings-forward" | "settings-back" | "settings-detail";
 
@@ -24,13 +25,14 @@ export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: "/", name: "homeworks", component: HomeworksView },
+    { path: "/tray-menu", name: "tray-menu", component: TrayMenuView },
     { path: "/templates", name: "templates", component: TemplatesView },
     {
       path: "/settings",
       name: "settings",
       component: SettingsIndexView,
       meta: { settingsDepth: 0 },
-      beforeEnter: () => window.innerWidth > 600 ? "/settings/general" : true,
+      beforeEnter: () => window.innerWidth > 700 ? "/settings/general" : true,
     },
     { path: "/settings/general", name: "settings-general", component: SettingsGeneralView, meta: { settingsDepth: 1 } },
     { path: "/settings/glycoprotein", name: "settings-glycoprotein", component: SettingsGlycoproteinView, meta: { settingsDepth: 1 } },

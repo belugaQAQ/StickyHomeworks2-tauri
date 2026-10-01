@@ -256,6 +256,7 @@ fn normalize_window_coordinate(value: Option<f64>) -> Option<f64> {
     value
         .filter(|coordinate| {
             coordinate.is_finite()
+                && *coordinate != -32000.0
                 && *coordinate >= i32::MIN as f64
                 && *coordinate <= i32::MAX as f64
         })
