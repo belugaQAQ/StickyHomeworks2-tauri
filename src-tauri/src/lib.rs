@@ -90,14 +90,18 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app = tauri::Builder::default()
+    let mut app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_autostart::init(
+        .plugin(tauri_plugin_dialog::init());
+    #[cfg(desktop)]
+    {
+        app = app.plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--autostart"]),
-        ))
+        ));
+    }
+    let app = app
         .plugin(tauri_plugin_fs::init())
         .manage(commands::AppDataCoordinator::default())
         .manage(glycoprotein_service::GlycoproteinService::default())
