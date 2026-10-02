@@ -168,6 +168,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Initialize Android target
+        run: npm run tauri -- android init --ci --skip-targets-install
+
       - name: Restore Android signing key
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
