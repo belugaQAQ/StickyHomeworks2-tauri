@@ -1,7 +1,7 @@
 .homework-board {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  height: calc(100dvh - 7rem);
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   color: var(--md-sys-color-on-background);
@@ -19,9 +19,12 @@
 }
 
 .homework-scroll-region {
+  display: flex;
+  align-items: flex-start;
   height: 100%;
   box-sizing: border-box;
   min-width: 0;
+  min-height: 0;
   padding: 1.25rem 1rem 1rem;
   overflow-x: auto;
   overflow-y: hidden;
@@ -34,6 +37,11 @@
   transform: scale(var(--homework-scale));
   transform-origin: top left;
 }
+.homework-scale-track {
+  flex: 0 0 auto;
+  min-height: 100%;
+}
+
 .homework-empty-state {
   display: grid;
   min-height: 14rem;
@@ -219,20 +227,25 @@
     padding: 1.5rem 1.75rem;
   }
 }
-
-
 .app-frame--mobile .homework-board {
-  height: auto;
-  min-height: calc(100dvh - 7rem);
-  overflow: visible;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-frame--mobile .homework-scroll-region {
-  height: auto;
+  height: 100%;
+  min-height: 0;
   padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
+.app-frame--mobile .homework-scale-content {
+  width: 100%;
+  min-width: 0;
+}
 
 .app-frame--mobile .masonry-columns {
   width: auto;

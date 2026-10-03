@@ -5,7 +5,7 @@ import type { SubjectGroup } from "../types/homework-board";
 
 export type { SubjectGroup } from "../types/homework-board";
 
-export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Ref<boolean>) {
+export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Ref<boolean>, homeworkScale: Ref<number>) {
   const boardElement = ref<HTMLElement | null>(null);
   const scrollElement = ref<HTMLElement | null>(null);
   const masonryColumns = ref<SubjectGroup[][]>([groups.value]);
@@ -49,21 +49,21 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
   async function updateLayout() {
     await nextTick();
     if (mobileLayout.value) {
-      const nextColumns = [groups.value];
+      const nextColumns = groups.value.length > 0 ? [groups.value] : [];
       if (shouldRefreshMasonryColumns(masonryColumns.value, nextColumns)) masonryColumns.value = nextColumns;
       previousColumns = new Map(groups.value.map((group) => [group.id, 0]));
       return;
     }
-    const maxHeight = getAvailableColumnHeight();
+    const maxHeight = getAvailableColumnHeight() / Math.max(homeworkScale.value, 0.01);
     const gap = getColumnGap();
     for (const group of groups.value) {
       const element = groupElements.get(group.id);
-      if (element) groupHeights.set(group.id, element.getBoundingClientRect().height);
+      if (element) groupHeights.set(group.id, element.offsetHeight);
     }
     const items = groups.value.map((group) => ({
       group,
       key: group.id,
-      // Before the first measurement, use a stable provisional height only to render every group.
+      // Masonry uses unscaled layout coordinates; the wrapper applies visual scaling.
       height: groupHeights.get(group.id) ?? 160,
     }));
     const distribution = distributeMasonry(items, maxHeight, gap, previousColumns);
@@ -95,7 +95,7 @@ export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Re
     scheduleLayout();
   });
 
-  watch([groups, mobileLayout], scheduleLayout, { deep: true });
+  watch([groups, mobileLayout, homeworkScale], scheduleLayout, { deep: true });
 
   onBeforeUnmount(() => {
     cancelAnimationFrame(layoutFrame);

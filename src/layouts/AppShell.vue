@@ -260,6 +260,14 @@ function syncDrawerState(event: Event) {
 function syncMenuToggle(event: Event) {
   isDrawerOpen.value = (event.currentTarget as HTMLElement & { selected: boolean }).selected;
 }
+function syncDrawerContentOverflow() {
+  const content = appDrawer.value?.shadowRoot?.querySelector<HTMLElement>(".content");
+  if (!content) return;
+  const isHomeworkHome = activeNavigation.value === "homeworks";
+  content.style.overflowX = isHomeworkHome ? "hidden" : "";
+  content.style.overflowY = isHomeworkHome ? "hidden" : "";
+}
+
 
 function preserveMobileScrollPosition() {
   if (!isMobileRuntime.value) return;
@@ -276,6 +284,8 @@ function preserveMobileScrollPosition() {
     requestAnimationFrame(restore);
   });
 }
+watch(activeNavigation, () => nextTick(syncDrawerContentOverflow));
+
 
 async function detectMobileRuntime() {
   const layoutOverride = new URLSearchParams(window.location.search).get("layout");
@@ -293,6 +303,8 @@ async function detectMobileRuntime() {
 
 onMounted(async () => {
   isMobileRuntime.value = await detectMobileRuntime();
+  await nextTick();
+  syncDrawerContentOverflow();
 
   if (!isMobileRuntime.value) {
     try {

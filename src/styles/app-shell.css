@@ -6,7 +6,8 @@
   --app-surface-highest: color-mix(in srgb, var(--md-sys-color-surface-container-highest) var(--background-opacity, 100%), transparent);
   --app-secondary-container: color-mix(in srgb, var(--md-sys-color-secondary-container) var(--background-opacity, 100%), transparent);
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
@@ -23,13 +24,34 @@
 }
 
 .app-drawer {
-  height: calc(100dvh - 4rem);
+  flex: 1 1 auto;
+  height: auto;
   min-height: 0;
+}
+.app-drawer > .app-content {
+  height: 100%;
 }
 
 .app-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
   min-height: 0;
-} 
+  overflow: hidden;
+}
+
+.app-content > .route-view {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 
 .app-frame--window-unlocked {
   user-select: none;
@@ -99,7 +121,11 @@
 }
 
 .route-view {
+  width: 100%;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .app-content--settings {
   position: relative;
@@ -399,19 +425,40 @@
   --m3e-toolbar-size: 100%;
   --m3e-toolbar-square-padding: 0.25rem;
   --m3e-toolbar-standard-container-color: var(--md-sys-color-surface-container-high);
+  display: block;
   box-sizing: border-box;
   min-width: 0;
   width: 100%;
   max-width: 100%;
 }
-
-.homework-editor-toolbar m3e-button-group {
+.homework-editor-toolbar-groups {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
   min-width: 0;
   width: 100%;
   max-width: 100%;
 }
+.homework-editor-toolbar-groups m3e-button-group {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+.homework-editor-toolbar-groups m3e-button-group > m3e-icon-button {
+  flex: 1 1 0 !important;
+  width: 0;
+  min-width: 0;
+}
+.homework-editor-toolbar-groups m3e-icon-button {
+  --_icon-button-size: 100%;
+}
+
 .homework-editor-toolbar-pages {
   position: sticky;
   top: 0;

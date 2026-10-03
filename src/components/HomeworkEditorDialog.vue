@@ -179,18 +179,20 @@ defineExpose({ show, hide });
     <div v-if="homework" class="homework-editor">
       <div class="homework-editor-toolbar-pages">
         <Transition :name="toolbarTransition" mode="out-in">
-          <m3e-toolbar v-if="!showImageTools" key="format" aria-label="作业格式工具栏" class="homework-editor-toolbar" vertical>
-            <m3e-button-group variant="connected" multi>
-              <m3e-icon-button variant="tonal" toggle :selected="toolbarState.bold" aria-label="加粗" @beforeinput.prevent @click="editor.chain().focus().toggleBold().run()"><m3e-icon name="format_bold"></m3e-icon></m3e-icon-button>
-              <m3e-icon-button variant="tonal" toggle :selected="toolbarState.italic" aria-label="斜体" @beforeinput.prevent @click="editor.chain().focus().toggleItalic().run()"><m3e-icon name="format_italic"></m3e-icon></m3e-icon-button>
-              <m3e-icon-button variant="tonal" toggle :selected="toolbarState.underline" aria-label="下划线" @beforeinput.prevent @click="editor.chain().focus().toggleUnderline().run()"><m3e-icon name="format_underlined"></m3e-icon></m3e-icon-button>
-            </m3e-button-group>
-            <m3e-button-group variant="connected">
-              <m3e-icon-button variant="tonal" aria-label="撤销" @click="editor.chain().focus().undo().run()"><m3e-icon name="undo"></m3e-icon></m3e-icon-button>
-              <m3e-icon-button variant="tonal" aria-label="重做" @click="editor.chain().focus().redo().run()"><m3e-icon name="redo"></m3e-icon></m3e-icon-button>
-              <m3e-icon-button variant="tonal" aria-label="链接" @click="addLink"><m3e-icon name="link"></m3e-icon></m3e-icon-button>
-              <m3e-icon-button variant="tonal" aria-label="图片" @click="chooseImage"><m3e-icon name="image"></m3e-icon></m3e-icon-button>
-            </m3e-button-group>
+          <m3e-toolbar v-if="!showImageTools" key="format" aria-label="作业格式工具栏" class="homework-editor-toolbar">
+            <div class="homework-editor-toolbar-groups">
+              <m3e-button-group class="homework-editor-format-group" variant="connected" multi>
+                <m3e-icon-button variant="tonal" toggle :selected="toolbarState.bold" aria-label="加粗" @beforeinput.prevent @click="editor.chain().focus().toggleBold().run()"><m3e-icon name="format_bold"></m3e-icon></m3e-icon-button>
+                <m3e-icon-button variant="tonal" toggle :selected="toolbarState.italic" aria-label="斜体" @beforeinput.prevent @click="editor.chain().focus().toggleItalic().run()"><m3e-icon name="format_italic"></m3e-icon></m3e-icon-button>
+                <m3e-icon-button variant="tonal" toggle :selected="toolbarState.underline" aria-label="下划线" @beforeinput.prevent @click="editor.chain().focus().toggleUnderline().run()"><m3e-icon name="format_underlined"></m3e-icon></m3e-icon-button>
+              </m3e-button-group>
+              <m3e-button-group class="homework-editor-action-group" variant="connected">
+                <m3e-icon-button variant="tonal" aria-label="撤销" @click="editor.chain().focus().undo().run()"><m3e-icon name="undo"></m3e-icon></m3e-icon-button>
+                <m3e-icon-button variant="tonal" aria-label="重做" @click="editor.chain().focus().redo().run()"><m3e-icon name="redo"></m3e-icon></m3e-icon-button>
+                <m3e-icon-button variant="tonal" aria-label="链接" @click="addLink"><m3e-icon name="link"></m3e-icon></m3e-icon-button>
+                <m3e-icon-button variant="tonal" aria-label="图片" @click="chooseImage"><m3e-icon name="image"></m3e-icon></m3e-icon-button>
+              </m3e-button-group>
+            </div>
             <input ref="imageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden @change="updateImage" />
           </m3e-toolbar>
           <div v-else key="image" class="homework-editor-image-tools" aria-label="图片尺寸工具">
