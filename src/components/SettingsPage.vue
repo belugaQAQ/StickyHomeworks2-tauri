@@ -7,7 +7,6 @@ import { getSettingsSidebarScrollTop, setSettingsSidebarScrollTop } from "../ser
 
 const RIGHT_PANEL_MIN_WIDTH = 950;
 const SPLIT_LAYOUT_MIN_WIDTH = 700;
-
 const settingsSections = [
   { path: "/settings/general", icon: "tune", title: "通用", detail: "应用标题" },
   { path: "/settings/vocabulary", icon: "category", title: "作业词库", detail: "科目和标签" },
@@ -41,6 +40,11 @@ const isNarrowSplitLayout = computed(() =>
 const isRightPanelInsufficient = computed(() =>
   !isMobileRuntime.value && viewportWidth.value >= SPLIT_LAYOUT_MIN_WIDTH && viewportWidth.value < RIGHT_PANEL_MIN_WIDTH,
 );
+
+const isMobileNarrowLayout = computed(() =>
+  isMobileRuntime.value && viewportWidth.value > 0 && viewportWidth.value < RIGHT_PANEL_MIN_WIDTH,
+);
+
 
 
 function updateAvailableWidth() {
@@ -80,7 +84,7 @@ onUnmounted(() => {
 <template>
   <section
     class="settings-page"
-    :class="{ 'settings-page--split': showBack, 'settings-page--mobile': isMobileRuntime, 'settings-page--narrow': isNarrowSplitLayout }"
+    :class="{ 'settings-page--split': showBack, 'settings-page--mobile': isMobileNarrowLayout, 'settings-page--narrow': isNarrowSplitLayout }"
   >
     <div v-if="showBack" class="settings-layout">
       <nav ref="navigationList" class="settings-layout__sidebar" aria-label="设置分类">
@@ -103,7 +107,7 @@ onUnmounted(() => {
       <section class="settings-layout__content">
         <div class="settings-layout__content-inner">
           <header class="settings-page__header">
-            <m3e-icon-button v-if="showBack && (isMobileRuntime || isNarrowSplitLayout)" aria-label="返回设置" title="返回设置" @click="router.replace('/settings')">
+            <m3e-icon-button v-if="showBack && (isMobileNarrowLayout || isNarrowSplitLayout)" aria-label="返回设置" title="返回设置" @click="router.replace('/settings')">
               <m3e-icon name="arrow_back"></m3e-icon>
             </m3e-icon-button>
             <m3e-heading :id="headingId" variant="headline" size="large" level="1">{{ title }}</m3e-heading>

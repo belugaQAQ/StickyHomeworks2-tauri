@@ -2,12 +2,12 @@
 import { useAppContext } from "../app-context";
 import HomeworkBoard from "./HomeworkBoard.vue";
 
-const { appData, homeworkGroups, isMobileRuntime, isHomeworkFrozen, openEditHomework, requestDeleteHomework } = useAppContext();
+const { appData, homeworkGroups, isMobileLayout, isHomeworkFrozen, openEditHomework, requestDeleteHomework } = useAppContext();
 </script>
 
 <template>
   <HomeworkBoard
-    :mobile-layout="isMobileRuntime"
+    :mobile-layout="isMobileLayout"
     :groups="homeworkGroups"
     :max-panel-width="appData.settings.maxPanelWidth"
     :homework-scale="appData.settings.homeworkScale"

@@ -37,6 +37,8 @@ const route = useRoute();
 const router = useRouter();
 const isDrawerOpen = ref(false);
 const isMobileRuntime = ref(false);
+const viewportWidth = ref(0);
+const isMobileLayout = computed(() => isMobileRuntime.value && viewportWidth.value > 0 && viewportWidth.value < 950);
 const isHomeworkFrozen = ref(false);
 const loadError = ref("");
 const deleteError = ref("");
@@ -245,6 +247,7 @@ provide(appContextKey, {
   appData,
   homeworkGroups,
   isMobileRuntime,
+  isMobileLayout,
   isHomeworkFrozen,
   settingsError,
   openEditHomework,
@@ -278,7 +281,7 @@ function syncDrawerContentOverflow() {
 
 
 function preserveMobileScrollPosition() {
-  if (!isMobileRuntime.value) return;
+  if (!isMobileLayout.value) return;
 
   const scrollTargets = [
     document.scrollingElement,
@@ -293,6 +296,11 @@ function preserveMobileScrollPosition() {
   });
 }
 watch(activeNavigation, () => nextTick(syncDrawerContentOverflow));
+watch(isMobileLayout, () => nextTick(syncDrawerContentOverflow));
+
+function updateViewportWidth() {
+  viewportWidth.value = window.innerWidth;
+}
 
 
 async function detectMobileRuntime() {
@@ -310,10 +318,11 @@ async function detectMobileRuntime() {
 }
 
 onMounted(async () => {
+  updateViewportWidth();
+  window.addEventListener("resize", updateViewportWidth);
   isMobileRuntime.value = await detectMobileRuntime();
   await nextTick();
   syncDrawerContentOverflow();
-
   if (!isMobileRuntime.value) {
     try {
       unlistenGlycoproteinWindowSettings = await listenGlycoproteinWindowSettings((patch) => {
@@ -362,6 +371,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener("resize", updateViewportWidth);
   stopAlwaysOnBottomWatch?.();
   stopMainNavigate?.();
   unlistenGlycoproteinWindowSettings?.();
@@ -372,7 +382,7 @@ onUnmounted(() => {
   <div
     class="app-frame"
     :class="{
-      'app-frame--mobile': isMobileRuntime,
+      'app-frame--mobile': isMobileLayout,
       'app-frame--window-unlocked': isWindowUnlocked,
     }"
     :style="{ '--background-opacity': `${appData.settings.backgroundOpacity}%` }"
@@ -505,7 +515,7 @@ onUnmounted(() => {
         ref="exportDialog"
         :groups="homeworkGroups"
         :title="appData.settings.title"
-        :mobile-layout="isMobileRuntime"
+        :mobile-layout="isMobileLayout"
         :max-panel-width="appData.settings.maxPanelWidth"
       />
 
@@ -518,7 +528,7 @@ onUnmounted(() => {
         :tags="editorTags"
         :save-error="saveError"
         :is-editing="true"
-        :mobile-layout="isMobileRuntime"
+        :mobile-layout="isMobileLayout"
         @closed="closeHomeworkEditor"
         @cancel="closeHomeworkEditor"
         @save="saveEditedHomework"
