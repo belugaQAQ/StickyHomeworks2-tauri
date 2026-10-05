@@ -571,6 +571,60 @@
   line-height: 1.45;
   user-select: text;
 }
+.homework-export-dialog {
+  --m3e-dialog-min-width: min(28rem, calc(100vw - 2rem));
+  --m3e-dialog-max-width: min(36rem, calc(100vw - 2rem));
+  --m3e-dialog-container-color: var(--md-sys-color-surface-container-high);
+}
+
+.homework-export-dialog::part(content) {
+  min-width: 0;
+}
+
+.homework-export-dialog__content {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  padding-block: 0.25rem 0.5rem;
+}
+
+.homework-export-dialog__control {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.homework-export-dialog__control > m3e-heading {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.homework-export-dialog__control m3e-segmented-button {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.homework-export-dialog-root {
+  display: contents;
+}
+
+.homework-export-dialog__scrim {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--md-sys-color-scrim, #000) 52%, transparent);
+  cursor: wait;
+  pointer-events: all;
+}
+
+.homework-export-dialog__scrim m3e-loading-indicator {
+  --m3e-loading-indicator-size: 56px;
+  --m3e-loading-indicator-container-size: 72px;
+  --m3e-loading-indicator-color: var(--md-sys-color-primary);
+}
+
 @media (min-width: 768px) {
   .create-fab {
     right: 2rem;

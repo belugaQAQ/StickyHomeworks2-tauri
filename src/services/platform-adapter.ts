@@ -27,6 +27,17 @@ export async function exportDiagnosticBundleToFile(
   await writeFile(destination, new Uint8Array(bundle));
   return true;
 }
+export async function saveHomeworkExportToFile(blob: Blob, filename: string): Promise<boolean | null> {
+  if (!isTauri()) return null;
+  const destination = await save({
+    title: "导出作业图片",
+    defaultPath: filename,
+    filters: [{ name: "PNG 图片", extensions: ["png"] }],
+  });
+  if (!destination) return false;
+  await writeFile(destination, new Uint8Array(await blob.arrayBuffer()));
+  return true;
+}
 
 export async function clearPersistedDiagnosticLogs(requestId: string): Promise<void> {
   await invoke("clear_diagnostic_logs", { requestId });

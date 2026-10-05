@@ -22,12 +22,12 @@ StickyHomeworks2·N 在作业大显身手，却不止于作业
 - [x] 插入图片
 - [X] 插入链接
 - [ ] 自动清理过期作业
-- [ ] 导出作业截图
+- [X] 导出作业截图
 - [ ] 时间机器
-- [ ] 托盘菜单
+- [x] 托盘菜单
 - [ ] oobe
 
-> 当前项目处于从原版 StickyHomeworks2 迁移的开发阶段。自动清理过期作业、作业截图、时间机器、托盘菜单和模板页面仍未完成。
+> 当前项目处于从原版 StickyHomeworks2 迁移的开发阶段。自动清理过期作业、时间机器、托盘菜单和模板页面仍未完成。
 
 ## 快速开始
 
@@ -85,6 +85,7 @@ npm run tauri build
 - [M3E Web Components](https://matraic.github.io/m3e/)：Material 3 风格控件
 - [Tiptap](https://tiptap.dev/)：富文本文档编辑
 - [Glycoprotein 0.1.0](https://crates.io/crates/glycoprotein/0.1.0)：桌面端本机 IPC、窗口控制与作业变更事件
+- [modern-screenshot](https://github.com/qq15725/modern-screenshot)：将独立导出 DOM 渲染为 PNG 图片
 
 ```text
 src/                 Vue 前端入口与路由

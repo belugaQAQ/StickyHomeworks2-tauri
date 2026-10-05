@@ -5,6 +5,7 @@ import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provi
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
 const HomeworkEditorDialog = defineAsyncComponent(() => import("../components/HomeworkEditorDialog.vue"));
+import HomeworkExportDialog from "../components/HomeworkExportDialog.vue";
 import WindowUnlockOverlay from "../components/WindowUnlockOverlay.vue";
 import { useHomeworkEditor } from "../composables/useHomeworkEditor";
 import { useHomeworkStore } from "../composables/useHomeworkStore";
@@ -24,7 +25,7 @@ type NavigationItem = "homeworks" | "templates" | "settings";
 
 type DialogElement = HTMLElement & {
   show: () => void;
-  hide: () => void;
+  hide: () => void | Promise<void>;
 };
 
 type HomeworkEditorDialogElement = {
@@ -41,10 +42,11 @@ const loadError = ref("");
 const deleteError = ref("");
 const settingsError = ref("");
 const appDrawer = ref<HTMLElement | null>(null);
-const moreSheet = ref<HTMLElement | null>(null);
+const moreSheet = ref<DialogElement | null>(null);
 const editorDialog = ref<HomeworkEditorDialogElement | null>(null);
-const deleteDialog = ref<DialogElement | null>(null);
+const exportDialog = ref<InstanceType<typeof HomeworkExportDialog> | null>(null);
 const exitDialog = ref<DialogElement | null>(null);
+const deleteDialog = ref<DialogElement | null>(null);
 const deleteHomeworkId = ref<string | null>(null);
 const {
   isDesktopWindow,
@@ -132,6 +134,12 @@ function openEditHomework(id: string) {
 function openMountedHomeworkEditor() {
   void nextTick(() => editorDialog.value?.show());
 }
+async function openHomeworkExport() {
+  await hideWebKitGtkDialog(moreSheet.value);
+  await nextTick();
+  exportDialog.value?.show();
+}
+
 
 
 
@@ -316,7 +324,11 @@ onMounted(async () => {
     } catch (error) {
       logWarn("glycoprotein.window-settings.listen.failure", error instanceof Error ? error.message : String(error));
     }
-    stopMainNavigate = await listen<string>("main-navigate", ({ payload }) => { void router.push(payload); });
+    try {
+      stopMainNavigate = await listen<string>("main-navigate", ({ payload }) => { void router.push(payload); });
+    } catch (error) {
+      logWarn("navigation.listen.failure", error instanceof Error ? error.message : String(error));
+    }
   }
 
   try {
@@ -463,6 +475,10 @@ onUnmounted(() => {
       >
         <m3e-heading id="sheetTitle" slot="header" variant="title" size="large">更多</m3e-heading>
         <m3e-action-list>
+          <m3e-list-action @click="openHomeworkExport">
+            <m3e-icon slot="leading" name="image"></m3e-icon>
+            <m3e-bottom-sheet-action>导出作业图片</m3e-bottom-sheet-action>
+          </m3e-list-action>
           <m3e-list-action v-if="isDesktopWindow" @click="toggleWindowMaximize">
             <m3e-icon slot="leading" :name="isWindowMaximized ? 'fullscreen_exit' : 'fullscreen'"></m3e-icon>
             <m3e-bottom-sheet-action>{{ isWindowMaximized ? "还原窗口" : "最大化" }}</m3e-bottom-sheet-action>
@@ -484,6 +500,14 @@ onUnmounted(() => {
         <p v-if="windowControlError" class="window-control-error" role="alert">{{ windowControlError }}</p>
       </m3e-bottom-sheet>
       <WindowUnlockOverlay v-if="isWindowUnlocked" @pointerdown="startWindowDrag" @touchstart="startWindowDrag" />
+
+      <HomeworkExportDialog
+        ref="exportDialog"
+        :groups="homeworkGroups"
+        :title="appData.settings.title"
+        :mobile-layout="isMobileRuntime"
+        :max-panel-width="appData.settings.maxPanelWidth"
+      />
 
       <HomeworkEditorDialog
         v-if="editingHomework"

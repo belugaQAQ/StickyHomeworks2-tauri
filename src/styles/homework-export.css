@@ -1,0 +1,251 @@
+.homework-export-root {
+  position: fixed;
+  top: 0;
+  left: -100000px;
+  z-index: -1;
+  box-sizing: border-box;
+  color: var(--export-on-background);
+  background: var(--export-background);
+  font-family: var(--app-font-family, Inter, ui-sans-serif, system-ui, sans-serif);
+  font-size: 16px;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.homework-export-root,
+.homework-export-root * {
+  box-sizing: border-box;
+}
+
+.homework-export-root--board {
+  display: flex;
+  flex-direction: column;
+  padding: 48px;
+}
+
+.homework-export-root--long-image {
+  padding: 32px 24px;
+}
+
+.homework-export-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+  color: var(--export-on-background);
+}
+
+.homework-export-title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.homework-export-date {
+  flex: 0 0 auto;
+  color: var(--export-on-surface-variant);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.homework-export-board {
+  display: grid;
+  grid-template-columns: repeat(var(--export-column-count), var(--export-panel-width));
+  align-items: start;
+  gap: 0 24px;
+  width: max-content;
+}
+
+
+.homework-export-root--long-image .homework-export-board {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  width: 100%;
+}
+
+.homework-export-column {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.homework-export-root--long-image .homework-export-column {
+  gap: 36px;
+  min-height: 0;
+}
+
+.homework-export-group {
+  min-width: 0;
+  width: var(--export-panel-width);
+}
+
+.homework-export-root--long-image .homework-export-group {
+  width: 100%;
+}
+
+.homework-export-group-title {
+  margin: 0 0 12px;
+  color: var(--export-on-background);
+  overflow-wrap: anywhere;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.homework-export-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.homework-export-item {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 0;
+  background: var(--export-surface);
+  color: var(--export-on-surface);
+  --export-item-color: var(--export-on-surface);
+}
+
+.homework-export-item:first-child:last-child {
+  border-radius: 12px;
+}
+
+.homework-export-item:first-child:not(:last-child) {
+  border-start-start-radius: 12px;
+  border-start-end-radius: 12px;
+}
+
+.homework-export-item:last-child:not(:first-child) {
+  border-end-start-radius: 12px;
+  border-end-end-radius: 12px;
+}
+
+.homework-export-item--expired {
+  --export-item-color: var(--export-expired-color);
+}
+
+.homework-export-content {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: start;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--export-item-color);
+  font-size: 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.homework-export-marker {
+  display: block;
+  grid-column: 1;
+  grid-row: 1;
+  width: 6px;
+  height: 6px;
+  margin-top: calc((1.55em - 6px) / 2);
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.homework-export-text {
+  display: block;
+  grid-column: 2;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.homework-export-text :where(p, h1, h2, h3, h4, h5, h6, pre, blockquote, ul, ol) {
+  max-width: 100%;
+  margin: 0 0 0.65em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.homework-export-text :where(p, h1, h2, h3, h4, h5, h6, pre, blockquote, ul, ol):last-child {
+  margin-bottom: 0;
+}
+
+.homework-export-text a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.15em;
+  pointer-events: none;
+}
+
+.homework-export-text pre {
+  white-space: pre-wrap;
+}
+
+.homework-export-text img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.65em 0;
+}
+
+.homework-export-text img:first-child {
+  margin-top: 0;
+}
+
+.homework-export-text img:last-child {
+  margin-bottom: 0;
+}
+
+.homework-export-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  margin-left: 16px;
+}
+
+.homework-export-tag {
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--export-outline);
+  border-radius: 999px;
+  color: var(--export-on-surface-variant);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.homework-export-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  width: var(--export-panel-width);
+  pointer-events: none;
+}
+
+.homework-export-root--long-image .homework-export-measure {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .homework-export-root * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

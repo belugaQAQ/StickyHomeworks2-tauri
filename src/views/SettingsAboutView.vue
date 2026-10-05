@@ -191,6 +191,7 @@ async function copyEcho(echo: Echo) {
           <m3e-list-action @click="openExternal('https://tauri.app/', 'about.library.tauri.open')"><m3e-icon slot="leading" name="desktop_windows"></m3e-icon>Tauri<span slot="supporting-text">跨平台桌面应用框架</span><m3e-icon slot="trailing" name="open_in_new"></m3e-icon></m3e-list-action>
           <m3e-list-action @click="openExternal('https://crates.io/crates/glycoprotein/0.1.0', 'about.library.glycoprotein.open')"><m3e-icon slot="leading" name="hub"></m3e-icon>Glycoprotein 0.1.0<span slot="supporting-text">本机 IPC 节点框架 · LGPL-3.0-or-later</span><m3e-icon slot="trailing" name="open_in_new"></m3e-icon></m3e-list-action>
           <m3e-list-action @click="openExternal('https://github.com/typewriter-effect/typewriter-effect', 'about.library.typewriter.open')"><m3e-icon slot="leading" name="text_fields"></m3e-icon>Typewriter Effect<span slot="supporting-text">文字动画库</span><m3e-icon slot="trailing" name="open_in_new"></m3e-icon></m3e-list-action>
+          <m3e-list-action @click="openExternal('https://github.com/qq15725/modern-screenshot', 'about.library.modern-screenshot.open')"><m3e-icon slot="leading" name="image"></m3e-icon>modern-screenshot 4.7.0<span slot="supporting-text">DOM 节点导出为 PNG 图片 · MIT</span><m3e-icon slot="trailing" name="open_in_new"></m3e-icon></m3e-list-action>
         </m3e-list>
       </div>
     </m3e-drawer-container>
