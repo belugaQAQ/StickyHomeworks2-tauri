@@ -9,6 +9,8 @@ mod persistence;
 mod platform;
 use tauri::{Emitter, Manager};
 #[cfg(desktop)]
+use tauri::WebviewWindowBuilder;
+#[cfg(desktop)]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 #[cfg(desktop)]
 use tauri::Position;
@@ -50,6 +52,9 @@ fn hide_tray_menu(app: tauri::AppHandle) -> Result<(), String> {
 
 #[cfg(desktop)]
 fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    if let Some(tray_config) = app.config().app.windows.iter().find(|window| window.label == "tray-menu") {
+        WebviewWindowBuilder::from_config(app, tray_config)?.build()?;
+    }
     if let Some(menu) = app.get_webview_window("tray-menu") {
         let menu_for_event = menu.clone();
         let app_for_event = app.clone();
