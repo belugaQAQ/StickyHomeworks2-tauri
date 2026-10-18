@@ -21,6 +21,9 @@ export function useDesktopWindowControls() {
   let geometryTimer: number | undefined;
   let pendingGeometry: WindowGeometryPatch = {};
   let geometrySaveHandler: ((patch: WindowGeometryPatch) => void | Promise<void>) | undefined;
+  let isClosing = false;
+  const minimumWindowWidth = 240;
+  const minimumWindowHeight = 160;
 
   function reportFailure(reason?: unknown) {
     logError("window.control.failure", reason ?? "窗口操作失败");
@@ -49,11 +52,16 @@ export function useDesktopWindowControls() {
     return runWindowAction("window.always-on-bottom", (window) => window.setAlwaysOnBottom(alwaysOnBottom));
   }
 
+
   function scheduleGeometrySave(
     patch: WindowGeometryPatch,
     onGeometryChanged?: (patch: WindowGeometryPatch) => void | Promise<void>,
   ) {
-    if (!onGeometryChanged) return;
+    if (!onGeometryChanged || isClosing) return;
+    const nextWidth = patch.windowWidth;
+    const nextHeight = patch.windowHeight;
+    if (nextWidth !== undefined && (!Number.isFinite(nextWidth) || nextWidth < minimumWindowWidth)) return;
+    if (nextHeight !== undefined && (!Number.isFinite(nextHeight) || nextHeight < minimumWindowHeight)) return;
     geometrySaveHandler = onGeometryChanged;
     pendingGeometry = { ...pendingGeometry, ...patch };
     if (geometryTimer !== undefined) window.clearTimeout(geometryTimer);
@@ -90,6 +98,7 @@ export function useDesktopWindowControls() {
       unlistenResized?.();
       unlistenMoved?.();
       unlistenResized = await appWindow.onResized(({ payload }) => {
+        if (isClosing || payload.width < minimumWindowWidth || payload.height < minimumWindowHeight) return;
         logInfo("window.resize", "窗口尺寸已变化");
         void syncMaximized(appWindow)
           .then(() => {
@@ -100,9 +109,14 @@ export function useDesktopWindowControls() {
           .catch(reportFailure);
       });
       unlistenMoved = await appWindow.onMoved(({ payload }) => {
+        if (isClosing) return;
         void appWindow.isMaximized()
           .then((maximized) => {
-            if (!maximized && Number.isFinite(payload.x) && Number.isFinite(payload.y) && payload.x !== -32000 && payload.y !== -32000) {
+            if (isClosing) return;
+            if (!maximized && Number.isFinite(payload.x) && Number.isFinite(payload.y)
+              && payload.x !== -32000 && payload.y !== -32000
+              && payload.x >= -2147483648 && payload.x <= 2147483647
+              && payload.y >= -2147483648 && payload.y <= 2147483647) {
               scheduleGeometrySave({ windowX: payload.x, windowY: payload.y }, onGeometryChanged);
             }
           })
@@ -124,9 +138,14 @@ export function useDesktopWindowControls() {
   }
 
   async function close() {
+    if (isClosing) return;
+    isClosing = true;
+    unlistenResized?.();
+    unlistenMoved?.();
     await flushGeometrySave().catch(reportFailure);
     await flushLogs();
-    await runWindowAction("window.close", (window) => window.close());
+    const closed = await runWindowAction("window.close", (window) => window.close());
+    if (!closed) isClosing = false;
   }
 
 async function startDragging() {
@@ -158,7 +177,7 @@ async function startDragging() {
   onUnmounted(() => {
     unlistenResized?.();
     unlistenMoved?.();
-    void flushGeometrySave().catch(reportFailure);
+    if (!isClosing) void flushGeometrySave().catch(reportFailure);
   });
 
   return {

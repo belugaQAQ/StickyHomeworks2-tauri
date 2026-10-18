@@ -21,7 +21,7 @@
 .homework-export-root--board {
   display: flex;
   flex-direction: column;
-  padding: 48px;
+  padding: 24px;
 }
 
 .homework-export-root--long-image {
@@ -44,6 +44,10 @@
   font-size: 28px;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.homework-export-root--long-image .homework-export-title {
+  white-space: nowrap;
 }
 
 .homework-export-date {
@@ -78,17 +82,16 @@
 }
 
 .homework-export-root--long-image .homework-export-column {
+  width: 100%;
+  align-items: stretch;
   gap: 36px;
   min-height: 0;
 }
 
-.homework-export-group {
-  min-width: 0;
-  width: var(--export-panel-width);
-}
-
-.homework-export-root--long-image .homework-export-group {
+.homework-export-root--long-image .homework-export-group,
+.homework-export-root--long-image .homework-export-group-list {
   width: 100%;
+  align-self: stretch;
 }
 
 .homework-export-group-title {
@@ -216,18 +219,8 @@
   gap: 6px;
   margin-top: 8px;
   margin-left: 16px;
-}
-
-.homework-export-tag {
-  max-width: 100%;
-  padding: 3px 8px;
-  border: 1px solid var(--export-outline);
-  border-radius: 999px;
-  color: var(--export-on-surface-variant);
-  font-size: 13px;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  --m3e-outlined-chip-outline-color: var(--export-outline);
+  --m3e-outlined-chip-label-text-color: var(--export-on-surface-variant);
 }
 
 .homework-export-measure {

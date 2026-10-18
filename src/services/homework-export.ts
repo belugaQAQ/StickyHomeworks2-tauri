@@ -8,11 +8,11 @@ import type {
 } from "../types/homework-export";
 import "../styles/homework-export.css";
 
-const BOARD_PADDING = 48;
+const BOARD_PADDING = 32;
 const BOARD_COLUMN_GAP = 24;
 const BOARD_GROUP_GAP = 36;
-const BOARD_COLUMN_WIDTH = 480;
-const BOARD_MIN_HEIGHT = 270;
+const BOARD_BASE_WIDTH = 1344;
+const BOARD_BASE_HEIGHT = 756;
 const MAX_CANVAS_DIMENSION = 16384;
 const MAX_CANVAS_AREA = 268_435_456;
 const IMAGE_DECODE_TIMEOUT_MS = 5_000;
@@ -44,6 +44,7 @@ export async function exportHomeworkImage(options: HomeworkExportOptions): Promi
     await waitForFonts();
     await prepareImages(root);
     await buildLayout(root, options);
+    await waitForM3eComponents(root);
 
     const cssWidth = Math.ceil(root.getBoundingClientRect().width || root.offsetWidth);
     const cssHeight = Math.ceil(root.getBoundingClientRect().height || root.offsetHeight);
@@ -94,16 +95,14 @@ export function createHomeworkExportFilename(title: string, date = new Date()): 
   const day = String(date.getDate()).padStart(2, "0");
   return `${safeTitle}-${year}-${month}-${day}.png`;
 }
-
 function createExportRoot(options: HomeworkExportOptions, colors: ExportColors): HTMLDivElement {
   const root = document.createElement("div");
-  const outerWidth = options.layout === "board" ? BOARD_COLUMN_WIDTH : normalizePanelWidth(options.maxPanelWidth);
-  const contentWidth = options.layout === "board"
-    ? Math.max(1, BOARD_COLUMN_WIDTH - BOARD_PADDING * 2)
-    : Math.max(1, outerWidth - BOARD_PADDING * 2);
+  const configuredWidth = normalizePanelWidth(options.maxPanelWidth);
+  const outerWidth = options.layout === "board" ? BOARD_BASE_WIDTH : configuredWidth;
+  const contentWidth = options.layout === "board" ? configuredWidth : Math.max(1, outerWidth - BOARD_PADDING * 2);
   root.className = `homework-export-root homework-export-root--${options.layout}`;
   root.style.width = `${outerWidth}px`;
-  root.style.minHeight = options.layout === "board" ? `${BOARD_MIN_HEIGHT}px` : "0";
+  root.style.minHeight = options.layout === "board" ? `${BOARD_BASE_HEIGHT}px` : "0";
   root.style.setProperty("--export-panel-width", `${contentWidth}px`);
   root.style.setProperty("--export-column-count", "1");
   root.style.setProperty("--export-background", colors.background);
@@ -128,6 +127,13 @@ function createExportRoot(options: HomeworkExportOptions, colors: ExportColors):
   const board = document.createElement("div");
   board.className = "homework-export-board";
   root.append(header, board);
+  if (options.layout === "long-image") {
+    title.style.width = "max-content";
+    const minimumWidth = Math.ceil(title.getBoundingClientRect().width + date.getBoundingClientRect().width + 24 + 48);
+    const longImageWidth = Math.max(configuredWidth, minimumWidth);
+    root.style.width = `${longImageWidth}px`;
+    root.style.setProperty("--export-panel-width", `${Math.max(1, longImageWidth - 48)}px`);
+  }
   return root;
 }
 
@@ -136,8 +142,8 @@ async function buildLayout(root: HTMLDivElement, options: HomeworkExportOptions)
   if (!board) throw new Error("无法创建作业图片布局。");
 
   const panelWidth = options.layout === "board"
-    ? Math.max(1, BOARD_COLUMN_WIDTH - BOARD_PADDING * 2)
-    : Math.max(1, normalizePanelWidth(options.maxPanelWidth) - 48);
+    ? normalizePanelWidth(options.maxPanelWidth)
+    : Math.max(1, normalizePanelWidth(options.maxPanelWidth) - BOARD_PADDING * 2);
   root.style.setProperty("--export-panel-width", `${panelWidth}px`);
 
   if (options.layout === "long-image") {
@@ -164,13 +170,15 @@ async function buildLayout(root: HTMLDivElement, options: HomeworkExportOptions)
   const header = root.querySelector<HTMLElement>(".homework-export-header");
   const headerStyles = header ? getComputedStyle(header) : null;
   const headerHeight = (header?.offsetHeight ?? 0) + (headerStyles ? Number.parseFloat(headerStyles.marginBottom) || 0 : 0);
-  const boardHeight = Math.max(BOARD_MIN_HEIGHT, BOARD_PADDING * 2 + headerHeight + tallestGroupHeight);
+  const baseContentHeight = BOARD_BASE_HEIGHT - BOARD_PADDING * 2 - headerHeight;
+  const boardHeight = Math.max(BOARD_BASE_HEIGHT, BOARD_PADDING * 2 + headerHeight + tallestGroupHeight);
   root.style.minHeight = `${boardHeight}px`;
   root.style.height = `${boardHeight}px`;
-  const distribution = distributeMasonry(measuredGroups, Math.max(1, tallestGroupHeight), BOARD_GROUP_GAP);
+  const distribution = distributeMasonry(measuredGroups, Math.max(1, Math.max(baseContentHeight, tallestGroupHeight)), BOARD_GROUP_GAP);
   const columnCount = Math.max(1, distribution.columns.length);
   root.style.setProperty("--export-column-count", String(columnCount));
-  root.style.width = `${BOARD_PADDING * 2 + columnCount * Math.max(1, BOARD_COLUMN_WIDTH - BOARD_PADDING * 2) + Math.max(0, columnCount - 1) * BOARD_COLUMN_GAP}px`;
+  const naturalWidth = BOARD_PADDING * 2 + columnCount * panelWidth + Math.max(0, columnCount - 1) * BOARD_COLUMN_GAP;
+  root.style.width = `${Math.max(BOARD_BASE_WIDTH, naturalWidth)}px`;
   measure.remove();
 
   for (const distributedColumn of distribution.columns) {
@@ -220,8 +228,8 @@ function createHomeworkElement(homework: SubjectGroup["homeworks"][number]): HTM
     const tags = document.createElement("div");
     tags.className = "homework-export-tags";
     for (const tag of homework.tags) {
-      const tagElement = document.createElement("span");
-      tagElement.className = "homework-export-tag";
+      const tagElement = document.createElement("m3e-chip");
+      tagElement.setAttribute("variant", "outlined");
       tagElement.textContent = tag;
       tags.append(tagElement);
     }
@@ -290,6 +298,15 @@ function readColor(styles: CSSStyleDeclaration, property: string, fallback: stri
 async function waitForFonts(): Promise<void> {
   if (typeof document.fonts !== "undefined") await document.fonts.ready;
 }
+async function waitForM3eComponents(root: HTMLElement): Promise<void> {
+  const components = [...root.querySelectorAll<HTMLElement>("m3e-chip")];
+  await Promise.all(components.map((component) => {
+    const updateComplete = (component as HTMLElement & { updateComplete?: Promise<unknown> }).updateComplete;
+    return updateComplete ?? Promise.resolve();
+  }));
+  await waitForLayout();
+}
+
 
 function waitForLayout(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));

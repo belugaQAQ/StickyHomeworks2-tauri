@@ -484,7 +484,7 @@ onUnmounted(() => {
         aria-labelledby="sheetTitle"
       >
         <m3e-heading id="sheetTitle" slot="header" variant="title" size="large">更多</m3e-heading>
-        <m3e-action-list>
+        <m3e-action-list class="window-control-action-list">
           <m3e-list-action @click="openHomeworkExport">
             <m3e-icon slot="leading" name="image"></m3e-icon>
             <m3e-bottom-sheet-action>导出作业图片</m3e-bottom-sheet-action>

@@ -58,7 +58,7 @@ function normalizeWindowCoordinate(value: number | null): number | null {
 function normalizeWindowDimension(value: number | null): number | null {
   if (value === null || !Number.isFinite(value)) return null;
   const rounded = Math.round(value);
-  if (rounded < 1 || rounded > 4294967295) return null;
+  if (rounded < 240 || rounded > 4294967295) return null;
   return rounded;
 }
 

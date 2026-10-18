@@ -267,7 +267,7 @@ fn normalize_window_dimension(value: Option<f64>) -> Option<f64> {
     value
         .filter(|dimension| {
             dimension.is_finite()
-                && dimension.round() >= 1.0
+                && dimension.round() >= 240.0
                 && dimension.round() <= u32::MAX as f64
         })
         .map(f64::round)

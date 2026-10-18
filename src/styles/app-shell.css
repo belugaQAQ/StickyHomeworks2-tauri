@@ -16,7 +16,6 @@
   --m3e-drawer-container-color: var(--app-surface-background);
   --m3e-modal-drawer-container-color: var(--md-sys-color-surface-container);
   --m3e-modal-drawer-container-shape: var(--md-sys-shape-corner-large, 0.75rem);
-  --m3e-bottom-sheet-container-color: var(--md-sys-color-surface-container-high);
   --m3e-dialog-container-color: var(--md-sys-color-surface-container-high);
   --m3e-nav-menu-item-selected-container-color: var(--md-sys-color-secondary-container);
   --m3e-nav-menu-item-unselected-container-hover-color: var(--md-sys-color-surface-container-high);
@@ -81,6 +80,10 @@
 .window-control-error {
   margin: 0 1.5rem 1.25rem;
   color: var(--md-sys-color-error);
+}
+
+.window-control-action-list {
+  --m3e-list-item-container-color: transparent;
 }
 
 .navigation-panel {
@@ -574,7 +577,6 @@
 .homework-export-dialog {
   --m3e-dialog-min-width: min(28rem, calc(100vw - 2rem));
   --m3e-dialog-max-width: min(36rem, calc(100vw - 2rem));
-  --m3e-dialog-container-color: var(--md-sys-color-surface-container-high);
 }
 
 .homework-export-dialog::part(content) {
