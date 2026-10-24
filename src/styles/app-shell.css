@@ -1,10 +1,30 @@
 .app-frame {
-  --app-surface-background: color-mix(in srgb, var(--md-sys-color-background) var(--background-opacity, 100%), transparent);
-  --app-surface-low: color-mix(in srgb, var(--md-sys-color-surface-container-low) var(--background-opacity, 100%), transparent);
+  --app-surface-background: color-mix(
+    in srgb,
+    var(--md-sys-color-background) var(--background-opacity, 100%),
+    transparent
+  );
+  --app-surface-low: color-mix(
+    in srgb,
+    var(--md-sys-color-surface-container-low) var(--background-opacity, 100%),
+    transparent
+  );
   --app-surface: color-mix(in srgb, var(--md-sys-color-surface-container) var(--background-opacity, 100%), transparent);
-  --app-surface-high: color-mix(in srgb, var(--md-sys-color-surface-container-high) var(--background-opacity, 100%), transparent);
-  --app-surface-highest: color-mix(in srgb, var(--md-sys-color-surface-container-highest) var(--background-opacity, 100%), transparent);
-  --app-secondary-container: color-mix(in srgb, var(--md-sys-color-secondary-container) var(--background-opacity, 100%), transparent);
+  --app-surface-high: color-mix(
+    in srgb,
+    var(--md-sys-color-surface-container-high) var(--background-opacity, 100%),
+    transparent
+  );
+  --app-surface-highest: color-mix(
+    in srgb,
+    var(--md-sys-color-surface-container-highest) var(--background-opacity, 100%),
+    transparent
+  );
+  --app-secondary-container: color-mix(
+    in srgb,
+    var(--md-sys-color-secondary-container) var(--background-opacity, 100%),
+    transparent
+  );
   position: relative;
   display: flex;
   flex-direction: column;
@@ -19,7 +39,6 @@
   --m3e-dialog-container-color: var(--md-sys-color-surface-container-high);
   --m3e-nav-menu-item-selected-container-color: var(--md-sys-color-secondary-container);
   --m3e-nav-menu-item-unselected-container-hover-color: var(--md-sys-color-surface-container-high);
-
 }
 
 .app-drawer {
@@ -50,7 +69,6 @@
   min-height: 0;
   overflow: hidden;
 }
-
 
 .app-frame--window-unlocked {
   user-select: none;
@@ -193,19 +211,22 @@
   transform: none;
 }
 
-
 .settings-forward-enter-active,
 .settings-back-enter-active {
   transition:
-    opacity var(--md-sys-motion-duration-medium-2, 300ms) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1)),
-    transform var(--md-sys-motion-duration-medium-2, 300ms) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1));
+    opacity var(--md-sys-motion-duration-medium-2, 300ms)
+      var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1)),
+    transform var(--md-sys-motion-duration-medium-2, 300ms)
+      var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1));
 }
 
 .settings-forward-leave-active,
 .settings-back-leave-active {
   transition:
-    opacity var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15)),
-    transform var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15));
+    opacity var(--md-sys-motion-duration-short-4, 200ms)
+      var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15)),
+    transform var(--md-sys-motion-duration-short-4, 200ms)
+      var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15));
 }
 
 .settings-forward-enter-from,
@@ -222,23 +243,13 @@
 
 .route-fade-enter-active,
 .route-fade-leave-active {
-  transition: opacity var(--md-sys-motion-duration-short-3, 150ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1));
+  transition: opacity var(--md-sys-motion-duration-short-3, 150ms)
+    var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .route-fade-enter-from,
 .route-fade-leave-to {
   opacity: 0;
-}
-
-.route-static-enter-active,
-.route-static-leave-active {
-  transition: none;
-}
-
-.route-static-enter-from,
-.route-static-leave-to {
-  opacity: 1;
-  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -269,8 +280,10 @@
   opacity: 1;
   will-change: transform, opacity;
   transition:
-    transform var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
-    opacity var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    transform var(--md-sys-motion-duration-short-4, 200ms)
+      var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--md-sys-motion-duration-short-4, 200ms)
+      var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
     visibility 0s linear 0s;
 }
 
@@ -281,8 +294,10 @@
   transform: scale(0) translateZ(0);
   opacity: 0;
   transition:
-    transform var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
-    opacity var(--md-sys-motion-duration-short-4, 200ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    transform var(--md-sys-motion-duration-short-4, 200ms)
+      var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--md-sys-motion-duration-short-4, 200ms)
+      var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
     visibility 0s linear var(--md-sys-motion-duration-short-4, 200ms);
 }
 
@@ -311,7 +326,6 @@
   --m3e-dialog-min-width: min(40rem, calc(100vw - 2rem));
   --m3e-dialog-max-width: min(56rem, calc(100vw - 2rem));
 }
-
 
 .homework-editor {
   display: grid;
@@ -345,8 +359,7 @@
   transition:
     border-color var(--m3e-focus-ring-duration, 500ms)
       var(--md-sys-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1)),
-    box-shadow var(--m3e-focus-ring-duration, 500ms)
-      var(--md-sys-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1));
+    box-shadow var(--m3e-focus-ring-duration, 500ms) var(--md-sys-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1));
 }
 .homework-editor-content {
   margin-bottom: 0.5rem;
@@ -379,9 +392,9 @@
 }
 
 .homework-editor-content .ProseMirror {
- min-height: 5.5rem;
- height: max-content;
- overflow-wrap: anywhere;
+  min-height: 5.5rem;
+  height: max-content;
+  overflow-wrap: anywhere;
   color: inherit;
   font-size: 1rem;
   line-height: 1.35;
@@ -401,7 +414,6 @@
   transform: skewX(-6deg);
   transform-origin: 0 50%;
 }
-
 
 .homework-editor-content img {
   display: block;
@@ -476,17 +488,30 @@
 .homework-editor-toolbar-pages > .editor-toolbar-forward-leave-active,
 .homework-editor-toolbar-pages > .editor-toolbar-backward-enter-active,
 .homework-editor-toolbar-pages > .editor-toolbar-backward-leave-active {
-  transition: transform var(--md-sys-motion-duration-short-4, 250ms) var(--md-sys-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1)), opacity var(--md-sys-motion-duration-short-4, 250ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1));
+  transition:
+    transform var(--md-sys-motion-duration-short-4, 250ms)
+      var(--md-sys-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--md-sys-motion-duration-short-4, 250ms)
+      var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1));
   transform-origin: center;
 }
 .homework-editor-toolbar-pages > .editor-toolbar-forward-enter-from,
-.homework-editor-toolbar-pages > .editor-toolbar-backward-leave-to { opacity: 0; transform: translateX(35%) rotateY(-12deg); }
+.homework-editor-toolbar-pages > .editor-toolbar-backward-leave-to {
+  opacity: 0;
+  transform: translateX(35%) rotateY(-12deg);
+}
 .homework-editor-toolbar-pages > .editor-toolbar-forward-leave-to,
-.homework-editor-toolbar-pages > .editor-toolbar-backward-enter-from { opacity: 0; transform: translateX(-35%) rotateY(12deg); }
+.homework-editor-toolbar-pages > .editor-toolbar-backward-enter-from {
+  opacity: 0;
+  transform: translateX(-35%) rotateY(12deg);
+}
 .homework-editor-toolbar-pages > .editor-toolbar-forward-enter-to,
 .homework-editor-toolbar-pages > .editor-toolbar-forward-leave-from,
 .homework-editor-toolbar-pages > .editor-toolbar-backward-enter-to,
-.homework-editor-toolbar-pages > .editor-toolbar-backward-leave-from { opacity: 1; transform: translateX(0) rotateY(0); }
+.homework-editor-toolbar-pages > .editor-toolbar-backward-leave-from {
+  opacity: 1;
+  transform: translateX(0) rotateY(0);
+}
 
 .homework-editor-image-tools {
   display: grid;
@@ -498,13 +523,6 @@
   padding: 0.25rem;
   border-radius: var(--m3e-toolbar-rounded-shape, 0.75rem);
   background: var(--md-sys-color-surface-container-high);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .homework-editor-toolbar-pages > .editor-toolbar-page-enter-active,
-  .homework-editor-toolbar-pages > .editor-toolbar-page-leave-active {
-    transition-duration: 0.01ms;
-  }
 }
 
 .homework-editor-image-tools m3e-slider {
@@ -525,7 +543,6 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-
 
 .editor-tag-set {
   margin-top: -0.25rem;
@@ -558,13 +575,6 @@
 .homework-link-confirm-preview {
   display: grid;
   gap: 0.5rem;
-}
-.homework-link-confirm-title {
-  display: block;
-  overflow-wrap: anywhere;
-  font-size: 1.0625rem;
-  font-weight: 500;
-  line-height: 1.45;
 }
 .homework-link-confirm-value {
   display: block;

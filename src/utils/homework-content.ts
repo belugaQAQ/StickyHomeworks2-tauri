@@ -14,7 +14,6 @@ export function toHomeworkDisplayText(content: HomeworkContent | string): string
   return tiptapText(parsed.document.content);
 }
 
-
 export function toTiptapHtml(content: HomeworkContent | string): string {
   const parsed = parseHomeworkContent(content);
   if (parsed.kind === "plain-text") return escapeHtml(parsed.text).replace(/\n/g, "<br>");
@@ -34,18 +33,25 @@ export function isSafeHomeworkLink(value: string): boolean {
 }
 
 function flowDocumentText(xaml: string): string {
-  if (typeof DOMParser === "undefined") return xaml.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (typeof DOMParser === "undefined")
+    return xaml
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   const document = new DOMParser().parseFromString(xaml, "application/xml");
   if (document.querySelector("parsererror")) return xaml;
   return document.documentElement.textContent?.replace(/\s+/g, " ").trim() || "";
 }
 
 function tiptapText(nodes: TiptapNode[]): string {
-  return nodes.map((node) => {
-    if (node.type === "text") return node.text ?? "";
-    const text = tiptapText(node.content ?? []);
-    return node.type === "paragraph" || node.type === "heading" ? `${text}\n` : text;
-  }).join("").trim();
+  return nodes
+    .map((node) => {
+      if (node.type === "text") return node.text ?? "";
+      const text = tiptapText(node.content ?? []);
+      return node.type === "paragraph" || node.type === "heading" ? `${text}\n` : text;
+    })
+    .join("")
+    .trim();
 }
 
 function renderTiptapNode(node: TiptapNode): string {
@@ -55,7 +61,8 @@ function renderTiptapNode(node: TiptapNode): string {
       if (mark.type === "bold") html = `<strong>${html}</strong>`;
       else if (mark.type === "italic") html = `<em>${html}</em>`;
       else if (mark.type === "underline") html = `<u>${html}</u>`;
-      else if (mark.type === "link" && typeof mark.attrs?.href === "string" && isSafeHomeworkLink(mark.attrs.href)) html = `<a href="${escapeHtml(mark.attrs.href)}" rel="noopener noreferrer">${html}</a>`;
+      else if (mark.type === "link" && typeof mark.attrs?.href === "string" && isSafeHomeworkLink(mark.attrs.href))
+        html = `<a href="${escapeHtml(mark.attrs.href)}" rel="noopener noreferrer">${html}</a>`;
     }
     return html;
   }
@@ -76,7 +83,10 @@ function isAllowedHomeworkImageSource(value: string): boolean {
 }
 
 function escapeHtml(value: string): string {
-  return value.replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&#39;" })[character] ?? character);
+  return value.replace(
+    /[&<>\"']/g,
+    (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&#39;" })[character] ?? character,
+  );
 }
 
 export function isHomeworkExpired(dueTime: string): boolean {

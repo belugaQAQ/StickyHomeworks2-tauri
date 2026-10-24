@@ -154,12 +154,10 @@
   --m3e-list-item-leading-color: var(--md-sys-color-on-secondary-container);
 }
 
-
 .homework-item--expired {
   --m3e-list-item-label-text-color: var(--homework-expired-color, var(--md-sys-color-error));
   --m3e-list-item-leading-color: var(--homework-expired-color, var(--md-sys-color-error));
 }
-
 
 .homework-marker {
   display: block;
@@ -197,12 +195,10 @@
   margin-bottom: 0;
 }
 
-
 .homework-supporting-content {
   display: block;
   min-width: 0;
 }
-
 
 .homework-tags {
   display: flex;

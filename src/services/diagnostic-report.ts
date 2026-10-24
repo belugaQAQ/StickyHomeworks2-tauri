@@ -86,4 +86,3 @@ export function formatDiagnosticReport(
   }
   return lines.join("\n");
 }
-

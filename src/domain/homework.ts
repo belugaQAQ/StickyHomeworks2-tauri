@@ -31,9 +31,16 @@ export function normalizeHomework(homework: HomeworkRecord): HomeworkRecord {
   };
 }
 
-export function saveHomeworkRecord(data: AppData, homework: HomeworkRecord): AppData {
+export function saveHomeworkRecord(
+  data: AppData,
+  homework: HomeworkRecord,
+  mode: "create" | "update" = "update",
+): AppData {
   const normalized = normalizeHomework(homework);
   const position = data.homeworks.findIndex((item) => item.id === normalized.id);
+
+  if (position === -1 && mode === "update") return data;
+
   const homeworks = [...data.homeworks];
 
   if (position === -1) homeworks.push(normalized);
@@ -65,9 +72,8 @@ export function groupHomeworks(
 ): SubjectGroup[] {
   const groups = new Map<string, SubjectGroup>();
   for (const homework of homeworks) {
-
     const subject = homework.subject.trim() || "其它";
-    const group = groups.get(subject) ?? { id: homework.id, name: subject, homeworks: [] };
+    const group = groups.get(subject) ?? { id: subject, name: subject, homeworks: [] };
     group.homeworks.push({
       id: homework.id,
       content: toTiptapHtml(homework.content),

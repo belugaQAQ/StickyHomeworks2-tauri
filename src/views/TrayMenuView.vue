@@ -54,7 +54,13 @@ onUnmounted(() => {
           <m3e-list-item>
             显示主窗口
             <span slot="supporting-text">控制主窗口显示状态</span>
-            <m3e-switch slot="trailing" icons="selected" :checked="visible" aria-label="显示主窗口" @change="toggle"></m3e-switch>
+            <m3e-switch
+              slot="trailing"
+              icons="selected"
+              :checked="visible"
+              aria-label="显示主窗口"
+              @change="toggle"
+            ></m3e-switch>
           </m3e-list-item>
         </m3e-list>
         <m3e-action-list variant="segmented" class="tray-menu__actions">

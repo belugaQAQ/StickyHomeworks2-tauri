@@ -1,0 +1,12 @@
+# 统一仓库行尾：索引与工作区都用 LF，避免跨平台整文件 diff。
+* text=auto eol=lf
+
+# 二进制文件不做文本处理
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ttf binary
+*.ico binary
+*.icns binary

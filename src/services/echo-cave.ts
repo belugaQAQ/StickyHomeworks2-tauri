@@ -25,7 +25,9 @@ export class EchoCave {
       if (!Array.isArray(value)) throw new Error("响应不是回声数组");
       return shuffle(value.flatMap(normalizeEcho));
     } catch (error) {
-      await logWarn("echo.fetch.failed", "获取回声洞内容失败", undefined, { error: error instanceof Error ? error.message : String(error) });
+      await logWarn("echo.fetch.failed", "获取回声洞内容失败", undefined, {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }

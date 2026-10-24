@@ -1,17 +1,16 @@
 import { ref } from "vue";
-import { createRouter, createWebHashHistory, type RouteLocationNormalizedLoaded } from "vue-router";
+import {
+  createRouter,
+  createWebHashHistory,
+  type RouteLocationNormalizedLoaded,
+  type RouteRecordRaw,
+} from "vue-router";
+import { settingsSectionComponents, settingsRouteName, settingsSections } from "./settings/sections";
 import HomeworksView from "./views/HomeworksView.vue";
-import SettingsBoardView from "./views/SettingsBoardView.vue";
-import SettingsExpiryView from "./views/SettingsExpiryView.vue";
-import SettingsGeneralView from "./views/SettingsGeneralView.vue";
-import SettingsGlycoproteinView from "./views/SettingsGlycoproteinView.vue";
-import SettingsImportView from "./views/SettingsImportView.vue";
 import SettingsIndexView from "./views/SettingsIndexView.vue";
-import SettingsVocabularyView from "./views/SettingsVocabularyView.vue";
-import SettingsDiagnosticsView from "./views/SettingsDiagnosticsView.vue";
-import SettingsAboutView from "./views/SettingsAboutView.vue";
 import TemplatesView from "./views/TemplatesView.vue";
 import TrayMenuView from "./views/TrayMenuView.vue";
+import { SETTINGS_DETAIL_MIN_WIDTH } from "./ui/breakpoints";
 
 export type RouteTransitionName = "route-fade" | "settings-forward" | "settings-back" | "settings-detail";
 
@@ -20,6 +19,14 @@ declare module "vue-router" {
     settingsDepth?: number;
   }
 }
+
+/** `/settings/*` 详情路由由设置分区清单统一生成，路由名/路径/meta 与旧实现保持一致。 */
+const settingsDetailRoutes: RouteRecordRaw[] = settingsSections.map((section) => ({
+  path: section.path,
+  name: settingsRouteName(section),
+  component: settingsSectionComponents[section.path],
+  meta: { settingsDepth: section.depth },
+}));
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -32,16 +39,9 @@ export const router = createRouter({
       name: "settings",
       component: SettingsIndexView,
       meta: { settingsDepth: 0 },
-      beforeEnter: () => window.innerWidth > 700 ? "/settings/general" : true,
+      beforeEnter: () => (window.innerWidth > SETTINGS_DETAIL_MIN_WIDTH ? "/settings/general" : true),
     },
-    { path: "/settings/general", name: "settings-general", component: SettingsGeneralView, meta: { settingsDepth: 1 } },
-    { path: "/settings/glycoprotein", name: "settings-glycoprotein", component: SettingsGlycoproteinView, meta: { settingsDepth: 1 } },
-    { path: "/settings/import", name: "settings-import", component: SettingsImportView, meta: { settingsDepth: 1 } },
-    { path: "/settings/vocabulary", name: "settings-vocabulary", component: SettingsVocabularyView, meta: { settingsDepth: 1 } },
-    { path: "/settings/expiry", name: "settings-expiry", component: SettingsExpiryView, meta: { settingsDepth: 1 } },
-    { path: "/settings/board", name: "settings-board", component: SettingsBoardView, meta: { settingsDepth: 1 } },
-    { path: "/settings/diagnostics", name: "settings-diagnostics", component: SettingsDiagnosticsView, meta: { settingsDepth: 1 } },
-    { path: "/settings/about", name: "settings-about", component: SettingsAboutView, meta: { settingsDepth: 1 } },
+    ...settingsDetailRoutes,
     { path: "/:pathMatch(.*)*", redirect: "/" },
   ],
 });
@@ -52,7 +52,10 @@ router.afterEach((to, from) => {
   routeTransitionName.value = resolveRouteTransition(from, to);
 });
 
-function resolveRouteTransition(from: RouteLocationNormalizedLoaded, to: RouteLocationNormalizedLoaded): RouteTransitionName {
+function resolveRouteTransition(
+  from: RouteLocationNormalizedLoaded,
+  to: RouteLocationNormalizedLoaded,
+): RouteTransitionName {
   const fromDepth = from.meta.settingsDepth;
   const toDepth = to.meta.settingsDepth;
 

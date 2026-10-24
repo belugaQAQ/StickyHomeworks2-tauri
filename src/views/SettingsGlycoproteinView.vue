@@ -4,11 +4,7 @@ import { useAppContext } from "../app-context";
 import SettingsPage from "../components/SettingsPage.vue";
 import { glycoproteinNodeIdError } from "../domain/settings";
 import { useSettingsAutosave } from "../composables/useSettingsAutosave";
-import {
-  getGlycoproteinStatus,
-  listenGlycoproteinStatus,
-  type GlycoproteinStatus,
-} from "../services/glycoprotein";
+import { getGlycoproteinStatus, listenGlycoproteinStatus, type GlycoproteinStatus } from "../services/glycoprotein";
 import { logError, logInfo } from "../services/logging";
 import "../styles/settings-view.css";
 
@@ -43,9 +39,12 @@ const statusLabel = computed(() => {
   return status.value.lastError ? "启动失败" : "已停止";
 });
 
-watch(() => appData.value.settings.glycoproteinNodeId, (value) => {
-  nodeId.value = value;
-});
+watch(
+  () => appData.value.settings.glycoproteinNodeId,
+  (value) => {
+    nodeId.value = value;
+  },
+);
 
 async function refreshStatus() {
   try {
@@ -90,7 +89,6 @@ async function saveNodeId() {
     isSaving.value = false;
   }
 }
-
 
 onMounted(async () => {
   if (isMobileRuntime.value) return;
@@ -151,13 +149,20 @@ onBeforeUnmount(() => unlistenStatus?.());
           <dl class="settings-glycoprotein__status-list">
             <div class="settings-glycoprotein__status-row">
               <dt>状态</dt>
-              <dd><strong :class="{ 'settings-glycoprotein__running': status.running }">{{ statusLabel }}</strong></dd>
+              <dd>
+                <strong :class="{ 'settings-glycoprotein__running': status.running }">{{ statusLabel }}</strong>
+              </dd>
             </div>
             <div class="settings-glycoprotein__status-row">
               <dt>当前节点 ID</dt>
-              <dd><code>{{ status.nodeId || appData.settings.glycoproteinNodeId }}</code></dd>
+              <dd>
+                <code>{{ status.nodeId || appData.settings.glycoproteinNodeId }}</code>
+              </dd>
             </div>
-            <div v-if="status.socketDirectory" class="settings-glycoprotein__status-row settings-glycoprotein__status-row--path">
+            <div
+              v-if="status.socketDirectory"
+              class="settings-glycoprotein__status-row settings-glycoprotein__status-row--path"
+            >
               <dt>Socket 目录</dt>
               <dd>
                 <code :title="status.socketDirectory">

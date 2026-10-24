@@ -2,7 +2,8 @@
 import { useAppContext } from "../app-context";
 import HomeworkBoard from "./HomeworkBoard.vue";
 
-const { appData, homeworkGroups, isMobileLayout, isHomeworkFrozen, openEditHomework, requestDeleteHomework } = useAppContext();
+const { appData, homeworkGroups, isMobileLayout, isHomeworkFrozen, openEditHomework, requestDeleteHomework } =
+  useAppContext();
 </script>
 
 <template>

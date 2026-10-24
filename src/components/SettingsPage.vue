@@ -4,19 +4,9 @@ import { useRoute, useRouter } from "vue-router";
 import "../styles/settings-view.css";
 import { useAppContext } from "../app-context";
 import { getSettingsSidebarScrollTop, setSettingsSidebarScrollTop } from "../services/settings-sidebar-scroll";
+import { visibleSettingsSections } from "../settings/sections";
+import { SETTINGS_RIGHT_PANEL_MIN_WIDTH, SPLIT_LAYOUT_MIN_WIDTH, isAtLeast, isBelow } from "../ui/breakpoints";
 
-const RIGHT_PANEL_MIN_WIDTH = 950;
-const SPLIT_LAYOUT_MIN_WIDTH = 700;
-const settingsSections = [
-  { path: "/settings/general", icon: "tune", title: "通用", detail: "应用标题" },
-  { path: "/settings/vocabulary", icon: "category", title: "作业词库", detail: "科目和标签" },
-  { path: "/settings/expiry", icon: "event_busy", title: "过期作业", detail: "清理和标记" },
-  { path: "/settings/board", icon: "view_column", title: "看板", detail: "最大面板宽度" },
-  { path: "/settings/glycoprotein", icon: "hub", title: "Glycoprotein", detail: "本机节点与窗口控制", desktopOnly: true },
-  { path: "/settings/import", icon: "upload_file", title: "导入旧版数据", detail: "Profile.json 和 Settings.json" },
-  { path: "/settings/diagnostics", icon: "content_copy", title: "诊断信息", detail: "反馈、诊断包与运行日志" },
-  { path: "/settings/about", icon: "info", title: "关于", detail: "版本、项目与许可证" },
-];
 const { title, headingId, error, showBack } = defineProps<{
   title: string;
   headingId: string;
@@ -28,24 +18,22 @@ const route = useRoute();
 const { isMobileRuntime } = useAppContext();
 const viewportWidth = ref(0);
 const navigationList = ref<HTMLElement | null>(null);
-const visibleSettingsSections = computed(() =>
-  settingsSections.filter((section) => !section.desktopOnly || !isMobileRuntime.value),
+const visibleSections = computed(() => visibleSettingsSections(isMobileRuntime.value));
+
+const isNarrowSplitLayout = computed(
+  () => !isMobileRuntime.value && isBelow(viewportWidth.value, SPLIT_LAYOUT_MIN_WIDTH),
 );
 
-
-const isNarrowSplitLayout = computed(() =>
-  !isMobileRuntime.value && viewportWidth.value > 0 && viewportWidth.value < SPLIT_LAYOUT_MIN_WIDTH,
+const isRightPanelInsufficient = computed(
+  () =>
+    !isMobileRuntime.value &&
+    isAtLeast(viewportWidth.value, SPLIT_LAYOUT_MIN_WIDTH) &&
+    isBelow(viewportWidth.value, SETTINGS_RIGHT_PANEL_MIN_WIDTH),
 );
 
-const isRightPanelInsufficient = computed(() =>
-  !isMobileRuntime.value && viewportWidth.value >= SPLIT_LAYOUT_MIN_WIDTH && viewportWidth.value < RIGHT_PANEL_MIN_WIDTH,
+const isMobileNarrowLayout = computed(
+  () => isMobileRuntime.value && isBelow(viewportWidth.value, SETTINGS_RIGHT_PANEL_MIN_WIDTH),
 );
-
-const isMobileNarrowLayout = computed(() =>
-  isMobileRuntime.value && viewportWidth.value > 0 && viewportWidth.value < RIGHT_PANEL_MIN_WIDTH,
-);
-
-
 
 function updateAvailableWidth() {
   viewportWidth.value = window.innerWidth;
@@ -84,14 +72,22 @@ onUnmounted(() => {
 <template>
   <section
     class="settings-page"
-    :class="{ 'settings-page--split': showBack, 'settings-page--mobile': isMobileNarrowLayout, 'settings-page--narrow': isNarrowSplitLayout }"
+    :class="{
+      'settings-page--split': showBack,
+      'settings-page--mobile': isMobileNarrowLayout,
+      'settings-page--narrow': isNarrowSplitLayout,
+    }"
   >
     <div v-if="showBack" class="settings-layout">
       <nav ref="navigationList" class="settings-layout__sidebar" aria-label="设置分类">
         <m3e-heading variant="title" size="large" level="2">设置</m3e-heading>
-        <m3e-action-list variant="segmented" class="settings-navigation__list" @click.capture="saveNavigationScrollPosition">
+        <m3e-action-list
+          variant="segmented"
+          class="settings-navigation__list"
+          @click.capture="saveNavigationScrollPosition"
+        >
           <m3e-list-action
-            v-for="section in visibleSettingsSections"
+            v-for="section in visibleSections"
             :key="section.path"
             class="settings-navigation__item"
             :class="{ 'settings-navigation__item--active': route.path === section.path }"
@@ -107,7 +103,12 @@ onUnmounted(() => {
       <section class="settings-layout__content">
         <div class="settings-layout__content-inner">
           <header class="settings-page__header">
-            <m3e-icon-button v-if="showBack && (isMobileNarrowLayout || isNarrowSplitLayout)" aria-label="返回设置" title="返回设置" @click="router.replace('/settings')">
+            <m3e-icon-button
+              v-if="showBack && (isMobileNarrowLayout || isNarrowSplitLayout)"
+              aria-label="返回设置"
+              title="返回设置"
+              @click="router.replace('/settings')"
+            >
               <m3e-icon name="arrow_back"></m3e-icon>
             </m3e-icon-button>
             <m3e-heading :id="headingId" variant="headline" size="large" level="1">{{ title }}</m3e-heading>
@@ -115,19 +116,23 @@ onUnmounted(() => {
           <slot />
           <p v-if="error" class="editor-error" role="alert">{{ error }}</p>
         </div>
-      <Teleport to="body">
-        <Transition name="settings-insufficient">
-          <div v-if="isRightPanelInsufficient" class="settings-insufficient-overlay" role="alert" aria-live="polite">
-            <m3e-card variant="elevated" class="settings-insufficient-content">
-              <div slot="header" class="settings-insufficient-header">
-                <m3e-heading class="settings-insufficient-title" variant="title" size="large" level="2">窗口空间不足</m3e-heading>
-                <m3e-icon class="settings-insufficient-arrow" name="arrow_forward" aria-hidden="true"></m3e-icon>
-              </div>
-              <p slot="content" class="settings-insufficient-desc">当前窗口宽度不足以舒适显示设置内容，请继续缩放窗口后使用。</p>
-            </m3e-card>
-          </div>
-        </Transition>
-      </Teleport>
+        <Teleport to="body">
+          <Transition name="settings-insufficient">
+            <div v-if="isRightPanelInsufficient" class="settings-insufficient-overlay" role="alert" aria-live="polite">
+              <m3e-card variant="elevated" class="settings-insufficient-content">
+                <div slot="header" class="settings-insufficient-header">
+                  <m3e-heading class="settings-insufficient-title" variant="title" size="large" level="2"
+                    >窗口空间不足</m3e-heading
+                  >
+                  <m3e-icon class="settings-insufficient-arrow" name="arrow_forward" aria-hidden="true"></m3e-icon>
+                </div>
+                <p slot="content" class="settings-insufficient-desc">
+                  当前窗口宽度不足以舒适显示设置内容，请继续缩放窗口后使用。
+                </p>
+              </m3e-card>
+            </div>
+          </Transition>
+        </Teleport>
       </section>
     </div>
 

@@ -3,21 +3,17 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { AppData } from "../types/app-data";
 import { createRequestId, getBrowserLogEntries } from "./logging";
 import { clearPersistedDiagnosticLogs, exportDiagnosticBundleToFile } from "./platform-adapter";
-import {
-  collectDiagnosticEnvironment,
-  formatDiagnosticReport,
-  type DiagnosticDisclosure,
-} from "./diagnostic-report";
+import { collectDiagnosticEnvironment, formatDiagnosticReport, type DiagnosticDisclosure } from "./diagnostic-report";
 
-export type DiagnosticErrorCode =
-  | "cancelled"
-  | "clipboard-unavailable"
-  | "report-failed"
-  | "export-failed";
+export type DiagnosticErrorCode = "cancelled" | "clipboard-unavailable" | "report-failed" | "export-failed";
 
 export class DiagnosticError extends Error {
   readonly cause?: unknown;
-  constructor(public readonly code: DiagnosticErrorCode, message: string, cause?: unknown) {
+  constructor(
+    public readonly code: DiagnosticErrorCode,
+    message: string,
+    cause?: unknown,
+  ) {
     super(message);
     this.cause = cause;
     this.name = "DiagnosticError";

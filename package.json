@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "format:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
-    "@m3e/icons": "^1.0.20",
     "@m3e/web": "^2.10.0",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-autostart": "^2.7.0",
@@ -35,6 +37,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.12.3",
     "@vitejs/plugin-vue": "^5.2.4",
+    "prettier": "^3.9.10",
     "typescript": "~5.6.3",
     "vite": "^6.4.4",
     "vue-tsc": "^2.2.12"

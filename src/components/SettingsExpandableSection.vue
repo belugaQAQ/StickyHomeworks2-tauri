@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from "vue";
+import { hideM3eExpansionHeaderFromTabOrder } from "../m3e-internals";
 import "../styles/settings-view.css";
 
 type ExpansionPanelElement = HTMLElement & { updateComplete: Promise<boolean> };
@@ -10,7 +11,9 @@ const root = ref<HTMLElement | null>(null);
 
 function preventExpansionToggle(event: Event) {
   const path = event.composedPath();
-  const isPanelHeaderEvent = path.some((node) => node instanceof HTMLElement && node.localName === "m3e-expansion-header");
+  const isPanelHeaderEvent = path.some(
+    (node) => node instanceof HTMLElement && node.localName === "m3e-expansion-header",
+  );
   const isSwitchEvent = path.some((node) => node instanceof HTMLElement && node.localName === "m3e-switch");
   if (isPanelHeaderEvent && !isSwitchEvent) event.stopPropagation();
 }
@@ -24,28 +27,34 @@ async function removePanelHeaderFromTabOrder() {
   const panel = root.value?.querySelector("m3e-expansion-panel") as ExpansionPanelElement | null;
   if (!panel) return;
   await panel.updateComplete;
-  const header = panel.shadowRoot?.querySelector<HTMLElement>("m3e-expansion-header");
-  if (header) header.tabIndex = -1;
+  // Shadow DOM 访问统一走 m3e-internals（结构变化时静默退化，不阻断设置页）。
+  hideM3eExpansionHeaderFromTabOrder(panel);
 }
 
 onMounted(() => void removePanelHeaderFromTabOrder());
 </script>
 
 <template>
-  <div ref="root" class="settings-expandable-section" @click.capture="preventExpansionToggle" @keydown.capture="preventExpansionToggle">
+  <div
+    ref="root"
+    class="settings-expandable-section"
+    @click.capture="preventExpansionToggle"
+    @keydown.capture="preventExpansionToggle"
+  >
     <m3e-expansion-panel class="settings-expiry-panel" hide-toggle :open="props.open">
       <div class="settings-expiry-panel__header" slot="header" @click.stop @keydown.stop>
         <span class="settings-expiry-panel__title"><slot name="title"></slot></span>
         <small><slot name="description"></slot></small>
-        <m3e-switch aria-label="切换展开状态" icons="selected" :checked="props.open" @click.stop @keydown.stop @change="handleSwitchChange"></m3e-switch>
+        <m3e-switch
+          aria-label="切换展开状态"
+          icons="selected"
+          :checked="props.open"
+          @click.stop
+          @keydown.stop
+          @change="handleSwitchChange"
+        ></m3e-switch>
       </div>
       <slot></slot>
     </m3e-expansion-panel>
   </div>
 </template>
-
-<style>
-.settings-expandable-section__content {
-  display: contents;
-}
-</style>

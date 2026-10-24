@@ -20,10 +20,6 @@ export function normalizeSettings(settings: AppSettings): AppSettings {
     glycoproteinNodeId: settings.glycoproteinNodeId.trim() || createGlycoproteinNodeId(),
     windowVisible: Boolean(settings.windowVisible),
     windowTopmost,
-    windowX: normalizeWindowCoordinate(settings.windowX),
-    windowY: normalizeWindowCoordinate(settings.windowY),
-    windowWidth: normalizeWindowDimension(settings.windowWidth),
-    windowHeight: normalizeWindowDimension(settings.windowHeight),
   };
 }
 
@@ -45,21 +41,9 @@ export function glycoproteinNodeIdError(value: string): string {
     return /[<>:"/\\|?*]/.test(character) || codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
   });
   if (hasInvalidCharacter) {
-    return "节点 ID 不能包含控制字符或 < > : \" / \\ | ? *。";
+    return '节点 ID 不能包含控制字符或 < > : " / \\ | ? *。';
   }
   return "";
-}
-
-function normalizeWindowCoordinate(value: number | null): number | null {
-  if (value === null || !Number.isFinite(value) || value < -2147483648 || value > 2147483647) return null;
-  return Math.round(value);
-}
-
-function normalizeWindowDimension(value: number | null): number | null {
-  if (value === null || !Number.isFinite(value)) return null;
-  const rounded = Math.round(value);
-  if (rounded < 240 || rounded > 4294967295) return null;
-  return rounded;
 }
 
 export function updateAppSettings(data: AppData, mutate: SettingsMutator): AppData {

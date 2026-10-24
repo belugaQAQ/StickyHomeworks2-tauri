@@ -15,17 +15,9 @@ export type GlycoproteinStatus = {
   lastError: string | null;
 };
 
-export type GlycoproteinWindowSettingsPatch = Partial<Pick<
-  AppSettings,
-  | "title"
-  | "alwaysOnBottom"
-  | "windowVisible"
-  | "windowTopmost"
-  | "windowX"
-  | "windowY"
-  | "windowWidth"
-  | "windowHeight"
->>;
+export type GlycoproteinWindowSettingsPatch = Partial<
+  Pick<AppSettings, "title" | "alwaysOnBottom" | "windowVisible" | "windowTopmost">
+>;
 
 const unsupportedStatus: GlycoproteinStatus = {
   supported: false,
@@ -48,9 +40,7 @@ export async function getGlycoproteinStatus(): Promise<GlycoproteinStatus> {
   return invoke<GlycoproteinStatus>("glycoprotein_status");
 }
 
-export async function listenGlycoproteinStatus(
-  handler: (status: GlycoproteinStatus) => void,
-): Promise<UnlistenFn> {
+export async function listenGlycoproteinStatus(handler: (status: GlycoproteinStatus) => void): Promise<UnlistenFn> {
   if (!isTauri()) return () => undefined;
   return listen<GlycoproteinStatus>(glycoproteinStatusEvent, ({ payload }) => handler(payload));
 }

@@ -5,7 +5,11 @@ import type { SubjectGroup } from "../types/homework-board";
 
 export type { SubjectGroup } from "../types/homework-board";
 
-export function useHomeworkMasonry(groups: Ref<SubjectGroup[]>, mobileLayout: Ref<boolean>, homeworkScale: Ref<number>) {
+export function useHomeworkMasonry(
+  groups: Ref<SubjectGroup[]>,
+  mobileLayout: Ref<boolean>,
+  homeworkScale: Ref<number>,
+) {
   const boardElement = ref<HTMLElement | null>(null);
   const scrollElement = ref<HTMLElement | null>(null);
   const masonryColumns = ref<SubjectGroup[][]>([groups.value]);

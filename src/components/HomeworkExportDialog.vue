@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { nextTick, ref } from "vue";
+import { M3eSnackbar } from "@m3e/web/all";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
-import {
-  createHomeworkExportFilename,
-  exportHomeworkImage,
-  saveHomeworkExport,
-} from "../services/homework-export";
+import { prepareM3eDialog } from "../m3e-internals";
+import { createHomeworkExportFilename, exportHomeworkImage, saveHomeworkExport } from "../services/homework-export";
 import type { SubjectGroup } from "../types/homework-board";
 import type { HomeworkExportLayout, HomeworkExportPixelRatio } from "../types/homework-export";
 
@@ -34,15 +32,14 @@ const layoutOptions = [
 
 useWebKitGtkDialogExit(dialog);
 
-function prepareDialog() {
-  const root = dialog.value?.shadowRoot;
-  const base = root?.querySelector<HTMLDialogElement>(".base");
-  const content = root?.querySelector<HTMLElement>(".content");
-  if (!base || !content) return;
-  base.style.maxHeight = "calc(100dvh - 2rem)";
-  content.style.flex = "1 1 auto";
-  content.style.minHeight = "0";
-  content.style.overflow = "auto";
+/**
+ * 导出渲染期间不读实时数据。
+ *
+ * 不能用 `structuredClone`：`SubjectGroup.homeworks[].tags` 是 Vue 响应式代理数组，
+ * 结构化克隆会抛 `DataCloneError`。这里的内容都是纯文本/字符串数组，JSON 往返足够。
+ */
+function cloneGroups(groups: SubjectGroup[]): SubjectGroup[] {
+  return JSON.parse(JSON.stringify(groups)) as SubjectGroup[];
 }
 
 function show() {
@@ -50,7 +47,7 @@ function show() {
   pixelRatio.value = 2;
   if (!props.groups.length) M3eSnackbar.open("没有可导出的作业。");
   void nextTick(() => {
-    void Promise.resolve(dialog.value?.show()).then(prepareDialog);
+    void Promise.resolve(dialog.value?.show()).then(() => prepareM3eDialog(dialog.value));
   });
 }
 
@@ -88,7 +85,7 @@ async function exportImage() {
     M3eSnackbar.open("准备中");
     await nextTick();
     M3eSnackbar.open("渲染中");
-    const exportGroups = JSON.parse(JSON.stringify(props.groups)) as SubjectGroup[];
+    const exportGroups = cloneGroups(props.groups);
     const result = await exportHomeworkImage({
       layout: layout.value,
       pixelRatio: pixelRatio.value,

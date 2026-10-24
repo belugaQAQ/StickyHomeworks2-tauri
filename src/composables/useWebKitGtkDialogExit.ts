@@ -79,7 +79,11 @@ export function useWebKitGtkDialogExit(dialog: Ref<DialogRefElement | null>) {
   onMounted(async () => {
     const host = dialog.value;
     if (host) exitStates.set(host, { enabled: false, resolve: null });
-    try { enabled = await invoke<boolean>("webkitgtk_dialog_exit_workaround_required"); } catch { enabled = false; }
+    try {
+      enabled = await invoke<boolean>("webkitgtk_dialog_exit_workaround_required");
+    } catch {
+      enabled = false;
+    }
     if (host) exitStates.get(host)!.enabled = enabled;
     dialog.value?.addEventListener("closing", handleClosing);
   });

@@ -4,14 +4,18 @@ import { removeGlobalTag, type SettingsMutator, updateAppSettings } from "../dom
 import { importLegacyData as importLegacyAppData, loadAppData, saveAppData } from "../services/app-data";
 import { createRequestId, logError, logInfo } from "../services/logging";
 import { createDefaultAppData, type AppData, type HomeworkRecord, type LegacyImportResult } from "../types/app-data";
-import { createSerialCommitQueue } from "./serialCommitQueue";
+import { COMMIT_TIMEOUT_MESSAGE, createSerialCommitQueue } from "./serialCommitQueue";
 
 type AppDataMutator = (data: AppData) => AppData;
 
 type HomeworkStoreDependencies = {
   loadData: () => Promise<AppData>;
   saveData: (data: AppData, requestId?: string) => Promise<AppData | void>;
-  importData: (profileContents: string | undefined, settingsContents: string, requestId?: string) => Promise<LegacyImportResult>;
+  importData: (
+    profileContents: string | undefined,
+    settingsContents: string,
+    requestId?: string,
+  ) => Promise<LegacyImportResult>;
 };
 
 export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies> = {}) {
@@ -20,15 +24,15 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
   const importData = dependencies.importData ?? importLegacyAppData;
   const appData = ref(createDefaultAppData());
   const homeworkGroups = computed(() => groupHomeworks(appData.value.homeworks, appData.value.settings));
-  const enqueueCommit = createSerialCommitQueue();
+  const enqueueCommit = createSerialCommitQueue({ timeoutMs: 20000 });
 
   async function load() {
     appData.value = await loadData();
   }
 
   function commit(operation: string, mutate: AppDataMutator) {
+    const requestId = createRequestId(operation);
     return enqueueCommit(async () => {
-      const requestId = createRequestId(operation);
       const before = appData.value;
       await logInfo(`${operation}.start`, "应用数据变更开始", requestId);
       try {
@@ -37,7 +41,7 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
           await logInfo(`${operation}.noop`, "应用数据无需变更", requestId);
           return;
         }
-        const savedData = await saveData(nextData, requestId) ?? nextData;
+        const savedData = (await saveData(nextData, requestId)) ?? nextData;
         appData.value = savedData;
         await logInfo(`${operation}.success`, "应用数据变更已提交", requestId, {
           homeworkCountBefore: before.homeworks.length,
@@ -47,11 +51,16 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
         await logError(`${operation}.failure`, error, requestId);
         throw error;
       }
+    }).catch(async (error) => {
+      if (error instanceof Error && error.message === COMMIT_TIMEOUT_MESSAGE) {
+        await logError(`${operation}.timeout`, error, requestId);
+      }
+      throw error;
     });
   }
 
-  function saveHomework(homework: HomeworkRecord) {
-    return commit("homework.save", (data) => saveHomeworkRecord(data, homework));
+  function saveHomework(homework: HomeworkRecord, isNew = false) {
+    return commit("homework.save", (data) => saveHomeworkRecord(data, homework, isNew ? "create" : "update"));
   }
 
   function deleteHomework(homeworkId: string) {
@@ -84,5 +93,14 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     });
   }
 
-  return { appData, homeworkGroups, load, saveHomework, deleteHomework, updateSettings, deleteGlobalTag, importLegacyData };
+  return {
+    appData,
+    homeworkGroups,
+    load,
+    saveHomework,
+    deleteHomework,
+    updateSettings,
+    deleteGlobalTag,
+    importLegacyData,
+  };
 }

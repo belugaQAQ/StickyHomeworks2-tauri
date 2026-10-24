@@ -17,9 +17,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
-[features]
-local-tests = []
-
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
@@ -31,9 +28,14 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-autostart = "2"
 zip = "2"
+base64 = "0.22"
+# 日志时间戳使用 RFC 3339（logger 在移动端也会编译，因此不能只放在桌面依赖组）
+chrono = "0.4"
 
 [target.'cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))'.dependencies]
-chrono = "0.4"
 glycoprotein = "=0.1.0"
 schemars = "1"
 tokio = { version = "1", features = ["sync"] }
+tauri-plugin-single-instance = "2"
+# 窗口位置/尺寸/最大化由官方插件持久化，取代自己写 settings 的几何字段
+tauri-plugin-window-state = "2"

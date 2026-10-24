@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { M3eSnackbar } from "@m3e/web/all";
 import { openExternalHomeworkLink } from "../services/external-link";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 type DialogElement = HTMLElement & {
@@ -29,7 +30,9 @@ async function closeAndClear() {
   if (!closePromise) {
     closePromise = hideWebKitGtkDialog(dialog.value)
       .then(clearContent)
-      .finally(() => { closePromise = null; });
+      .finally(() => {
+        closePromise = null;
+      });
   }
   await closePromise;
 }

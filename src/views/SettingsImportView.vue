@@ -43,12 +43,18 @@ function selectSettings() {
 
 function updateProfile(event: Event) {
   profileFile.value = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
-  logInfo(profileFile.value ? "legacy.import.profile.selected" : "legacy.import.profile.cleared", profileFile.value ? "已选择 Profile.json" : "已清除 Profile.json 选择");
+  logInfo(
+    profileFile.value ? "legacy.import.profile.selected" : "legacy.import.profile.cleared",
+    profileFile.value ? "已选择 Profile.json" : "已清除 Profile.json 选择",
+  );
 }
 
 function updateSettings(event: Event) {
   settingsFile.value = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
-  logInfo(settingsFile.value ? "legacy.import.settings.selected" : "legacy.import.settings.cleared", settingsFile.value ? "已选择 Settings.json" : "已清除 Settings.json 选择");
+  logInfo(
+    settingsFile.value ? "legacy.import.settings.selected" : "legacy.import.settings.cleared",
+    settingsFile.value ? "已选择 Settings.json" : "已清除 Settings.json 选择",
+  );
 }
 
 function requestImport() {
@@ -72,10 +78,7 @@ async function confirmImport() {
   let profileContents: string | undefined;
   let settingsContents: string;
   try {
-    [profileContents, settingsContents] = await Promise.all([
-      profileFile.value?.text(),
-      settingsFile.value.text(),
-    ]);
+    [profileContents, settingsContents] = await Promise.all([profileFile.value?.text(), settingsFile.value.text()]);
   } catch (error) {
     logError("legacy.import.file.read", error);
     M3eSnackbar.open("无法读取所选文件，请确认文件可访问后重试。");
@@ -109,8 +112,20 @@ async function confirmImport() {
   <SettingsPage title="导入旧版数据" heading-id="settings-import-title" :error="settingsError" show-back>
     <section class="settings-group settings-import" aria-labelledby="settings-import-files-title">
       <m3e-heading id="settings-import-files-title" variant="title" size="large" level="2">选择文件</m3e-heading>
-      <input ref="profileInput" class="settings-file-input" type="file" accept="application/json,.json" @change="updateProfile" />
-      <input ref="settingsInput" class="settings-file-input" type="file" accept="application/json,.json" @change="updateSettings" />
+      <input
+        ref="profileInput"
+        class="settings-file-input"
+        type="file"
+        accept="application/json,.json"
+        @change="updateProfile"
+      />
+      <input
+        ref="settingsInput"
+        class="settings-file-input"
+        type="file"
+        accept="application/json,.json"
+        @change="updateSettings"
+      />
       <m3e-list class="settings-control-list">
         <m3e-list-item class="settings-control-list__item">
           Profile.json（可选）
@@ -140,7 +155,11 @@ async function confirmImport() {
 
     <m3e-dialog ref="confirmDialog" alert disable-close>
       <m3e-heading slot="header" variant="headline" size="small" level="2">导入旧版数据？</m3e-heading>
-      {{ profileFile ? "导入会替换当前的作业和设置，并导入标签和科目，无法撤销。" : "导入会覆盖当前设置，保留现有作业，并导入标签和科目。" }}
+      {{
+        profileFile
+          ? "导入会替换当前的作业和设置，并导入标签和科目，无法撤销。"
+          : "导入会覆盖当前设置，保留现有作业，并导入标签和科目。"
+      }}
       <div slot="actions" end>
         <m3e-button variant="text" :disabled="isImporting" @click="closeConfirmDialog">取消</m3e-button>
         <m3e-button variant="filled" :disabled="isImporting" @click="confirmImport">导入并替换</m3e-button>

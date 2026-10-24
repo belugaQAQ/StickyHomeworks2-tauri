@@ -32,10 +32,7 @@ export type LegacyFlowDocumentXamlContent = {
   xaml: string;
 };
 
-export type HomeworkContent =
-  | PlainTextHomeworkContent
-  | TiptapHomeworkContent
-  | LegacyFlowDocumentXamlContent;
+export type HomeworkContent = PlainTextHomeworkContent | TiptapHomeworkContent | LegacyFlowDocumentXamlContent;
 
 export function isHomeworkContent(value: unknown): value is HomeworkContent {
   if (!isRecord(value)) return false;
@@ -45,9 +42,7 @@ export function isHomeworkContent(value: unknown): value is HomeworkContent {
   if (kind === "legacy-flowdocument-xaml") return typeof value.xaml === "string";
   if (kind !== "tiptap-json") return false;
 
-  return value.version === undefined || value.version === 1
-    ? isTiptapDocument(value.document)
-    : false;
+  return value.version === undefined || value.version === 1 ? isTiptapDocument(value.document) : false;
 }
 
 /** Reads frontend content, Rust DTO content, and pre-migration strings. */
@@ -78,13 +73,15 @@ export function parseHomeworkContent(value: unknown): HomeworkContent {
 export function serializeHomeworkContent(content: HomeworkContent): string {
   const parsed = parseHomeworkContent(content);
   if (parsed.kind === "plain-text") return JSON.stringify({ type: "plain-text", text: parsed.text });
-  if (parsed.kind === "legacy-flowdocument-xaml") return JSON.stringify({ type: "legacy-flowdocument-xaml", xaml: parsed.xaml });
+  if (parsed.kind === "legacy-flowdocument-xaml")
+    return JSON.stringify({ type: "legacy-flowdocument-xaml", xaml: parsed.xaml });
   return JSON.stringify({ type: "tiptap-json@1", document: parsed.document });
 }
 
 function contentKind(value: Record<string, any>): HomeworkContent["kind"] | null {
   if (value.kind === "plain-text" || value.type === "plain-text") return "plain-text";
-  if (value.kind === "legacy-flowdocument-xaml" || value.type === "legacy-flowdocument-xaml") return "legacy-flowdocument-xaml";
+  if (value.kind === "legacy-flowdocument-xaml" || value.type === "legacy-flowdocument-xaml")
+    return "legacy-flowdocument-xaml";
   if (value.kind === "tiptap-json" || value.type === "tiptap-json@1") return "tiptap-json";
   return null;
 }

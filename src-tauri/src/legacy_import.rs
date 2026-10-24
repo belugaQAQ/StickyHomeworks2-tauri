@@ -1,8 +1,6 @@
 use serde::Deserialize;
 
-use crate::data::{
-    normalize_app_data, normalize_settings, AppData, AppSettings, HomeworkContent, OTHER_SUBJECT,
-};
+use crate::data::{normalize_app_data, normalize_settings, AppData, AppSettings, HomeworkContent, OTHER_SUBJECT};
 
 #[derive(Debug)]
 pub(crate) struct LegacyImport {
@@ -24,8 +22,7 @@ pub(crate) fn import_legacy_data_from_sources(
 
     data.settings = read_legacy_settings_source(settings_source)?;
     normalize_settings(&mut data.settings);
-    let (removed_tag_reference_count, replaced_subject_count) =
-        reconcile_homework_vocabulary(&mut data);
+    let (removed_tag_reference_count, replaced_subject_count) = reconcile_homework_vocabulary(&mut data);
     normalize_app_data(&mut data);
 
     Ok(LegacyImport {
@@ -43,12 +40,7 @@ fn import_profile(source: &str) -> Result<(AppData, usize), String> {
     let rich_text_count = data
         .homeworks
         .iter()
-        .filter(|homework| {
-            matches!(
-                homework.content,
-                HomeworkContent::LegacyFlowDocumentXaml { .. }
-            )
-        })
+        .filter(|homework| matches!(homework.content, HomeworkContent::LegacyFlowDocumentXaml { .. }))
         .count();
     Ok((data, rich_text_count))
 }
@@ -68,13 +60,7 @@ fn reconcile_homework_vocabulary(data: &mut AppData) -> (usize, usize) {
         }
     }
 
-    if replaced_subject_count > 0
-        && !data
-            .settings
-            .subjects
-            .iter()
-            .any(|subject| subject == OTHER_SUBJECT)
-    {
+    if replaced_subject_count > 0 && !data.settings.subjects.iter().any(|subject| subject == OTHER_SUBJECT) {
         data.settings.subjects.push(OTHER_SUBJECT.to_owned());
     }
 
@@ -83,9 +69,7 @@ fn reconcile_homework_vocabulary(data: &mut AppData) -> (usize, usize) {
 
 fn read_legacy_settings_source(source: &str) -> Result<AppSettings, String> {
     let value: serde_json::Value = parse_json(source, "旧 Settings.json")?;
-    let object = value
-        .as_object()
-        .ok_or("旧 Settings.json 的根节点必须是对象")?;
+    let object = value.as_object().ok_or("旧 Settings.json 的根节点必须是对象")?;
     let mut settings = AppSettings::default();
 
     if let Some(value) = object.get("Title").and_then(serde_json::Value::as_str) {
@@ -99,69 +83,51 @@ fn read_legacy_settings_source(source: &str) -> Result<AppSettings, String> {
     }
     if let Some(value) = object
         .get("Autooutwork")
+        .or_else(|| object.get("AutoOutwork"))
         .and_then(serde_json::Value::as_bool)
     {
         settings.auto_outwork = value;
     }
-    if let Some(value) = object
-        .get("DelayedCleanupEnabled")
-        .and_then(serde_json::Value::as_bool)
-    {
+    if let Some(value) = object.get("AutoStart").and_then(serde_json::Value::as_bool) {
+        settings.auto_start = value;
+    }
+    if let Some(value) = object.get("BackgroundOpacity").and_then(serde_json::Value::as_f64) {
+        settings.background_opacity = value;
+    }
+    if let Some(value) = object.get("HomeworkScale").and_then(serde_json::Value::as_f64) {
+        settings.homework_scale = value;
+    }
+    if let Some(value) = object.get("DelayedCleanupEnabled").and_then(serde_json::Value::as_bool) {
         settings.delayed_cleanup_enabled = value;
     }
-    if let Some(value) = object
-        .get("IsExpiredMarkEnabled")
-        .and_then(serde_json::Value::as_bool)
-    {
+    if let Some(value) = object.get("IsExpiredMarkEnabled").and_then(serde_json::Value::as_bool) {
         settings.is_expired_mark_enabled = value;
     }
-    if let Some(value) = object
-        .get("ExpiredMarkColor")
-        .and_then(serde_json::Value::as_str)
-    {
+    if let Some(value) = object.get("ExpiredMarkColor").and_then(serde_json::Value::as_str) {
         settings.expired_mark_color = value.to_owned();
     }
-    if let Some(value) = object
-        .get("MaxPanelWidth")
-        .and_then(serde_json::Value::as_f64)
-    {
+    if let Some(value) = object.get("MaxPanelWidth").and_then(serde_json::Value::as_f64) {
         settings.max_panel_width = value;
     }
     if let Some(value) = object.get("IsBottom").and_then(serde_json::Value::as_bool) {
         settings.always_on_bottom = value;
     }
-    if let Some(value) = object
-        .get("IsGlycoproteinEnabled")
-        .and_then(serde_json::Value::as_bool)
-    {
+    if let Some(value) = object.get("IsGlycoproteinEnabled").and_then(serde_json::Value::as_bool) {
         settings.glycoprotein_enabled = value;
     }
-    if let Some(value) = object
-        .get("GlycoproteinNodeId")
-        .and_then(serde_json::Value::as_str)
-    {
+    if let Some(value) = object.get("GlycoproteinNodeId").and_then(serde_json::Value::as_str) {
         settings.glycoprotein_node_id = value.to_owned();
     }
-    if let Some(value) = object
-        .get("IsMainWindowVisible")
-        .and_then(serde_json::Value::as_bool)
-    {
+    if let Some(value) = object.get("IsMainWindowVisible").and_then(serde_json::Value::as_bool) {
         settings.window_visible = value;
     }
-    if let Some(value) = object
-        .get("IsMainWindowTopmost")
-        .and_then(serde_json::Value::as_bool)
-    {
+    if let Some(value) = object.get("IsMainWindowTopmost").and_then(serde_json::Value::as_bool) {
         settings.window_topmost = value;
     }
     settings.window_x = object.get("WindowX").and_then(serde_json::Value::as_f64);
     settings.window_y = object.get("WindowY").and_then(serde_json::Value::as_f64);
-    settings.window_width = object
-        .get("WindowWidth")
-        .and_then(serde_json::Value::as_f64);
-    settings.window_height = object
-        .get("WindowHeight")
-        .and_then(serde_json::Value::as_f64);
+    settings.window_width = object.get("WindowWidth").and_then(serde_json::Value::as_f64);
+    settings.window_height = object.get("WindowHeight").and_then(serde_json::Value::as_f64);
 
     Ok(settings)
 }
@@ -171,9 +137,7 @@ fn parse_json<T: for<'de> Deserialize<'de>>(source: &str, file_name: &str) -> Re
 }
 
 fn validate_legacy_profile(value: &serde_json::Value) -> Result<(), String> {
-    let object = value
-        .as_object()
-        .ok_or("旧 Profile.json 的根节点必须是对象")?;
+    let object = value.as_object().ok_or("旧 Profile.json 的根节点必须是对象")?;
     let homeworks = object
         .get("Homeworks")
         .or_else(|| object.get("homeworks"))
@@ -195,10 +159,6 @@ fn string_array(value: &serde_json::Value) -> Option<Vec<String>> {
             .collect()
     })
 }
-
-#[cfg(all(test, feature = "local-tests"))]
-#[path = "local_tests/legacy_import.rs"]
-mod local_tests;
 
 #[cfg(test)]
 mod tests {
@@ -233,5 +193,34 @@ mod tests {
         assert_eq!(settings.window_y, Some(203.0));
         assert_eq!(settings.window_width, Some(500.0));
         assert_eq!(settings.window_height, Some(701.0));
+    }
+
+    #[test]
+    fn imports_auto_start_opacity_and_scale_from_legacy_settings() {
+        let result = import_legacy_data_from_sources(
+            AppData::default(),
+            None,
+            r#"{
+                "AutoStart": true,
+                "BackgroundOpacity": 64.4,
+                "HomeworkScale": 120,
+                "AutoOutwork": false
+            }"#,
+        )
+        .expect("legacy auto start and presentation settings should import");
+
+        let settings = result.data.settings;
+        assert!(settings.auto_start);
+        assert_eq!(settings.background_opacity, 64.0);
+        assert_eq!(settings.homework_scale, 120.0);
+        assert!(!settings.auto_outwork);
+    }
+
+    #[test]
+    fn legacy_autooutwork_key_spelling_is_still_supported() {
+        let result = import_legacy_data_from_sources(AppData::default(), None, r#"{ "Autooutwork": false }"#)
+            .expect("legacy Autooutwork key should import");
+
+        assert!(!result.data.settings.auto_outwork);
     }
 }

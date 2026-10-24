@@ -6,7 +6,6 @@ declare module "*.vue" {
   export default component;
 }
 
-
 declare module "typewriter-effect/dist/core" {
   type TypewriterOptions = {
     delay?: number;

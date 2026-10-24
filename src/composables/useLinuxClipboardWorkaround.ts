@@ -61,7 +61,10 @@ export function useLinuxClipboardWorkaround() {
     try {
       enabled.value = await invoke<boolean>("clipboard_workaround_required");
     } catch (error) {
-      logWarn("clipboard.workaround.detect", error instanceof Error ? error.message : "clipboard workaround detection failed");
+      logWarn(
+        "clipboard.workaround.detect",
+        error instanceof Error ? error.message : "clipboard workaround detection failed",
+      );
       enabled.value = false;
     }
     document.addEventListener("copy", copyThroughTauri, true);

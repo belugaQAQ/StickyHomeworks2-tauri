@@ -2,10 +2,7 @@ import { domToBlob } from "modern-screenshot";
 import { distributeMasonry, type MasonryItem } from "../composables/masonryDistribution";
 import { saveHomeworkExportToFile } from "./platform-adapter";
 import type { SubjectGroup } from "../types/homework-board";
-import type {
-  HomeworkExportOptions,
-  HomeworkExportResult,
-} from "../types/homework-export";
+import type { HomeworkExportOptions, HomeworkExportResult } from "../types/homework-export";
 import "../styles/homework-export.css";
 
 const BOARD_PADDING = 32;
@@ -16,7 +13,8 @@ const BOARD_BASE_HEIGHT = 756;
 const MAX_CANVAS_DIMENSION = 16384;
 const MAX_CANVAS_AREA = 268_435_456;
 const IMAGE_DECODE_TIMEOUT_MS = 5_000;
-const FAILURE_IMAGE_DATA_URL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='96' viewBox='0 0 160 96'%3E%3Crect width='160' height='96' fill='%23d9d9d9'/%3E%3Cpath d='m38 68 25-25 18 18 12-12 29 29H38Z' fill='%23808080'/%3E%3Ccircle cx='98' cy='34' r='8' fill='%23808080'/%3E%3C/svg%3E";
+const FAILURE_IMAGE_DATA_URL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='96' viewBox='0 0 160 96'%3E%3Crect width='160' height='96' fill='%23d9d9d9'/%3E%3Cpath d='m38 68 25-25 18 18 12-12 29 29H38Z' fill='%23808080'/%3E%3Ccircle cx='98' cy='34' r='8' fill='%23808080'/%3E%3C/svg%3E";
 
 type ExportColors = {
   background: string;
@@ -42,8 +40,8 @@ export async function exportHomeworkImage(options: HomeworkExportOptions): Promi
 
   try {
     await waitForFonts();
-    await prepareImages(root);
     await buildLayout(root, options);
+    await prepareImages(root);
     await waitForM3eComponents(root);
 
     const cssWidth = Math.ceil(root.getBoundingClientRect().width || root.offsetWidth);
@@ -68,10 +66,7 @@ export async function exportHomeworkImage(options: HomeworkExportOptions): Promi
   }
 }
 
-export async function saveHomeworkExport(
-  result: HomeworkExportResult,
-  filename: string,
-): Promise<boolean> {
+export async function saveHomeworkExport(result: HomeworkExportResult, filename: string): Promise<boolean> {
   const safeFilename = sanitizeFilename(filename);
   const tauriSaved = await saveHomeworkExportToFile(result.blob, safeFilename);
   if (tauriSaved !== null) return tauriSaved;
@@ -84,7 +79,7 @@ export async function saveHomeworkExport(
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   return true;
 }
 
@@ -141,9 +136,10 @@ async function buildLayout(root: HTMLDivElement, options: HomeworkExportOptions)
   const board = root.querySelector<HTMLElement>(".homework-export-board");
   if (!board) throw new Error("无法创建作业图片布局。");
 
-  const panelWidth = options.layout === "board"
-    ? normalizePanelWidth(options.maxPanelWidth)
-    : Math.max(1, normalizePanelWidth(options.maxPanelWidth) - BOARD_PADDING * 2);
+  const panelWidth =
+    options.layout === "board"
+      ? normalizePanelWidth(options.maxPanelWidth)
+      : Math.max(1, normalizePanelWidth(options.maxPanelWidth) - BOARD_PADDING * 2);
   root.style.setProperty("--export-panel-width", `${panelWidth}px`);
 
   if (options.layout === "long-image") {
@@ -169,12 +165,17 @@ async function buildLayout(root: HTMLDivElement, options: HomeworkExportOptions)
   const tallestGroupHeight = measuredGroups.reduce((height, item) => Math.max(height, item.height), 0);
   const header = root.querySelector<HTMLElement>(".homework-export-header");
   const headerStyles = header ? getComputedStyle(header) : null;
-  const headerHeight = (header?.offsetHeight ?? 0) + (headerStyles ? Number.parseFloat(headerStyles.marginBottom) || 0 : 0);
+  const headerHeight =
+    (header?.offsetHeight ?? 0) + (headerStyles ? Number.parseFloat(headerStyles.marginBottom) || 0 : 0);
   const baseContentHeight = BOARD_BASE_HEIGHT - BOARD_PADDING * 2 - headerHeight;
   const boardHeight = Math.max(BOARD_BASE_HEIGHT, BOARD_PADDING * 2 + headerHeight + tallestGroupHeight);
   root.style.minHeight = `${boardHeight}px`;
   root.style.height = `${boardHeight}px`;
-  const distribution = distributeMasonry(measuredGroups, Math.max(1, Math.max(baseContentHeight, tallestGroupHeight)), BOARD_GROUP_GAP);
+  const distribution = distributeMasonry(
+    measuredGroups,
+    Math.max(1, Math.max(baseContentHeight, tallestGroupHeight)),
+    BOARD_GROUP_GAP,
+  );
   const columnCount = Math.max(1, distribution.columns.length);
   root.style.setProperty("--export-column-count", String(columnCount));
   const naturalWidth = BOARD_PADDING * 2 + columnCount * panelWidth + Math.max(0, columnCount - 1) * BOARD_COLUMN_GAP;
@@ -253,7 +254,9 @@ async function decodeImage(image: HTMLImageElement): Promise<boolean> {
     if (typeof image.decode === "function") {
       await Promise.race([
         image.decode(),
-        new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("图片解码超时")), IMAGE_DECODE_TIMEOUT_MS)),
+        new Promise<never>((_, reject) =>
+          window.setTimeout(() => reject(new Error("图片解码超时")), IMAGE_DECODE_TIMEOUT_MS),
+        ),
       ]);
     } else if (!image.complete) {
       await new Promise<void>((resolve, reject) => {
@@ -300,13 +303,14 @@ async function waitForFonts(): Promise<void> {
 }
 async function waitForM3eComponents(root: HTMLElement): Promise<void> {
   const components = [...root.querySelectorAll<HTMLElement>("m3e-chip")];
-  await Promise.all(components.map((component) => {
-    const updateComplete = (component as HTMLElement & { updateComplete?: Promise<unknown> }).updateComplete;
-    return updateComplete ?? Promise.resolve();
-  }));
+  await Promise.all(
+    components.map((component) => {
+      const updateComplete = (component as HTMLElement & { updateComplete?: Promise<unknown> }).updateComplete;
+      return updateComplete ?? Promise.resolve();
+    }),
+  );
   await waitForLayout();
 }
-
 
 function waitForLayout(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));

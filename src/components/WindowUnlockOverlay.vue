@@ -107,7 +107,8 @@ function captureTouchPointer(event: PointerEvent) {
   border-radius: var(--md-sys-shape-corner-extra-large, 1.75rem);
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
-  animation: window-unlock-preview-motion var(--window-unlock-loop) var(--md-sys-motion-easing-emphasized, ease-in-out) infinite;
+  animation: window-unlock-preview-motion var(--window-unlock-loop) var(--md-sys-motion-easing-emphasized, ease-in-out)
+    infinite;
 }
 
 .window-unlock-overlay__preview m3e-icon {
@@ -150,13 +151,15 @@ function captureTouchPointer(event: PointerEvent) {
 .window-unlock-overlay__move {
   top: 0.6rem;
   left: 0.5rem;
-  animation: window-unlock-move-cue var(--window-unlock-loop) var(--md-sys-motion-easing-emphasized, ease-in-out) infinite;
+  animation: window-unlock-move-cue var(--window-unlock-loop) var(--md-sys-motion-easing-emphasized, ease-in-out)
+    infinite;
 }
 
 .window-unlock-overlay__resize {
   right: 0.5rem;
   bottom: 0.6rem;
-  animation: window-unlock-resize-cue var(--window-unlock-loop) var(--md-sys-motion-easing-emphasized, ease-in-out) infinite;
+  animation: window-unlock-resize-cue var(--window-unlock-loop) var(--md-sys-motion-easing-emphasized, ease-in-out)
+    infinite;
 }
 
 .window-unlock-overlay__card {

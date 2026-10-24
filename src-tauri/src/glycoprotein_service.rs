@@ -25,22 +25,15 @@ pub(crate) struct WindowSettingsPatch {
     pub(crate) window_visible: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) window_topmost: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) window_x: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) window_y: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) window_width: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) window_height: Option<f64>,
 }
 
 #[cfg(desktop)]
 mod desktop {
+    use std::sync::{LazyLock, Mutex as StdMutex};
+    use std::time::{Duration, Instant};
+
     use chrono::Local;
-    use glycoprotein::{
-        EventField, GlycoComplex, HandlerError, MethodField, PresenterEvent, UnixDomainMeshConnexon,
-    };
+    use glycoprotein::{EventField, GlycoComplex, HandlerError, MethodField, PresenterEvent, UnixDomainMeshConnexon};
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
     use serde_json::{json, Value};
@@ -54,6 +47,32 @@ mod desktop {
     use super::{GlycoproteinStatus, WindowSettingsPatch, STATUS_EVENT, WINDOW_SETTINGS_EVENT};
 
     const HOMEWORK_CHANGED_EVENT_ID: &str = "homework.changed";
+
+    const NODE_START_RETRY_MIN_SECONDS: u64 = 30;
+    const NODE_START_RETRY_MAX_SECONDS: u64 = 60;
+
+    /// 最近一次成功应用的非几何窗口属性，用于跳过完全相同的重复应用。
+    /// 位置/尺寸现在由 `tauri-plugin-window-state` 负责，这里不再比较它们。
+    #[derive(Clone, Debug, PartialEq)]
+    struct AppliedWindowSettings {
+        visible: bool,
+        title: String,
+        always_on_bottom: bool,
+        window_topmost: bool,
+    }
+
+    impl AppliedWindowSettings {
+        fn from_settings(settings: &AppSettings) -> Self {
+            Self {
+                visible: settings.window_visible,
+                title: settings.title.clone(),
+                always_on_bottom: settings.always_on_bottom,
+                window_topmost: settings.window_topmost,
+            }
+        }
+    }
+
+    static LAST_APPLIED: LazyLock<StdMutex<Option<AppliedWindowSettings>>> = LazyLock::new(|| StdMutex::new(None));
 
     #[derive(Debug, Serialize, JsonSchema)]
     #[serde(rename_all = "PascalCase")]
@@ -126,6 +145,10 @@ mod desktop {
         enabled: bool,
         node_id: String,
         last_error: Option<String>,
+        /// 上次启动失败的 node id 与退避截止时间，避免每次 autosave 都重试。
+        failed_node_id: String,
+        start_failure_count: u32,
+        retry_not_before: Option<Instant>,
     }
 
     pub(crate) struct GlycoproteinService {
@@ -141,11 +164,7 @@ mod desktop {
     }
 
     impl GlycoproteinService {
-        pub(crate) async fn reconcile(
-            &self,
-            app: &AppHandle,
-            settings: &AppSettings,
-        ) -> GlycoproteinStatus {
+        pub(crate) async fn reconcile(&self, app: &AppHandle, settings: &AppSettings) -> GlycoproteinStatus {
             let mut state = self.state.lock().await;
             let was_enabled = state.enabled;
             state.enabled = settings.glycoprotein_enabled;
@@ -155,17 +174,12 @@ mod desktop {
                 let was_running = state.node.is_some();
                 stop_node(app, &mut state).await;
                 state.last_error = None;
+                clear_start_backoff(&mut state);
                 let status = status_from_state(&state);
                 drop(state);
                 emit_status(app, &status);
                 if was_enabled && !was_running {
-                    log(
-                        app,
-                        "info",
-                        "glycoprotein.stop",
-                        "Glycoprotein 服务已停用",
-                        None,
-                    );
+                    log(app, "info", "glycoprotein.stop", "Glycoprotein 服务已停用", None);
                 }
                 return status;
             }
@@ -176,6 +190,17 @@ mod desktop {
                 .is_some_and(|node| node.id() == settings.glycoprotein_node_id && node.is_started())
             {
                 state.last_error = None;
+                clear_start_backoff(&mut state);
+                let status = status_from_state(&state);
+                drop(state);
+                emit_status(app, &status);
+                return status;
+            }
+
+            if !was_enabled {
+                clear_start_backoff(&mut state);
+            }
+            if start_backoff_active(&state, &settings.glycoprotein_node_id) {
                 let status = status_from_state(&state);
                 drop(state);
                 emit_status(app, &status);
@@ -187,10 +212,10 @@ mod desktop {
                 Ok((node, presenter_events)) => match node.start().await {
                     Ok(()) => {
                         let node_id = node.id().to_owned();
-                        state.presenter_task =
-                            Some(spawn_presenter_logger(app.clone(), presenter_events));
+                        state.presenter_task = Some(spawn_presenter_logger(app.clone(), presenter_events));
                         state.node = Some(node);
                         state.last_error = None;
+                        clear_start_backoff(&mut state);
                         log(
                             app,
                             "info",
@@ -201,22 +226,24 @@ mod desktop {
                     }
                     Err(error) => {
                         state.last_error = Some(error.to_string());
+                        let retry_seconds = schedule_start_retry(&mut state, &settings.glycoprotein_node_id);
                         log(
                             app,
-                            "error",
+                            "warn",
                             "glycoprotein.start",
-                            &format!("启动 Glycoprotein 节点失败：{error}"),
+                            &format!("启动 Glycoprotein 节点失败，{retry_seconds} 秒后重试：{error}"),
                             Some(json!({ "nodeId": settings.glycoprotein_node_id })),
                         );
                     }
                 },
                 Err(error) => {
                     state.last_error = Some(error.clone());
+                    let retry_seconds = schedule_start_retry(&mut state, &settings.glycoprotein_node_id);
                     log(
                         app,
                         "error",
                         "glycoprotein.build",
-                        &format!("创建 Glycoprotein 节点失败：{error}"),
+                        &format!("创建 Glycoprotein 节点失败，{retry_seconds} 秒后重试：{error}"),
                         Some(json!({ "nodeId": settings.glycoprotein_node_id })),
                     );
                 }
@@ -269,11 +296,16 @@ mod desktop {
         }
     }
 
-    pub(crate) fn apply_window_settings(
-        app: &AppHandle,
-        settings: &AppSettings,
-        _allow_hidden: bool,
-    ) -> Result<(), String> {
+    pub(crate) fn apply_window_settings(app: &AppHandle, settings: &AppSettings) -> Result<(), String> {
+        let desired = AppliedWindowSettings::from_settings(settings);
+        let already_applied = LAST_APPLIED
+            .lock()
+            .map(|cache| cache.as_ref() == Some(&desired))
+            .unwrap_or(false);
+        if already_applied {
+            return Ok(());
+        }
+
         let window = main_window(app).map_err(|error| error.to_string())?;
         let mut errors = Vec::new();
         let should_show = settings.window_visible;
@@ -295,42 +327,49 @@ mod desktop {
             window.set_always_on_top(settings.window_topmost),
         );
 
-        if let (Some(x), Some(y)) = (settings.window_x, settings.window_y) {
-            match (coordinate(x, "X"), coordinate(y, "Y")) {
-                (Ok(x), Ok(y)) => collect_window_result(
-                    &mut errors,
-                    "position",
-                    window.set_position(Position::Physical(PhysicalPosition::new(x, y))),
-                ),
-                (x, y) => errors.extend([x.err(), y.err()].into_iter().flatten()),
-            }
-        }
-        if let (Some(width), Some(height)) = (settings.window_width, settings.window_height) {
-            match (dimension(width, "Width"), dimension(height, "Height")) {
-                (Ok(width), Ok(height)) => collect_window_result(
-                    &mut errors,
-                    "size",
-                    window.set_size(Size::Physical(PhysicalSize::new(width, height))),
-                ),
-                (width, height) => errors.extend([width.err(), height.err()].into_iter().flatten()),
-            }
-        }
-
         if errors.is_empty() {
+            if let Ok(mut cache) = LAST_APPLIED.lock() {
+                *cache = Some(desired);
+            }
             Ok(())
         } else {
             Err(errors.join("; "))
         }
     }
 
-    fn collect_window_result<T>(
-        errors: &mut Vec<String>,
-        operation: &str,
-        result: tauri::Result<T>,
-    ) {
+    fn collect_window_result<T>(errors: &mut Vec<String>, operation: &str, result: tauri::Result<T>) {
         if let Err(error) = result {
             errors.push(format!("{operation}: {error}"));
         }
+    }
+
+    fn clear_start_backoff(state: &mut ServiceState) {
+        state.failed_node_id.clear();
+        state.start_failure_count = 0;
+        state.retry_not_before = None;
+    }
+
+    fn start_backoff_active(state: &ServiceState, node_id: &str) -> bool {
+        state
+            .retry_not_before
+            .is_some_and(|deadline| state.failed_node_id == node_id && Instant::now() < deadline)
+    }
+
+    fn schedule_start_retry(state: &mut ServiceState, node_id: &str) -> u64 {
+        let failures = if state.failed_node_id == node_id {
+            state.start_failure_count.saturating_add(1)
+        } else {
+            1
+        };
+        let seconds = if failures > 1 {
+            NODE_START_RETRY_MAX_SECONDS
+        } else {
+            NODE_START_RETRY_MIN_SECONDS
+        };
+        state.failed_node_id = node_id.to_owned();
+        state.start_failure_count = failures;
+        state.retry_not_before = Some(Instant::now() + Duration::from_secs(seconds));
+        seconds
     }
 
     async fn stop_node(app: &AppHandle, state: &mut ServiceState) {
@@ -362,13 +401,7 @@ mod desktop {
     fn build_node(
         app: &AppHandle,
         node_id: &str,
-    ) -> Result<
-        (
-            GlycoComplex,
-            tokio::sync::broadcast::Receiver<PresenterEvent>,
-        ),
-        String,
-    > {
+    ) -> Result<(GlycoComplex, tokio::sync::broadcast::Receiver<PresenterEvent>), String> {
         let node = GlycoComplex::builder(node_id)
             .vendor(format!("StickyHomeworks2N v{}", app.package_info().version))
             .build()
@@ -378,19 +411,11 @@ mod desktop {
         {
             let app = app.clone();
             node.register_query(
-                MethodField::new("ping")
-                    .friendly_name("Ping")
-                    .description("测试连通性"),
+                MethodField::new("ping").friendly_name("Ping").description("测试连通性"),
                 move |_| {
                     let app = app.clone();
                     async move {
-                        log(
-                            &app,
-                            "info",
-                            "glycoprotein.ping",
-                            "收到 Glycoprotein ping 请求",
-                            None,
-                        );
+                        log(&app, "info", "glycoprotein.ping", "收到 Glycoprotein ping 请求", None);
                         Ok(PingResponse {
                             message: "Pong!".to_owned(),
                         })
@@ -485,9 +510,7 @@ mod desktop {
                     if args.topmost {
                         window.set_always_on_bottom(false).map_err(handler_error)?;
                     }
-                    window
-                        .set_always_on_top(args.topmost)
-                        .map_err(handler_error)?;
+                    window.set_always_on_top(args.topmost).map_err(handler_error)?;
                     emit_window_patch(
                         &app,
                         WindowSettingsPatch {
@@ -522,14 +545,6 @@ mod desktop {
                     main_window(&app)?
                         .set_position(Position::Physical(PhysicalPosition::new(x, y)))
                         .map_err(handler_error)?;
-                    emit_window_patch(
-                        &app,
-                        WindowSettingsPatch {
-                            window_x: Some(f64::from(x)),
-                            window_y: Some(f64::from(y)),
-                            ..WindowSettingsPatch::default()
-                        },
-                    )?;
                     log(
                         &app,
                         "info",
@@ -556,14 +571,6 @@ mod desktop {
                     main_window(&app)?
                         .set_size(Size::Physical(PhysicalSize::new(width, height)))
                         .map_err(handler_error)?;
-                    emit_window_patch(
-                        &app,
-                        WindowSettingsPatch {
-                            window_width: Some(f64::from(width)),
-                            window_height: Some(f64::from(height)),
-                            ..WindowSettingsPatch::default()
-                        },
-                    )?;
                     log(
                         &app,
                         "info",
@@ -586,9 +593,7 @@ mod desktop {
                 let app = action_app.clone();
                 async move {
                     let title = normalized_title(&args.title);
-                    main_window(&app)?
-                        .set_title(&title)
-                        .map_err(handler_error)?;
+                    main_window(&app)?.set_title(&title).map_err(handler_error)?;
                     emit_window_patch(
                         &app,
                         WindowSettingsPatch {
@@ -645,15 +650,12 @@ mod desktop {
     }
 
     fn emit_window_patch(app: &AppHandle, patch: WindowSettingsPatch) -> Result<(), HandlerError> {
-        app.emit(WINDOW_SETTINGS_EVENT, patch)
-            .map_err(handler_error)
+        app.emit(WINDOW_SETTINGS_EVENT, patch).map_err(handler_error)
     }
 
     fn coordinate(value: f64, name: &str) -> Result<i32, String> {
         if !value.is_finite() || value < i32::MIN as f64 || value > i32::MAX as f64 {
-            return Err(format!(
-                "{name} must be a finite 32-bit physical pixel coordinate"
-            ));
+            return Err(format!("{name} must be a finite 32-bit physical pixel coordinate"));
         }
         Ok(value.round() as i32)
     }
@@ -661,9 +663,7 @@ mod desktop {
     fn dimension(value: f64, name: &str) -> Result<u32, String> {
         let rounded = value.round();
         if !value.is_finite() || rounded < 1.0 || rounded > u32::MAX as f64 {
-            return Err(format!(
-                "{name} must be a positive 32-bit physical pixel size"
-            ));
+            return Err(format!("{name} must be a positive 32-bit physical pixel size"));
         }
         Ok(rounded as u32)
     }
@@ -816,15 +816,12 @@ mod desktop {
         fn window_patch_uses_the_frontend_camel_case_contract() {
             let patch = serde_json::to_value(WindowSettingsPatch {
                 window_visible: Some(false),
-                window_width: Some(640.0),
+                window_topmost: Some(true),
                 ..WindowSettingsPatch::default()
             })
             .expect("window patch should serialize");
 
-            assert_eq!(
-                patch,
-                json!({ "windowVisible": false, "windowWidth": 640.0 })
-            );
+            assert_eq!(patch, json!({ "windowVisible": false, "windowTopmost": true }));
         }
 
         #[test]
@@ -837,11 +834,38 @@ mod desktop {
         }
 
         #[test]
+        fn node_start_failures_back_off_per_node_id() {
+            let mut state = ServiceState::default();
+            assert!(!start_backoff_active(&state, "stickyHomeworks-test"));
+
+            assert_eq!(schedule_start_retry(&mut state, "stickyHomeworks-test"), 30);
+            assert!(start_backoff_active(&state, "stickyHomeworks-test"));
+            assert!(!start_backoff_active(&state, "stickyHomeworks-other"));
+
+            assert_eq!(schedule_start_retry(&mut state, "stickyHomeworks-test"), 60);
+            clear_start_backoff(&mut state);
+            assert!(!start_backoff_active(&state, "stickyHomeworks-test"));
+        }
+
+        #[test]
+        fn applied_window_settings_ignore_unrelated_fields() {
+            let settings = AppSettings {
+                title: "作业".to_owned(),
+                ..AppSettings::default()
+            };
+            let mut unrelated_change = settings.clone();
+            unrelated_change.subjects = vec!["数学".to_owned()];
+
+            assert_eq!(
+                AppliedWindowSettings::from_settings(&settings),
+                AppliedWindowSettings::from_settings(&unrelated_change)
+            );
+        }
+
+        #[test]
         fn crates_io_transport_rejects_unsafe_node_ids() {
             assert!(GlycoComplex::builder("bad/node").build().is_err());
-            assert!(GlycoComplex::builder("stickyHomeworks-test")
-                .build()
-                .is_ok());
+            assert!(GlycoComplex::builder("stickyHomeworks-test").build().is_ok());
         }
 
         #[tokio::test]
@@ -851,9 +875,7 @@ mod desktop {
                 "stickyHomeworks-{}",
                 uuid.split('-').nth(1).expect("UUID has a second segment")
             );
-            let node = GlycoComplex::builder(node_id)
-                .build()
-                .expect("test node should build");
+            let node = GlycoComplex::builder(node_id).build().expect("test node should build");
 
             node.start().await.expect("test node should start");
             assert!(node.is_started());
@@ -875,11 +897,7 @@ mod mobile {
     pub(crate) struct GlycoproteinService;
 
     impl GlycoproteinService {
-        pub(crate) async fn reconcile(
-            &self,
-            _app: &AppHandle,
-            settings: &AppSettings,
-        ) -> GlycoproteinStatus {
+        pub(crate) async fn reconcile(&self, _app: &AppHandle, settings: &AppSettings) -> GlycoproteinStatus {
             unsupported_status(settings)
         }
 
@@ -894,17 +912,12 @@ mod mobile {
             }
         }
 
-        pub(crate) async fn emit_homework_changed(&self, _app: &AppHandle, _homework_count: usize) {
-        }
+        pub(crate) async fn emit_homework_changed(&self, _app: &AppHandle, _homework_count: usize) {}
 
         pub(crate) async fn shutdown(&self, _app: &AppHandle) {}
     }
 
-    pub(crate) fn apply_window_settings(
-        _app: &AppHandle,
-        _settings: &AppSettings,
-        _allow_hidden: bool,
-    ) -> Result<(), String> {
+    pub(crate) fn apply_window_settings(_app: &AppHandle, _settings: &AppSettings) -> Result<(), String> {
         Ok(())
     }
 

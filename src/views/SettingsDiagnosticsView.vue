@@ -5,12 +5,22 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import { useAppContext } from "../app-context";
 import { buildDiagnosticReport, type DiagnosticDisclosure } from "../services/diagnostic-report";
-import { clearDiagnosticLogs, copyDiagnosticReport, DiagnosticError, exportDiagnosticBundle } from "../services/diagnostic-export";
+import {
+  clearDiagnosticLogs,
+  copyDiagnosticReport,
+  DiagnosticError,
+  exportDiagnosticBundle,
+} from "../services/diagnostic-export";
 import { clearBrowserLogEntries, flushLogs, getLoggingStatus, logError, logInfo } from "../services/logging";
 import SettingsPage from "../components/SettingsPage.vue";
 import "../styles/settings-view.css";
 
-type DialogElement = HTMLElement & { open: boolean; returnValue: string; show: () => void; hide: (returnValue?: string) => Promise<void> };
+type DialogElement = HTMLElement & {
+  open: boolean;
+  returnValue: string;
+  show: () => void;
+  hide: (returnValue?: string) => Promise<void>;
+};
 const { appData } = useAppContext();
 const reportDialog = ref<DialogElement | null>(null);
 const exportConfirmDialog = ref<DialogElement | null>(null);
@@ -37,11 +47,17 @@ const pendingDisclosure = ref<DiagnosticDisclosure | null>(null);
 const pendingDisclosureAction = ref<"select" | "export" | null>(null);
 const previousDisclosure = ref<DiagnosticDisclosure>("standard");
 const confirmationAccepted = ref(false);
-const disclosureConfirmationTitle = computed(() => pendingDisclosureAction.value === "select" ? "确认查看更多诊断内容？" : "确认导出更多诊断内容？");
-const disclosureConfirmationAction = computed(() => pendingDisclosureAction.value === "select" ? "确认切换" : "确认导出");
+const disclosureConfirmationTitle = computed(() =>
+  pendingDisclosureAction.value === "select" ? "确认查看更多诊断内容？" : "确认导出更多诊断内容？",
+);
+const disclosureConfirmationAction = computed(() =>
+  pendingDisclosureAction.value === "select" ? "确认切换" : "确认导出",
+);
 const loggingStatus = getLoggingStatus();
 function loggingStatusText(): string {
-  return loggingStatus.persistenceAvailable ? "日志持久化正常" : `日志持久化异常：${loggingStatus.lastError || "未知错误"}`;
+  return loggingStatus.persistenceAvailable
+    ? "日志持久化正常"
+    : `日志持久化异常：${loggingStatus.lastError || "未知错误"}`;
 }
 
 function errorMessage(reason: unknown, fallback: string): string {
@@ -204,7 +220,6 @@ function openGitHub() {
 
 <template>
   <SettingsPage title="诊断信息" heading-id="settings-diagnostics-title" show-back>
-
     <section class="settings-group settings-diagnostics" aria-labelledby="settings-diagnostics-report-title">
       <m3e-heading id="settings-diagnostics-report-title" variant="title" size="large" level="2">诊断报告</m3e-heading>
       <m3e-card variant="outlined">
@@ -212,22 +227,25 @@ function openGitHub() {
         <div slot="content" class="settings-diagnostics__content">
           <p>标准报告只包含环境信息和脱敏后的警告/错误摘要；扩展和完整导出会在确认后加入更多诊断内容</p>
           <p>请只将它分享给受信任的支持人员，以防隐私泄露</p>
-          <p class="settings-diagnostics__status">{{ loggingStatusText() }}<span v-if="loggingStatus.failedCount">，失败 {{ loggingStatus.failedCount }} 次</span></p>
+          <p class="settings-diagnostics__status">
+            {{ loggingStatusText()
+            }}<span v-if="loggingStatus.failedCount">，失败 {{ loggingStatus.failedCount }} 次</span>
+          </p>
         </div>
         <div slot="actions" end class="settings-diagnostics__actions">
           <m3e-button variant="filled" :disabled="isBuildingReport" @click="showReport">
             <m3e-icon slot="icon" name="content_copy"></m3e-icon>
             {{ isBuildingReport ? "正在生成…" : "复制或导出诊断信息" }}
           </m3e-button>
-          <m3e-button variant="outlined" :disabled="isClearingLogs" @click="clearLogs">
-            清空诊断日志
-          </m3e-button>
+          <m3e-button variant="outlined" :disabled="isClearingLogs" @click="clearLogs"> 清空诊断日志 </m3e-button>
         </div>
       </m3e-card>
     </section>
 
     <section class="settings-group settings-diagnostics" aria-labelledby="settings-diagnostics-feedback-title">
-      <m3e-heading id="settings-diagnostics-feedback-title" variant="title" size="large" level="2">反馈渠道</m3e-heading>
+      <m3e-heading id="settings-diagnostics-feedback-title" variant="title" size="large" level="2"
+        >反馈渠道</m3e-heading
+      >
       <m3e-card variant="outlined">
         <m3e-heading slot="header" variant="title" size="medium" level="3">提交问题或建议</m3e-heading>
         <div slot="actions" end class="settings-diagnostics__actions">
@@ -245,16 +263,26 @@ function openGitHub() {
 
     <m3e-dialog ref="reportDialog" dismissible>
       <span slot="header">查看诊断报告</span>
-      <p class="settings-diagnostics__dialog-intro">预览包含最近错误日志<br/>切换导出内容级别将会控制你导出的信息多少,请谨慎修改<br/>完整的报告是对开发者最大的支持</p>
+      <p class="settings-diagnostics__dialog-intro">
+        预览包含最近错误日志<br />切换导出内容级别将会控制你导出的信息多少,请谨慎修改<br />完整的报告是对开发者最大的支持
+      </p>
 
       <pre class="settings-diagnostics__report">{{ report }}</pre>
       <div class="settings-diagnostics__disclosure" aria-labelledby="diagnostic-disclosure-label">
         <m3e-heading id="diagnostic-disclosure-label" variant="label" size="large" level="3">导出内容级别</m3e-heading>
         <m3e-segmented-button :key="disclosureControlKey" aria-labelledby="diagnostic-disclosure-label">
-          <m3e-button-segment value="standard" :checked="selectedDisclosure === 'standard'" @click="selectDisclosure('standard')">
+          <m3e-button-segment
+            value="standard"
+            :checked="selectedDisclosure === 'standard'"
+            @click="selectDisclosure('standard')"
+          >
             标准
           </m3e-button-segment>
-          <m3e-button-segment value="extended" :checked="selectedDisclosure === 'extended'" @click="selectDisclosure('extended')">
+          <m3e-button-segment
+            value="extended"
+            :checked="selectedDisclosure === 'extended'"
+            @click="selectDisclosure('extended')"
+          >
             扩展
           </m3e-button-segment>
           <m3e-button-segment value="full" :checked="selectedDisclosure === 'full'" @click="selectDisclosure('full')">
@@ -273,14 +301,19 @@ function openGitHub() {
           <m3e-icon slot="icon" name="content_copy"></m3e-icon>
           复制诊断信息
         </m3e-button>
-
       </div>
     </m3e-dialog>
     <m3e-dialog ref="exportConfirmDialog" alert dismissible @closed="handleDisclosureConfirmationClosed">
-      <m3e-heading slot="header" variant="headline" size="small" level="2">{{ disclosureConfirmationTitle }}</m3e-heading>
-      <p>扩展级别包含请求标识和结构化诊断上下文；完整级别还包含当前作业、设置和完整轮转日志。请确认支持人员可信，并确认你要继续。</p>
+      <m3e-heading slot="header" variant="headline" size="small" level="2">{{
+        disclosureConfirmationTitle
+      }}</m3e-heading>
+      <p>
+        扩展级别包含请求标识和结构化诊断上下文；完整级别还包含当前作业、设置和完整轮转日志。请确认支持人员可信，并确认你要继续。
+      </p>
       <div slot="actions" end class="settings-diagnostics__actions">
-        <m3e-button variant="text" @click="cancelDisclosureConfirmation"><m3e-dialog-action return-value="cancel">取消</m3e-dialog-action></m3e-button>
+        <m3e-button variant="text" @click="cancelDisclosureConfirmation"
+          ><m3e-dialog-action return-value="cancel">取消</m3e-dialog-action></m3e-button
+        >
         <m3e-button variant="filled" @click="confirmExport">{{ disclosureConfirmationAction }}</m3e-button>
       </div>
     </m3e-dialog>

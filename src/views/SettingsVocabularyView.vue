@@ -38,7 +38,6 @@ function removeVocabulary(key: "subjects" | "tags", value: string) {
 
 <template>
   <SettingsPage title="作业词库" heading-id="settings-vocabulary-title" :error="settingsError" show-back>
-
     <section class="settings-group" aria-labelledby="settings-subjects-title">
       <m3e-heading id="settings-subjects-title" variant="title" size="large" level="2">科目</m3e-heading>
       <m3e-list class="settings-control-list">
@@ -46,7 +45,12 @@ function removeVocabulary(key: "subjects" | "tags", value: string) {
           新增科目
           <span slot="supporting-text">添加可用于编辑作业的科目。</span>
           <m3e-form-field slot="trailing" variant="outlined" hide-subscript="always">
-            <input id="settings-subjects" v-model="newSubject" aria-label="新增科目" @keydown.enter.prevent="addVocabulary('subjects')" />
+            <input
+              id="settings-subjects"
+              v-model="newSubject"
+              aria-label="新增科目"
+              @keydown.enter.prevent="addVocabulary('subjects')"
+            />
             <m3e-icon-button slot="suffix" aria-label="添加科目" @click="addVocabulary('subjects')">
               <m3e-icon name="add"></m3e-icon>
             </m3e-icon-button>
@@ -73,7 +77,12 @@ function removeVocabulary(key: "subjects" | "tags", value: string) {
           新增标签
           <span slot="supporting-text">添加可用于标记作业的标签。</span>
           <m3e-form-field slot="trailing" variant="outlined" hide-subscript="always">
-            <input id="settings-tags" v-model="newTag" aria-label="新增标签" @keydown.enter.prevent="addVocabulary('tags')" />
+            <input
+              id="settings-tags"
+              v-model="newTag"
+              aria-label="新增标签"
+              @keydown.enter.prevent="addVocabulary('tags')"
+            />
             <m3e-icon-button slot="suffix" aria-label="添加标签" @click="addVocabulary('tags')">
               <m3e-icon name="add"></m3e-icon>
             </m3e-icon-button>
@@ -92,6 +101,5 @@ function removeVocabulary(key: "subjects" | "tags", value: string) {
         </m3e-input-chip>
       </m3e-chip-set>
     </section>
-
   </SettingsPage>
 </template>

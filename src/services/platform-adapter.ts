@@ -18,13 +18,15 @@ export async function exportDiagnosticBundleToFile(
     filters: [{ name: "ZIP 压缩包", extensions: ["zip"] }],
   });
   if (!destination) return false;
-  const bundle = await invoke<number[]>("export_diagnostic_bundle", {
+  const base64Bundle = await invoke<string>("export_diagnostic_bundle", {
     environment,
     disclosure,
     appData: disclosure === "full" ? serializeAppDataForTauri(appData) : null,
     requestId,
   });
-  await writeFile(destination, new Uint8Array(bundle));
+  // 后端返回标准 Base64 字符串，这里解码为二进制后再写入文件。
+  const bundle = Uint8Array.from(atob(base64Bundle), (character) => character.charCodeAt(0));
+  await writeFile(destination, bundle);
   return true;
 }
 export async function saveHomeworkExportToFile(blob: Blob, filename: string): Promise<boolean | null> {

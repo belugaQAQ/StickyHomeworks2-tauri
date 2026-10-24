@@ -28,10 +28,6 @@ export type AppSettings = {
   glycoproteinNodeId: string;
   windowVisible: boolean;
   windowTopmost: boolean;
-  windowX: number | null;
-  windowY: number | null;
-  windowWidth: number | null;
-  windowHeight: number | null;
 };
 
 export type AppData = {
@@ -68,17 +64,16 @@ export function createDefaultAppData(): AppData {
       glycoproteinNodeId: createGlycoproteinNodeId(),
       windowVisible: true,
       windowTopmost: false,
-      windowX: null,
-      windowY: null,
-      windowWidth: null,
-      windowHeight: null,
     },
   };
 }
 
 export function createGlycoproteinNodeId(): string {
-  const randomSegment = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID().split("-")[1]
-    : Math.floor(Math.random() * 0x10000).toString(16).padStart(4, "0");
+  const randomSegment =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID().split("-")[1]
+      : Math.floor(Math.random() * 0x10000)
+          .toString(16)
+          .padStart(4, "0");
   return `stickyHomeworks-${randomSegment}`;
 }
