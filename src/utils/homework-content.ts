@@ -91,15 +91,14 @@ function escapeHtml(value: string): string {
 
 /**
  * 判断作业是否已过期（截止日早于今天零点）。
- * `extraKeepDays` 用于「延迟清理」：过期后再多保留若干天。
+ * `now` 可注入，便于测试与跨天检查复用同一套判断。
  */
-export function isHomeworkExpired(dueTime: string, extraKeepDays = 0, now = new Date()): boolean {
+export function isHomeworkExpired(dueTime: string, now = new Date()): boolean {
   const dueDate = new Date(dueTime);
   if (Number.isNaN(dueDate.getTime())) return false;
 
   const todayStart = new Date(now);
   dueDate.setHours(0, 0, 0, 0);
   todayStart.setHours(0, 0, 0, 0);
-  todayStart.setDate(todayStart.getDate() - Math.max(0, Math.trunc(extraKeepDays)));
   return dueDate < todayStart;
 }

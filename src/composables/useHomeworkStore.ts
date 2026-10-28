@@ -87,24 +87,38 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
 
   /**
    * 自动清理过期作业（纯前端，不依赖任何后端命令）。
-   * 返回被删掉的作业（带原下标，便于撤回）；未开启「自动清理」或没有可清理项时返回空数组。
+   *
+   * 同一趟里还会给刚过期的作业补写 `firstExpiredShowTime`——这是「延迟清理」判断
+   * “是否已展示过期满一天”的依据，所以即使没有删除也要落盘。
+   * 返回被删掉的作业（带原下标，便于撤回）。
    */
-  async function cleanupExpiredHomeworks(reason = "manual"): Promise<RemovedHomework[]> {
+  async function cleanupExpiredHomeworks(
+    reason = "manual",
+    protectedId: string | null = null,
+  ): Promise<RemovedHomework[]> {
     if (!appData.value.settings.autoOutwork) return [];
-    // 先纯算一遍：没有可清理的就不进保存队列，免得每次数据变动都写一次 noop。
-    if (pruneExpiredHomeworks(appData.value).removed.length === 0) return [];
+    // 先纯算一遍：既没有要删的也没有要标记的，就不进保存队列，免得每次数据变动都写一次 noop。
+    const preview = pruneExpiredHomeworks(appData.value, new Date(), protectedId);
+    if (preview.removed.length === 0 && preview.markedCount === 0) return [];
 
     let removed: RemovedHomework[] = [];
+    let markedCount = 0;
     let delayedCleanupEnabled = false;
 
     await commit("homework.cleanup", (data) => {
-      const result = pruneExpiredHomeworks(data);
-      if (result.removed.length === 0) return data;
+      const result = pruneExpiredHomeworks(data, new Date(), protectedId);
+      if (result.removed.length === 0 && result.markedCount === 0) return data;
       removed = result.removed;
+      markedCount = result.markedCount;
       delayedCleanupEnabled = data.settings.delayedCleanupEnabled;
       return result.data;
     });
 
+    if (markedCount > 0) {
+      await logInfo("homework.cleanup.mark", `记录了 ${markedCount} 条过期作业的首次展示时间`, undefined, {
+        reason,
+      });
+    }
     if (removed.length > 0) {
       await logInfo("homework.cleanup.remove", `自动清理了 ${removed.length} 条过期作业`, undefined, {
         reason,

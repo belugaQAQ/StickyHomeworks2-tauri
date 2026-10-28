@@ -66,39 +66,69 @@ export function removeHomeworkRecord(data: AppData, homeworkId: string): AppData
 
 type ExpiryMarkSettings = Pick<AppSettings, "isExpiredMarkEnabled" | "expiredMarkColor">;
 
-/** 自动清理额外保留的天数：开启「延迟清理」时，过期作业再留一天。 */
-export function expiredCleanupExtraKeepDays(settings: Pick<AppSettings, "delayedCleanupEnabled">): number {
-  return settings.delayedCleanupEnabled ? 1 : 0;
-}
-
 export type RemovedHomework = {
   homework: HomeworkRecord;
   /** 清理前在 `homeworks` 里的下标，撤回时按它插回原位。 */
   index: number;
 };
 
-export type ExpiredCleanupResult = {
-  /** 无需清理时返回入参本身（引用相同），便于上游判定 noop。 */
+export type ExpiredCleanupPlan = {
+  /** 既没标记也没删除时返回入参本身（引用相同），便于上游判定 noop。 */
   data: AppData;
   removed: RemovedHomework[];
+  /** 本次补写 `firstExpiredShowTime` 的条数。 */
+  markedCount: number;
 };
 
 /**
- * 删掉所有已过期（按「延迟清理」设置顺延）的作业。
- * 纯前端、纯函数：不读时钟以外的外部状态，方便测试与在任意时机调用。
+ * 计算过期清理，语义对齐原版 WPF（`HomeworkControl` 标记 + `ProfileService.CleanupOutdated`）：
+ * - 作业过期后先记录 `firstExpiredShowTime`（首次被展示为过期的时间）；
+ * - 未开启「延迟清理」：过期即移除；
+ * - 开启「延迟清理」：只有首次展示日期早于今天才移除，即过期展示后至少留一个自然日。
+ *
+ * `protectedId` 用于跳过正在编辑的作业，避免用户改到一半被清掉。
  */
-export function pruneExpiredHomeworks(data: AppData, now = new Date()): ExpiredCleanupResult {
-  const extraKeepDays = expiredCleanupExtraKeepDays(data.settings);
+export function pruneExpiredHomeworks(
+  data: AppData,
+  now = new Date(),
+  protectedId: string | null = null,
+): ExpiredCleanupPlan {
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const delayed = data.settings.delayedCleanupEnabled;
   const removed: RemovedHomework[] = [];
   const homeworks: HomeworkRecord[] = [];
+  let markedCount = 0;
 
   data.homeworks.forEach((homework, index) => {
-    if (isHomeworkExpired(homework.dueTime, extraKeepDays, now)) removed.push({ homework, index });
-    else homeworks.push(homework);
+    if (homework.id === protectedId || !isHomeworkExpired(homework.dueTime, now)) {
+      homeworks.push(homework);
+      return;
+    }
+    if (!delayed) {
+      removed.push({ homework, index });
+      return;
+    }
+
+    const firstShownAt = homework.firstExpiredShowTime ? Date.parse(homework.firstExpiredShowTime) : Number.NaN;
+    const firstShown = Number.isFinite(firstShownAt) ? new Date(firstShownAt) : null;
+    const firstShownDay =
+      firstShown === null
+        ? Number.NaN
+        : new Date(firstShown.getFullYear(), firstShown.getMonth(), firstShown.getDate()).getTime();
+    if (Number.isFinite(firstShownDay) && firstShownDay < todayStart) {
+      removed.push({ homework, index });
+      return;
+    }
+    if (firstShown === null) {
+      markedCount += 1;
+      homeworks.push({ ...homework, firstExpiredShowTime: now.toISOString() });
+      return;
+    }
+    homeworks.push(homework);
   });
 
-  if (removed.length === 0) return { data, removed };
-  return { data: { ...data, homeworks }, removed };
+  if (removed.length === 0 && markedCount === 0) return { data, removed, markedCount };
+  return { data: { ...data, homeworks }, removed, markedCount };
 }
 
 /** 把自动清理掉的作业按原下标插回；同 id 已存在就跳过，避免撤回后出现两份。 */

@@ -11,6 +11,7 @@ import { useExpiredHomeworkCleanup } from "../composables/useExpiredHomeworkClea
 import { useHomeworkEditor } from "../composables/useHomeworkEditor";
 import { useHomeworkStore } from "../composables/useHomeworkStore";
 import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWorkaround";
+import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import { patchM3eAttributes } from "../m3e-internals";
 import { routeTransitionName } from "../router";
 import { logInfo } from "../services/logging";
@@ -28,6 +29,10 @@ const isHomeworkFrozen = ref(false);
 const settingsError = ref("");
 const appDrawer = ref<HTMLElement | null>(null);
 const moreSheet = ref<DialogElement | null>(null);
+const cleanupConfirmDialog = ref<DialogElement | null>(null);
+const cleanupPendingCount = ref(0);
+let resolveCleanupConfirm: ((approved: boolean) => void) | undefined;
+useWebKitGtkDialogExit(cleanupConfirmDialog);
 const {
   isDesktopWindow,
   isUnlocked: isWindowUnlocked,
@@ -136,7 +141,25 @@ const { start: startExpiredHomeworkCleanup } = useExpiredHomeworkCleanup({
   appData,
   cleanup: cleanupExpiredHomeworks,
   restore: restoreHomeworks,
+  getProtectedHomeworkId: () => editingHomework.value?.id ?? null,
+  confirmFirstCleanup,
 });
+
+/** 首次自动清理前的确认：等用户点按钮再继续，避免静默删掉积压的过期作业。 */
+function confirmFirstCleanup(count: number) {
+  cleanupPendingCount.value = count;
+  void nextTick(() => cleanupConfirmDialog.value?.show());
+  return new Promise<boolean>((resolve) => {
+    resolveCleanupConfirm = resolve;
+  });
+}
+
+async function answerCleanupConfirm(approved: boolean) {
+  await hideWebKitGtkDialog(cleanupConfirmDialog.value);
+  const resolve = resolveCleanupConfirm;
+  resolveCleanupConfirm = undefined;
+  resolve?.(approved);
+}
 
 function toggleHomeworkFrozen() {
   isHomeworkFrozen.value = !isHomeworkFrozen.value;
@@ -416,6 +439,15 @@ onUnmounted(() => {
       <div slot="actions" end>
         <m3e-button variant="text" @click="closeDeleteDialog">取消</m3e-button>
         <m3e-button variant="filled" @click="confirmDeleteHomework">删除</m3e-button>
+      </div>
+    </m3e-dialog>
+
+    <m3e-dialog ref="cleanupConfirmDialog" alert disable-close>
+      <m3e-heading slot="header" variant="headline" size="small" level="2">清理过期作业？</m3e-heading>
+      将移除 {{ cleanupPendingCount }} 条截止日期已过的作业，清理后还能在提示条里撤回。此提示只出现一次。
+      <div slot="actions" end>
+        <m3e-button variant="text" @click="answerCleanupConfirm(false)">暂不清理</m3e-button>
+        <m3e-button variant="filled" @click="answerCleanupConfirm(true)">清理</m3e-button>
       </div>
     </m3e-dialog>
   </div>

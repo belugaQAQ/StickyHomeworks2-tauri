@@ -1,22 +1,45 @@
 import { M3eSnackbar } from "@m3e/web/all";
 import { onUnmounted, ref, watch, type Ref } from "vue";
-import type { RemovedHomework } from "../domain/homework";
+import { pruneExpiredHomeworks, type RemovedHomework } from "../domain/homework";
 import { logError, logInfo, logWarn } from "../services/logging";
 import type { AppData } from "../types/app-data";
 
 type ExpiredHomeworkCleanupOptions = {
   appData: Ref<AppData>;
-  cleanup: (reason: string) => Promise<RemovedHomework[]>;
+  cleanup: (reason: string, protectedId: string | null) => Promise<RemovedHomework[]>;
   restore: (removed: readonly RemovedHomework[]) => Promise<void>;
+  /** 正在编辑的作业 id：清理时跳过它，避免用户改到一半被删。 */
+  getProtectedHomeworkId: () => string | null;
+  /** 首次自动清理前的确认；返回 false 表示本次不清理。 */
+  confirmFirstCleanup: (count: number) => Promise<boolean>;
 };
 
 /** 每分钟对一次日期即可：跨天最多晚一分钟清理，代价可以忽略。 */
 const DATE_CHECK_INTERVAL_MS = 60_000;
 /** Material 建议带操作按钮的 snackbar 停留更久，这里给足撤回的时间。 */
 const CLEANUP_SNACKBAR_DURATION_MS = 10_000;
+/** 用户确认过首次清理后记在这里，之后不再打扰。 */
+const CONFIRMED_STORAGE_KEY = "stickyhomeworks2.expired-cleanup-confirmed.v1";
 
 function localDateKey(now = new Date()): string {
   return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
+function hasConfirmedCleanup(): boolean {
+  try {
+    return window.localStorage.getItem(CONFIRMED_STORAGE_KEY) === "1";
+  } catch {
+    // localStorage 不可用时每次启动都问一次，比静默删除安全。
+    return false;
+  }
+}
+
+function markCleanupConfirmed(): void {
+  try {
+    window.localStorage.setItem(CONFIRMED_STORAGE_KEY, "1");
+  } catch (error) {
+    logWarn("homework.cleanup.confirm", error instanceof Error ? error.message : String(error));
+  }
 }
 
 /**
@@ -27,16 +50,28 @@ function localDateKey(now = new Date()): string {
  * 真正的删除逻辑在 `useHomeworkStore.cleanupExpiredHomeworks`，走既有的串行保存队列，
  * 因此不会和用户操作打架；删除后弹一条 10 秒的 snackbar，点「撤回」按原位置插回去。
  *
+ * 第一次真正要删东西之前会先要一次确认（`confirmFirstCleanup`），确认结果记在
+ * localStorage 里，之后不再打扰；选择「暂不清理」只影响本次运行。
  * 撤回成功后当天的自动清理就停了（只记在内存里，重启即忘），
  * 想提前恢复只能把「自动清理」关掉再打开。
  */
-export function useExpiredHomeworkCleanup({ appData, cleanup, restore }: ExpiredHomeworkCleanupOptions) {
+export function useExpiredHomeworkCleanup({
+  appData,
+  cleanup,
+  restore,
+  getProtectedHomeworkId,
+  confirmFirstCleanup,
+}: ExpiredHomeworkCleanupOptions) {
   const lastCheckedDate = ref(localDateKey());
   /** 撤回当天的日期；等于今天就说明今天别再清了。重启后自然为空。 */
   const suppressedDate = ref<string | null>(null);
   let timerId: number | undefined;
   let isSweeping = false;
   let disposed = false;
+  /** 用户在首次确认里选择「暂不清理」后，本次运行不再自动扫。 */
+  let declinedThisSession = false;
+  /** 清理进行中又被触发的扫描，结束后补一次。 */
+  let pendingSweepReason: string | null = null;
 
   function isSuppressedToday() {
     return suppressedDate.value !== null && suppressedDate.value === localDateKey();
@@ -62,13 +97,32 @@ export function useExpiredHomeworkCleanup({ appData, cleanup, restore }: Expired
   }
 
   async function sweep(reason: string) {
-    if (disposed || isSweeping) return;
+    if (disposed) return;
+    if (isSweeping) {
+      pendingSweepReason = reason;
+      return;
+    }
     if (!appData.value.settings.autoOutwork) return;
-    if (isSuppressedToday()) return;
+    if (isSuppressedToday() || declinedThisSession) return;
 
     isSweeping = true;
     try {
-      const removed = await cleanup(reason);
+      const protectedId = getProtectedHomeworkId();
+      const preview = pruneExpiredHomeworks(appData.value, new Date(), protectedId);
+      if (preview.removed.length === 0 && preview.markedCount === 0) return;
+
+      // 首次清理前确认一次：不打招呼删掉积压的历史过期作业太粗暴。
+      if (preview.removed.length > 0 && !hasConfirmedCleanup()) {
+        const approved = await confirmFirstCleanup(preview.removed.length);
+        if (!approved) {
+          declinedThisSession = true;
+          await logInfo("homework.cleanup.declined", "用户暂不清理过期作业");
+          return;
+        }
+        markCleanupConfirmed();
+      }
+
+      const removed = await cleanup(reason, protectedId);
       if (removed.length === 0) return;
       await logInfo("homework.cleanup.sweep", `过期作业清理完成（${reason}）`);
       showCleanupSnackbar(removed);
@@ -76,6 +130,9 @@ export function useExpiredHomeworkCleanup({ appData, cleanup, restore }: Expired
       await logWarn("homework.cleanup.failure", error instanceof Error ? error.message : String(error));
     } finally {
       isSweeping = false;
+      const pending = pendingSweepReason;
+      pendingSweepReason = null;
+      if (pending !== null && !disposed) void sweep(pending);
     }
   }
 
