@@ -39,3 +39,10 @@ tokio = { version = "1", features = ["sync"] }
 tauri-plugin-single-instance = "2"
 # 窗口位置/尺寸/最大化由官方插件持久化，取代自己写 settings 的几何字段
 tauri-plugin-window-state = "2"
+
+# VS 2026（MSVC 14.51）在 /Z7 下会把完整编译命令行写进调试记录，
+# zstd-sys / bzip2-sys / lzma-sys 这类用 cc 编译的 C 依赖会直接报
+# `cl: 命令行 error D8050 :无法执行 c1.dll：未能将命令行放入调试记录中`。
+# 依赖不带调试信息即可绕开本机工具链的问题，本地 crate 的调试信息不受影响。
+[profile.dev.package."*"]
+debug = false

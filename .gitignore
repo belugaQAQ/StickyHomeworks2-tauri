@@ -12,6 +12,8 @@ dist
 dist-ssr
 StickyHomeworks2-old
 *.local
+# scripts/tauri.mjs 给 cargo 用的项目内临时目录
+.cargo-tmp
 
 # Editor directories and files
 .vscode/*

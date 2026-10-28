@@ -1,8 +1,23 @@
+import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 // @ts-expect-error process is a nodejs global
+const nodeProcess: { platform: string; env: Record<string, string | undefined> } = process;
+// @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+
+// Windows 上部分安全软件会锁住系统 Temp 里的 esbuild 临时目录，
+// 构建收尾时报 `[vite:esbuild-transpile] remove ...\esbuild-xxx: Access is denied`。
+// 把 esbuild 的临时目录挪进项目内即可绕开，别指望每次手动 set TMP。
+if (nodeProcess.platform === "win32") {
+  const esbuildTempDir = fileURLToPath(new URL("./node_modules/.cache/esbuild-tmp", import.meta.url));
+  mkdirSync(esbuildTempDir, { recursive: true });
+  nodeProcess.env.TMPDIR = esbuildTempDir;
+  nodeProcess.env.TMP = esbuildTempDir;
+  nodeProcess.env.TEMP = esbuildTempDir;
+}
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
