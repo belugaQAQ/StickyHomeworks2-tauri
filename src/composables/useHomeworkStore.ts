@@ -1,5 +1,12 @@
 import { computed, ref } from "vue";
-import { groupHomeworks, removeHomeworkRecord, saveHomeworkRecord } from "../domain/homework";
+import {
+  groupHomeworks,
+  pruneExpiredHomeworks,
+  removeHomeworkRecord,
+  restoreRemovedHomeworks,
+  saveHomeworkRecord,
+  type RemovedHomework,
+} from "../domain/homework";
 import { removeGlobalTag, type SettingsMutator, updateAppSettings } from "../domain/settings";
 import { importLegacyData as importLegacyAppData, loadAppData, saveAppData } from "../services/app-data";
 import { createRequestId, logError, logInfo } from "../services/logging";
@@ -78,6 +85,41 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     return commit("settings.tag-delete", (data) => removeGlobalTag(data, tag));
   }
 
+  /**
+   * 自动清理过期作业（纯前端，不依赖任何后端命令）。
+   * 返回被删掉的作业（带原下标，便于撤回）；未开启「自动清理」或没有可清理项时返回空数组。
+   */
+  async function cleanupExpiredHomeworks(reason = "manual"): Promise<RemovedHomework[]> {
+    if (!appData.value.settings.autoOutwork) return [];
+    // 先纯算一遍：没有可清理的就不进保存队列，免得每次数据变动都写一次 noop。
+    if (pruneExpiredHomeworks(appData.value).removed.length === 0) return [];
+
+    let removed: RemovedHomework[] = [];
+    let delayedCleanupEnabled = false;
+
+    await commit("homework.cleanup", (data) => {
+      const result = pruneExpiredHomeworks(data);
+      if (result.removed.length === 0) return data;
+      removed = result.removed;
+      delayedCleanupEnabled = data.settings.delayedCleanupEnabled;
+      return result.data;
+    });
+
+    if (removed.length > 0) {
+      await logInfo("homework.cleanup.remove", `自动清理了 ${removed.length} 条过期作业`, undefined, {
+        reason,
+        removedHomeworkIds: removed.map((entry) => entry.homework.id),
+        delayedCleanupEnabled,
+      });
+    }
+    return removed;
+  }
+
+  /** 撤回一次自动清理：把作业按原位置插回去。 */
+  function restoreHomeworks(removed: readonly RemovedHomework[]) {
+    return commit("homework.cleanup.restore", (data) => restoreRemovedHomeworks(data, removed));
+  }
+
   function importLegacyData(profileContents: string | undefined, settingsContents: string) {
     return enqueueCommit(async () => {
       const requestId = createRequestId("legacy-import");
@@ -102,5 +144,7 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     updateSettings,
     deleteGlobalTag,
     importLegacyData,
+    cleanupExpiredHomeworks,
+    restoreHomeworks,
   };
 }

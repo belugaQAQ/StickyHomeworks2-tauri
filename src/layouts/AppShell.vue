@@ -7,6 +7,7 @@ import WindowUnlockOverlay from "../components/WindowUnlockOverlay.vue";
 import { useAppBootstrap } from "../composables/useAppBootstrap";
 import { useAppDialogs, type DialogElement } from "../composables/useAppDialogs";
 import { useDesktopWindowControls } from "../composables/useDesktopWindowControls";
+import { useExpiredHomeworkCleanup } from "../composables/useExpiredHomeworkCleanup";
 import { useHomeworkEditor } from "../composables/useHomeworkEditor";
 import { useHomeworkStore } from "../composables/useHomeworkStore";
 import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWorkaround";
@@ -49,6 +50,8 @@ const {
   updateSettings,
   deleteGlobalTag: deleteGlobalTagFromStore,
   importLegacyData: importLegacyDataFromStore,
+  cleanupExpiredHomeworks,
+  restoreHomeworks,
 } = useHomeworkStore();
 const {
   editingHomework,
@@ -126,6 +129,13 @@ const {
   navigate: (path) => {
     void router.push(path);
   },
+});
+
+// 纯前端自动清理：启动后清一次，跨天 / 回到前台 / 刚打开开关时再补清，不依赖任何后端命令。
+const { start: startExpiredHomeworkCleanup } = useExpiredHomeworkCleanup({
+  appData,
+  cleanup: cleanupExpiredHomeworks,
+  restore: restoreHomeworks,
 });
 
 function toggleHomeworkFrozen() {
@@ -223,6 +233,7 @@ watch(isWindowUnlocked, (unlocked) => {
 
 onMounted(async () => {
   await startAppBootstrap();
+  startExpiredHomeworkCleanup();
 
   // 等 M3E 组件挂载完再补 attribute；property → attribute 的原因见 m3e-internals。
   await nextTick();

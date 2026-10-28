@@ -22,7 +22,7 @@ function updateColor(event: Event) {
         @update:open="updateSwitch('autoOutwork', { currentTarget: { checked: $event } } as unknown as Event)"
       >
         <template #title>自动清理</template
-        ><template #description>过期作业将在后续生命周期实现中按此设置处理。</template>
+        ><template #description>开启后，截止日期已过的作业会在启动、跨天或回到前台时自动移除。</template>
         <m3e-list class="settings-control-list settings-expiry-panel__list"
           ><m3e-list-item class="settings-control-list__item"
             >延迟清理<span slot="supporting-text">启用后，过期作业将额外保留一天。</span
@@ -30,6 +30,7 @@ function updateColor(event: Event) {
               slot="trailing"
               aria-label="延迟清理"
               icons="selected"
+              :disabled="!appData.settings.autoOutwork"
               :checked="appData.settings.delayedCleanupEnabled"
               @change="updateSwitch('delayedCleanupEnabled', $event)"
             ></m3e-switch></m3e-list-item
