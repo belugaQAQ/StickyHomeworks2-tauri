@@ -27,7 +27,7 @@ StickyHomeworks2·N 在作业大显身手，却不止于作业
 - [x] 托盘菜单
 - [ ] oobe
 
-> 当前项目处于从原版 StickyHomeworks2 迁移的开发阶段。时间机器和 oobe 仍未完成。
+> 当前项目处于从原版 StickyHomeworks2 迁移的开发阶段。时间机器、模板页面和 oobe 仍未完成。
 
 ## 快速开始
 
