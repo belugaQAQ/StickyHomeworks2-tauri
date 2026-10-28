@@ -15,20 +15,24 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const tempDir = fileURLToPath(new URL("../.cargo-tmp", import.meta.url));
+const cliEntry = fileURLToPath(new URL("../node_modules/@tauri-apps/cli/tauri.js", import.meta.url));
 mkdirSync(tempDir, { recursive: true });
 
-// pnpm run 会把 node_modules/.bin 放进 PATH，这里直接按名字调，参数都是简单词，拼成一条命令即可。
-const command = ["tauri", ...process.argv.slice(2)].join(" ");
-const child = spawn(command, {
+// 直接用 node 跑 CLI 入口、参数走数组：不经 shell，路径里有空格或特殊字符也不会被拆开。
+const child = spawn(process.execPath, [cliEntry, ...process.argv.slice(2)], {
   cwd: projectRoot,
   stdio: "inherit",
-  shell: true,
   env: {
     ...process.env,
     TMPDIR: tempDir,
     TMP: tempDir,
     TEMP: tempDir,
   },
+});
+
+child.on("error", (error) => {
+  console.error(`无法启动 Tauri CLI：${error.message}`);
+  process.exit(1);
 });
 
 child.on("exit", (code, signal) => {
