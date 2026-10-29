@@ -1,5 +1,12 @@
 import { computed, ref } from "vue";
-import { groupHomeworks, removeHomeworkRecord, saveHomeworkRecord } from "../domain/homework";
+import {
+  groupHomeworks,
+  pruneExpiredHomeworks,
+  removeHomeworkRecord,
+  restoreRemovedHomeworks,
+  saveHomeworkRecord,
+  type RemovedHomework,
+} from "../domain/homework";
 import { removeGlobalTag, type SettingsMutator, updateAppSettings } from "../domain/settings";
 import { importLegacyData as importLegacyAppData, loadAppData, saveAppData } from "../services/app-data";
 import { createRequestId, logError, logInfo } from "../services/logging";
@@ -78,6 +85,47 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     return commit("settings.tag-delete", (data) => removeGlobalTag(data, tag));
   }
 
+  async function cleanupExpiredHomeworks(
+    reason = "manual",
+    protectedId: string | null = null,
+  ): Promise<RemovedHomework[]> {
+    if (!appData.value.settings.autoOutwork) return [];
+    const preview = pruneExpiredHomeworks(appData.value, new Date(), protectedId);
+    if (preview.removed.length === 0 && preview.markedCount === 0) return [];
+
+    let removed: RemovedHomework[] = [];
+    let markedCount = 0;
+    let delayedCleanupEnabled = false;
+
+    await commit("homework.cleanup", (data) => {
+      const result = pruneExpiredHomeworks(data, new Date(), protectedId);
+      if (result.removed.length === 0 && result.markedCount === 0) return data;
+      removed = result.removed;
+      markedCount = result.markedCount;
+      delayedCleanupEnabled = data.settings.delayedCleanupEnabled;
+      return result.data;
+    });
+
+    if (markedCount > 0) {
+      await logInfo("homework.cleanup.mark", `记录了 ${markedCount} 条过期作业的首次展示时间`, undefined, {
+        reason,
+      });
+    }
+    if (removed.length > 0) {
+      await logInfo("homework.cleanup.remove", `自动清理了 ${removed.length} 条过期作业`, undefined, {
+        reason,
+        removedHomeworkIds: removed.map((entry) => entry.homework.id),
+        delayedCleanupEnabled,
+      });
+    }
+    return removed;
+  }
+
+  /** 撤回一次自动清理 */
+  function restoreHomeworks(removed: readonly RemovedHomework[]) {
+    return commit("homework.cleanup.restore", (data) => restoreRemovedHomeworks(data, removed));
+  }
+
   function importLegacyData(profileContents: string | undefined, settingsContents: string) {
     return enqueueCommit(async () => {
       const requestId = createRequestId("legacy-import");
@@ -102,5 +150,7 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     updateSettings,
     deleteGlobalTag,
     importLegacyData,
+    cleanupExpiredHomeworks,
+    restoreHomeworks,
   };
 }

@@ -89,12 +89,12 @@ function escapeHtml(value: string): string {
   );
 }
 
-export function isHomeworkExpired(dueTime: string): boolean {
+export function isHomeworkExpired(dueTime: string, now = new Date()): boolean {
   const dueDate = new Date(dueTime);
   if (Number.isNaN(dueDate.getTime())) return false;
 
-  const today = new Date();
+  const todayStart = new Date(now);
   dueDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-  return dueDate < today;
+  todayStart.setHours(0, 0, 0, 0);
+  return dueDate < todayStart;
 }

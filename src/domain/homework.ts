@@ -66,6 +66,78 @@ export function removeHomeworkRecord(data: AppData, homeworkId: string): AppData
 
 type ExpiryMarkSettings = Pick<AppSettings, "isExpiredMarkEnabled" | "expiredMarkColor">;
 
+export type RemovedHomework = {
+  homework: HomeworkRecord;
+  index: number;
+};
+
+export type ExpiredCleanupPlan = {
+  data: AppData;
+  removed: RemovedHomework[];
+  markedCount: number;
+};
+
+/**
+ * 计算过期清理
+ * 作业过期后先记录firstExpiredShowTime
+ */
+export function pruneExpiredHomeworks(
+  data: AppData,
+  now = new Date(),
+  protectedId: string | null = null,
+): ExpiredCleanupPlan {
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const delayed = data.settings.delayedCleanupEnabled;
+  const removed: RemovedHomework[] = [];
+  const homeworks: HomeworkRecord[] = [];
+  let markedCount = 0;
+
+  data.homeworks.forEach((homework, index) => {
+    if (homework.id === protectedId || !isHomeworkExpired(homework.dueTime, now)) {
+      homeworks.push(homework);
+      return;
+    }
+    if (!delayed) {
+      removed.push({ homework, index });
+      return;
+    }
+
+    const firstShownAt = homework.firstExpiredShowTime ? Date.parse(homework.firstExpiredShowTime) : Number.NaN;
+    const firstShown = Number.isFinite(firstShownAt) ? new Date(firstShownAt) : null;
+    const firstShownDay =
+      firstShown === null
+        ? Number.NaN
+        : new Date(firstShown.getFullYear(), firstShown.getMonth(), firstShown.getDate()).getTime();
+    if (Number.isFinite(firstShownDay) && firstShownDay < todayStart) {
+      removed.push({ homework, index });
+      return;
+    }
+    if (firstShown === null) {
+      markedCount += 1;
+      homeworks.push({ ...homework, firstExpiredShowTime: now.toISOString() });
+      return;
+    }
+    homeworks.push(homework);
+  });
+
+  if (removed.length === 0 && markedCount === 0) return { data, removed, markedCount };
+  return { data: { ...data, homeworks }, removed, markedCount };
+}
+
+export function restoreRemovedHomeworks(data: AppData, removed: readonly RemovedHomework[]): AppData {
+  if (removed.length === 0) return data;
+
+  const existingIds = new Set(data.homeworks.map((homework) => homework.id));
+  const pending = removed
+    .filter((entry) => !existingIds.has(entry.homework.id))
+    .sort((left, right) => left.index - right.index);
+  if (pending.length === 0) return data;
+
+  const homeworks = [...data.homeworks];
+  for (const entry of pending) homeworks.splice(Math.min(entry.index, homeworks.length), 0, entry.homework);
+  return { ...data, homeworks };
+}
+
 export function groupHomeworks(
   homeworks: readonly HomeworkRecord[],
   expiryMarkSettings: ExpiryMarkSettings = { isExpiredMarkEnabled: false, expiredMarkColor: "" },
