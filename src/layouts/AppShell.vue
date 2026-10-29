@@ -136,7 +136,6 @@ const {
   },
 });
 
-// 纯前端自动清理：启动后清一次，跨天 / 回到前台 / 刚打开开关时再补清，不依赖任何后端命令。
 const { start: startExpiredHomeworkCleanup } = useExpiredHomeworkCleanup({
   appData,
   cleanup: cleanupExpiredHomeworks,
@@ -145,7 +144,7 @@ const { start: startExpiredHomeworkCleanup } = useExpiredHomeworkCleanup({
   confirmFirstCleanup,
 });
 
-/** 首次自动清理前的确认：等用户点按钮再继续，避免静默删掉积压的过期作业。 */
+/** 首次自动清理前的确认 */
 function confirmFirstCleanup(count: number) {
   cleanupPendingCount.value = count;
   void nextTick(() => cleanupConfirmDialog.value?.show());

@@ -85,19 +85,11 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     return commit("settings.tag-delete", (data) => removeGlobalTag(data, tag));
   }
 
-  /**
-   * 自动清理过期作业（纯前端，不依赖任何后端命令）。
-   *
-   * 同一趟里还会给刚过期的作业补写 `firstExpiredShowTime`——这是「延迟清理」判断
-   * “是否已展示过期满一天”的依据，所以即使没有删除也要落盘。
-   * 返回被删掉的作业（带原下标，便于撤回）。
-   */
   async function cleanupExpiredHomeworks(
     reason = "manual",
     protectedId: string | null = null,
   ): Promise<RemovedHomework[]> {
     if (!appData.value.settings.autoOutwork) return [];
-    // 先纯算一遍：既没有要删的也没有要标记的，就不进保存队列，免得每次数据变动都写一次 noop。
     const preview = pruneExpiredHomeworks(appData.value, new Date(), protectedId);
     if (preview.removed.length === 0 && preview.markedCount === 0) return [];
 
@@ -129,7 +121,7 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     return removed;
   }
 
-  /** 撤回一次自动清理：把作业按原位置插回去。 */
+  /** 撤回一次自动清理 */
   function restoreHomeworks(removed: readonly RemovedHomework[]) {
     return commit("homework.cleanup.restore", (data) => restoreRemovedHomeworks(data, removed));
   }

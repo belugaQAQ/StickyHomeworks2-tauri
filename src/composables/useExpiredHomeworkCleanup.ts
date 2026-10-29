@@ -10,15 +10,12 @@ type ExpiredHomeworkCleanupOptions = {
   restore: (removed: readonly RemovedHomework[]) => Promise<void>;
   /** 正在编辑的作业 id：清理时跳过它，避免用户改到一半被删。 */
   getProtectedHomeworkId: () => string | null;
-  /** 首次自动清理前的确认；返回 false 表示本次不清理。 */
+  /** 首次自动清理前的确认 */
   confirmFirstCleanup: (count: number) => Promise<boolean>;
 };
 
-/** 每分钟对一次日期即可：跨天最多晚一分钟清理，代价可以忽略。 */
 const DATE_CHECK_INTERVAL_MS = 60_000;
-/** Material 建议带操作按钮的 snackbar 停留更久，这里给足撤回的时间。 */
-const CLEANUP_SNACKBAR_DURATION_MS = 10_000;
-/** 用户确认过首次清理后记在这里，之后不再打扰。 */
+const CLEANUP_SNACKBAR_DURATION_MS = 15_000;
 const CONFIRMED_STORAGE_KEY = "stickyhomeworks2.expired-cleanup-confirmed.v1";
 
 function localDateKey(now = new Date()): string {
@@ -29,7 +26,6 @@ function hasConfirmedCleanup(): boolean {
   try {
     return window.localStorage.getItem(CONFIRMED_STORAGE_KEY) === "1";
   } catch {
-    // localStorage 不可用时每次启动都问一次，比静默删除安全。
     return false;
   }
 }
@@ -42,19 +38,6 @@ function markCleanupConfirmed(): void {
   }
 }
 
-/**
- * 无后端版自动清理过期作业。
- *
- * 触发时机全部在前端：启动后、每分钟比对一次本地日期（跨天）、
- * 窗口从后台/休眠回到前台、以及「自动清理」开关刚被打开（或延迟清理被关掉）的那一瞬间。
- * 真正的删除逻辑在 `useHomeworkStore.cleanupExpiredHomeworks`，走既有的串行保存队列，
- * 因此不会和用户操作打架；删除后弹一条 10 秒的 snackbar，点「撤回」按原位置插回去。
- *
- * 第一次真正要删东西之前会先要一次确认（`confirmFirstCleanup`），确认结果记在
- * localStorage 里，之后不再打扰；选择「暂不清理」只影响本次运行。
- * 撤回成功后当天的自动清理就停了（只记在内存里，重启即忘），
- * 想提前恢复只能把「自动清理」关掉再打开。
- */
 export function useExpiredHomeworkCleanup({
   appData,
   cleanup,
@@ -63,14 +46,11 @@ export function useExpiredHomeworkCleanup({
   confirmFirstCleanup,
 }: ExpiredHomeworkCleanupOptions) {
   const lastCheckedDate = ref(localDateKey());
-  /** 撤回当天的日期；等于今天就说明今天别再清了。重启后自然为空。 */
   const suppressedDate = ref<string | null>(null);
   let timerId: number | undefined;
   let isSweeping = false;
   let disposed = false;
-  /** 用户在首次确认里选择「暂不清理」后，本次运行不再自动扫。 */
   let declinedThisSession = false;
-  /** 清理进行中又被触发的扫描，结束后补一次。 */
   let pendingSweepReason: string | null = null;
 
   function isSuppressedToday() {
@@ -81,7 +61,6 @@ export function useExpiredHomeworkCleanup({
     M3eSnackbar.open(`已自动清理 ${removed.length} 条过期作业`, "撤回", {
       duration: CLEANUP_SNACKBAR_DURATION_MS,
       actionCallback: () => {
-        // 先暂停当天清理，否则撤回引起的 homeworks 变化会立刻又扫一次、把作业删回去。
         suppressedDate.value = localDateKey();
         void restore(removed)
           .then(async () => {
@@ -111,7 +90,6 @@ export function useExpiredHomeworkCleanup({
       const preview = pruneExpiredHomeworks(appData.value, new Date(), protectedId);
       if (preview.removed.length === 0 && preview.markedCount === 0) return;
 
-      // 首次清理前确认一次：不打招呼删掉积压的历史过期作业太粗暴。
       if (preview.removed.length > 0 && !hasConfirmedCleanup()) {
         const approved = await confirmFirstCleanup(preview.removed.length);
         if (!approved) {
@@ -147,8 +125,6 @@ export function useExpiredHomeworkCleanup({
     if (document.visibilityState === "visible") checkDateChange();
   }
 
-  // 打开「自动清理」的那一瞬间就检测；关掉延迟清理会让作业重新变成过期，也补一次。
-  // 重新打开开关同时解除撤回当天的暂停。
   watch(
     () => [appData.value.settings.autoOutwork, appData.value.settings.delayedCleanupEnabled] as const,
     ([autoOutwork, delayedCleanupEnabled], previous) => {
@@ -161,7 +137,6 @@ export function useExpiredHomeworkCleanup({
     },
   );
 
-  // 作业本身变了（新建、编辑截止日期）也立刻对齐染色：一旦变成过期就当场清掉。
   watch(
     () => appData.value.homeworks,
     () => {

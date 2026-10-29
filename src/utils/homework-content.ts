@@ -89,10 +89,6 @@ function escapeHtml(value: string): string {
   );
 }
 
-/**
- * 判断作业是否已过期（截止日早于今天零点）。
- * `now` 可注入，便于测试与跨天检查复用同一套判断。
- */
 export function isHomeworkExpired(dueTime: string, now = new Date()): boolean {
   const dueDate = new Date(dueTime);
   if (Number.isNaN(dueDate.getTime())) return false;

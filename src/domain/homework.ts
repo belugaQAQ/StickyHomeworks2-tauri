@@ -68,25 +68,18 @@ type ExpiryMarkSettings = Pick<AppSettings, "isExpiredMarkEnabled" | "expiredMar
 
 export type RemovedHomework = {
   homework: HomeworkRecord;
-  /** 清理前在 `homeworks` 里的下标，撤回时按它插回原位。 */
   index: number;
 };
 
 export type ExpiredCleanupPlan = {
-  /** 既没标记也没删除时返回入参本身（引用相同），便于上游判定 noop。 */
   data: AppData;
   removed: RemovedHomework[];
-  /** 本次补写 `firstExpiredShowTime` 的条数。 */
   markedCount: number;
 };
 
 /**
- * 计算过期清理，语义对齐原版 WPF（`HomeworkControl` 标记 + `ProfileService.CleanupOutdated`）：
- * - 作业过期后先记录 `firstExpiredShowTime`（首次被展示为过期的时间）；
- * - 未开启「延迟清理」：过期即移除；
- * - 开启「延迟清理」：只有首次展示日期早于今天才移除，即过期展示后至少留一个自然日。
- *
- * `protectedId` 用于跳过正在编辑的作业，避免用户改到一半被清掉。
+ * 计算过期清理
+ * 作业过期后先记录firstExpiredShowTime
  */
 export function pruneExpiredHomeworks(
   data: AppData,
@@ -131,7 +124,6 @@ export function pruneExpiredHomeworks(
   return { data: { ...data, homeworks }, removed, markedCount };
 }
 
-/** 把自动清理掉的作业按原下标插回；同 id 已存在就跳过，避免撤回后出现两份。 */
 export function restoreRemovedHomeworks(data: AppData, removed: readonly RemovedHomework[]): AppData {
   if (removed.length === 0) return data;
 
