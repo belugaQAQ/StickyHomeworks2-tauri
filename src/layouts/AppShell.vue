@@ -443,7 +443,7 @@ onUnmounted(() => {
 
     <m3e-dialog ref="cleanupConfirmDialog" alert disable-close>
       <m3e-heading slot="header" variant="headline" size="small" level="2">清理过期作业？</m3e-heading>
-      将移除 {{ cleanupPendingCount }} 条截止日期已过的作业，清理后还能在提示条里撤回。此提示只出现一次。
+      将移除 {{ cleanupPendingCount }} 条截止日期已过的作业，将会在之后自动清理，此提示只出现一次。
       <div slot="actions" end>
         <m3e-button variant="text" @click="answerCleanupConfirm(false)">暂不清理</m3e-button>
         <m3e-button variant="filled" @click="answerCleanupConfirm(true)">清理</m3e-button>
