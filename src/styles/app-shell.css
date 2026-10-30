@@ -400,6 +400,7 @@
   display: inline-block;
   transform: skewX(-6deg);
   transform-origin: 0 50%;
+  text-decoration: inherit;
 }
 
 .homework-editor-content img {

@@ -66,7 +66,6 @@ onUnmounted(() => {
   >
     <div class="settings-layout">
       <nav class="settings-layout__sidebar" aria-label="设置分类">
-        <m3e-heading variant="title" size="large" level="2">设置</m3e-heading>
         <m3e-action-list variant="segmented" class="settings-navigation__list">
           <m3e-list-action
             v-for="section in visibleSections"
@@ -78,7 +77,6 @@ onUnmounted(() => {
           >
             <m3e-icon slot="leading" :name="section.icon"></m3e-icon>
             {{ section.title }}
-            <span slot="supporting-text">{{ section.detail }}</span>
           </m3e-list-action>
         </m3e-action-list>
       </nav>
