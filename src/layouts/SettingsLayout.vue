@@ -39,9 +39,6 @@ const isMobileNarrowLayout = computed(
 const showBackButton = computed(() => !isIndexRoute.value && (isMobileNarrowLayout.value || isNarrowSplitLayout.value));
 
 const transitionName = computed(() => routeTransitionName.value);
-const transitionMode = computed<"out-in" | undefined>(() =>
-  routeTransitionName.value === "settings-detail" ? undefined : "out-in",
-);
 
 function updateViewportWidth() {
   viewportWidth.value = window.innerWidth;
@@ -87,21 +84,21 @@ onUnmounted(() => {
       </nav>
       <section class="settings-layout__content">
         <div class="settings-layout__content-inner">
-          <header class="settings-page__header">
-            <m3e-icon-button
-              v-if="showBackButton"
-              aria-label="返回设置"
-              title="返回设置"
-              @click="router.replace('/settings')"
-            >
-              <m3e-icon name="arrow_back"></m3e-icon>
-            </m3e-icon-button>
-            <m3e-heading :id="headingId" variant="headline" size="large" level="1">{{ pageTitle }}</m3e-heading>
-          </header>
           <div class="settings-pane-host">
             <RouterView v-slot="{ Component }">
-              <Transition :name="transitionName" :mode="transitionMode">
+              <Transition :name="transitionName" mode="out-in">
                 <div :key="route.path" class="settings-pane">
+                  <header class="settings-page__header">
+                    <m3e-icon-button
+                      v-if="showBackButton"
+                      aria-label="返回设置"
+                      title="返回设置"
+                      @click="router.replace('/settings')"
+                    >
+                      <m3e-icon name="arrow_back"></m3e-icon>
+                    </m3e-icon-button>
+                    <m3e-heading :id="headingId" variant="headline" size="large" level="1">{{ pageTitle }}</m3e-heading>
+                  </header>
                   <component :is="Component" />
                 </div>
               </Transition>

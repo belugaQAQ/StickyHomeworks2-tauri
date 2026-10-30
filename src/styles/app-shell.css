@@ -173,10 +173,6 @@
 
 .app-content--settings .settings-detail-enter-active,
 .app-content--settings .settings-detail-leave-active {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  min-height: 100%;
   pointer-events: none;
   transition-property: opacity, transform;
   will-change: opacity, transform;

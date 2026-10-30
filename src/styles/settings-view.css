@@ -22,7 +22,7 @@
 
 .settings-layout {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   width: 100%;
   min-width: 0;
@@ -108,13 +108,13 @@
   display: grid;
   align-content: start;
   gap: 1rem;
-  min-width: 300px;
+  min-width: 240px;
   padding: 2rem 1rem 5rem;
-  background: var(--app-surface-low, var(--md-sys-color-surface-container-low));
+  background: var(--md-sys-color-background);
 }
 
 .settings-layout__sidebar > m3e-heading {
-  padding-inline: 0.75rem;
+  padding-inline: 0.625rem;
   color: var(--md-sys-color-on-surface);
 }
 
@@ -168,8 +168,13 @@
   --m3e-list-item-label-text-color: var(--md-sys-color-on-surface);
   --m3e-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
   --m3e-list-item-leading-color: var(--md-sys-color-on-surface-variant);
-  --m3e-list-item-padding-block: 0.75rem;
-  --m3e-list-item-padding-inline: 0.75rem;
+  --m3e-list-item-padding-block: 0.4375rem;
+  --m3e-list-item-padding-inline: 0.625rem;
+  --m3e-list-item-between-space: 0.625rem;
+  --m3e-list-item-font-size: 0.875rem;
+  --m3e-list-item-supporting-text-font-size: 0.6875rem;
+  --m3e-list-item-icon-size: 1.25rem;
+  --m3e-list-item-two-line-height: 3.25rem;
 }
 
 .settings-navigation__item--active {
