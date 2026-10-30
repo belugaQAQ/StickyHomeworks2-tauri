@@ -5,6 +5,7 @@ import {
   type RouteLocationNormalizedLoaded,
   type RouteRecordRaw,
 } from "vue-router";
+import SettingsLayout from "./layouts/SettingsLayout.vue";
 import { settingsSectionComponents, settingsRouteName, settingsSections } from "./settings/sections";
 import HomeworksView from "./views/HomeworksView.vue";
 import SettingsIndexView from "./views/SettingsIndexView.vue";
@@ -20,7 +21,6 @@ declare module "vue-router" {
   }
 }
 
-/** `/settings/*` 详情路由由设置分区清单统一生成，路由名/路径/meta 与旧实现保持一致。 */
 const settingsDetailRoutes: RouteRecordRaw[] = settingsSections.map((section) => ({
   path: section.path,
   name: settingsRouteName(section),
@@ -36,12 +36,18 @@ export const router = createRouter({
     { path: "/templates", name: "templates", component: TemplatesView },
     {
       path: "/settings",
-      name: "settings",
-      component: SettingsIndexView,
-      meta: { settingsDepth: 0 },
-      beforeEnter: () => (window.innerWidth > SETTINGS_DETAIL_MIN_WIDTH ? "/settings/general" : true),
+      component: SettingsLayout,
+      children: [
+        {
+          path: "",
+          name: "settings",
+          component: SettingsIndexView,
+          meta: { settingsDepth: 0 },
+          beforeEnter: () => (window.innerWidth > SETTINGS_DETAIL_MIN_WIDTH ? "/settings/general" : true),
+        },
+        ...settingsDetailRoutes,
+      ],
     },
-    ...settingsDetailRoutes,
     { path: "/:pathMatch(.*)*", redirect: "/" },
   ],
 });

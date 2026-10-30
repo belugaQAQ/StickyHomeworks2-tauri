@@ -371,6 +371,41 @@
   width: 100%;
 }
 
+.settings-page--index .settings-layout {
+  display: block;
+  height: auto;
+}
+
+.settings-page--index .settings-layout__sidebar {
+  display: none;
+}
+
+.settings-page--index .settings-layout__content {
+  position: static;
+  min-height: 0;
+  background: transparent;
+}
+
+.settings-page--index .settings-layout__content-inner {
+  max-width: none;
+  min-height: 0;
+  padding: 0;
+}
+
+.settings-pane-host {
+  position: relative;
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+
+.settings-pane {
+  display: grid;
+  align-content: start;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
 .settings-group {
   display: grid;
   gap: 1rem;

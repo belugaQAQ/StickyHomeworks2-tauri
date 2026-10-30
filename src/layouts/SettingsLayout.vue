@@ -1,71 +1,59 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import "../styles/settings-view.css";
 import { useAppContext } from "../app-context";
-import { getSettingsSidebarScrollTop, setSettingsSidebarScrollTop } from "../services/settings-sidebar-scroll";
-import { visibleSettingsSections } from "../settings/sections";
+import { routeTransitionName } from "../router";
+import { settingsSectionByPath, visibleSettingsSections } from "../settings/sections";
 import { SETTINGS_RIGHT_PANEL_MIN_WIDTH, SPLIT_LAYOUT_MIN_WIDTH, isAtLeast, isBelow } from "../ui/breakpoints";
 
-const { title, headingId, error, showBack } = defineProps<{
-  title: string;
-  headingId: string;
-  error?: string;
-  showBack?: boolean;
-}>();
 const router = useRouter();
 const route = useRoute();
-const { isMobileRuntime } = useAppContext();
+const { isMobileRuntime, settingsError } = useAppContext();
 const viewportWidth = ref(0);
-const navigationList = ref<HTMLElement | null>(null);
+
+const activeSection = computed(() => settingsSectionByPath.get(route.path));
+const isIndexRoute = computed(() => activeSection.value === undefined);
+const pageTitle = computed(() => activeSection.value?.title ?? "设置");
+const headingId = computed(() =>
+  activeSection.value ? `settings-${activeSection.value.id}-title` : "settings-index-title",
+);
 const visibleSections = computed(() => visibleSettingsSections(isMobileRuntime.value));
 
 const isNarrowSplitLayout = computed(
-  () => !isMobileRuntime.value && isBelow(viewportWidth.value, SPLIT_LAYOUT_MIN_WIDTH),
+  () => !isIndexRoute.value && !isMobileRuntime.value && isBelow(viewportWidth.value, SPLIT_LAYOUT_MIN_WIDTH),
 );
 
 const isRightPanelInsufficient = computed(
   () =>
+    !isIndexRoute.value &&
     !isMobileRuntime.value &&
     isAtLeast(viewportWidth.value, SPLIT_LAYOUT_MIN_WIDTH) &&
     isBelow(viewportWidth.value, SETTINGS_RIGHT_PANEL_MIN_WIDTH),
 );
 
 const isMobileNarrowLayout = computed(
-  () => isMobileRuntime.value && isBelow(viewportWidth.value, SETTINGS_RIGHT_PANEL_MIN_WIDTH),
+  () => !isIndexRoute.value && isMobileRuntime.value && isBelow(viewportWidth.value, SETTINGS_RIGHT_PANEL_MIN_WIDTH),
 );
 
-function updateAvailableWidth() {
+const showBackButton = computed(() => !isIndexRoute.value && (isMobileNarrowLayout.value || isNarrowSplitLayout.value));
+
+const transitionName = computed(() => routeTransitionName.value);
+const transitionMode = computed<"out-in" | undefined>(() =>
+  routeTransitionName.value === "settings-detail" ? undefined : "out-in",
+);
+
+function updateViewportWidth() {
   viewportWidth.value = window.innerWidth;
 }
 
-function saveNavigationScrollPosition() {
-  if (!navigationList.value) return;
-  const scrollTop = navigationList.value.scrollTop;
-  setSettingsSidebarScrollTop(scrollTop);
-  const restore = () => {
-    if (navigationList.value) navigationList.value.scrollTop = scrollTop;
-  };
-  requestAnimationFrame(() => {
-    restore();
-    requestAnimationFrame(restore);
-  });
-}
-
 onMounted(() => {
-  updateAvailableWidth();
-  window.addEventListener("resize", updateAvailableWidth);
-  void nextTick(() => {
-    if (navigationList.value) navigationList.value.scrollTop = getSettingsSidebarScrollTop();
-  });
-});
-
-onBeforeUnmount(() => {
-  if (navigationList.value) setSettingsSidebarScrollTop(navigationList.value.scrollTop);
+  updateViewportWidth();
+  window.addEventListener("resize", updateViewportWidth);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("resize", updateAvailableWidth);
+  window.removeEventListener("resize", updateViewportWidth);
 });
 </script>
 
@@ -73,19 +61,16 @@ onUnmounted(() => {
   <section
     class="settings-page"
     :class="{
-      'settings-page--split': showBack,
+      'settings-page--split': !isIndexRoute,
+      'settings-page--index': isIndexRoute,
       'settings-page--mobile': isMobileNarrowLayout,
       'settings-page--narrow': isNarrowSplitLayout,
     }"
   >
-    <div v-if="showBack" class="settings-layout">
-      <nav ref="navigationList" class="settings-layout__sidebar" aria-label="设置分类">
+    <div class="settings-layout">
+      <nav class="settings-layout__sidebar" aria-label="设置分类">
         <m3e-heading variant="title" size="large" level="2">设置</m3e-heading>
-        <m3e-action-list
-          variant="segmented"
-          class="settings-navigation__list"
-          @click.capture="saveNavigationScrollPosition"
-        >
+        <m3e-action-list variant="segmented" class="settings-navigation__list">
           <m3e-list-action
             v-for="section in visibleSections"
             :key="section.path"
@@ -104,17 +89,25 @@ onUnmounted(() => {
         <div class="settings-layout__content-inner">
           <header class="settings-page__header">
             <m3e-icon-button
-              v-if="showBack && (isMobileNarrowLayout || isNarrowSplitLayout)"
+              v-if="showBackButton"
               aria-label="返回设置"
               title="返回设置"
               @click="router.replace('/settings')"
             >
               <m3e-icon name="arrow_back"></m3e-icon>
             </m3e-icon-button>
-            <m3e-heading :id="headingId" variant="headline" size="large" level="1">{{ title }}</m3e-heading>
+            <m3e-heading :id="headingId" variant="headline" size="large" level="1">{{ pageTitle }}</m3e-heading>
           </header>
-          <slot />
-          <p v-if="error" class="editor-error" role="alert">{{ error }}</p>
+          <div class="settings-pane-host">
+            <RouterView v-slot="{ Component }">
+              <Transition :name="transitionName" :mode="transitionMode">
+                <div :key="route.path" class="settings-pane">
+                  <component :is="Component" />
+                </div>
+              </Transition>
+            </RouterView>
+          </div>
+          <p v-if="settingsError" class="editor-error" role="alert">{{ settingsError }}</p>
         </div>
         <Teleport to="body">
           <Transition name="settings-insufficient">
@@ -135,13 +128,5 @@ onUnmounted(() => {
         </Teleport>
       </section>
     </div>
-
-    <template v-else>
-      <header class="settings-page__header">
-        <m3e-heading :id="headingId" variant="headline" size="large" level="1">{{ title }}</m3e-heading>
-      </header>
-      <slot />
-      <p v-if="error" class="editor-error" role="alert">{{ error }}</p>
-    </template>
   </section>
 </template>

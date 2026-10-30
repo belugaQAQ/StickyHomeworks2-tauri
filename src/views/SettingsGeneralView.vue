@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useAppContext } from "../app-context";
-import SettingsPage from "../components/SettingsPage.vue";
 import { useSettingsAutosave } from "../composables/useSettingsAutosave";
 import { useRangeSliderDrag } from "../composables/useRangeSliderDrag";
 import { logInfo, logError } from "../services/logging";
@@ -10,7 +9,7 @@ import { isTauri } from "@tauri-apps/api/core";
 type SwitchElement = HTMLElement & { checked: boolean };
 type SliderThumbElement = HTMLElement & { value?: string | number };
 const { isMobileRuntime } = useAppContext();
-const { appData, save, settingsError } = useSettingsAutosave();
+const { appData, save } = useSettingsAutosave();
 const title = ref(appData.value.settings.title);
 const backgroundOpacity = ref(appData.value.settings.backgroundOpacity);
 const homeworkScale = ref(appData.value.settings.homeworkScale);
@@ -97,73 +96,71 @@ const homeworkScaleDrag = useRangeSliderDrag({
 </script>
 
 <template>
-  <SettingsPage title="通用" heading-id="settings-general-title" :error="settingsError" show-back>
-    <m3e-list class="settings-control-list">
+  <m3e-list class="settings-control-list">
+    <m3e-list-item class="settings-control-list__item"
+      >应用标题<span slot="supporting-text">显示在应用栏中的名称。</span
+      ><m3e-form-field slot="trailing" variant="outlined" hide-subscript="always"
+        ><input id="settings-title" v-model="title" @change="saveTitle" /></m3e-form-field
+    ></m3e-list-item>
+    <template v-if="!isMobileRuntime">
+      <m3e-divider inset></m3e-divider>
       <m3e-list-item class="settings-control-list__item"
-        >应用标题<span slot="supporting-text">显示在应用栏中的名称。</span
-        ><m3e-form-field slot="trailing" variant="outlined" hide-subscript="always"
-          ><input id="settings-title" v-model="title" @change="saveTitle" /></m3e-form-field
+        >背景透明度<span slot="supporting-text">调整背景和作业列表表面的透明度，不影响应用栏。</span
+        ><m3e-slider
+          ref="backgroundOpacitySlider"
+          slot="trailing"
+          min="0"
+          max="100"
+          step="5"
+          labelled
+          @pointerdown="backgroundOpacityDrag.onPointerDown"
+          ><m3e-slider-thumb
+            ref="backgroundOpacityThumb"
+            :value="backgroundOpacity"
+            aria-label="背景不透明度百分比"
+            @input="updateBackgroundOpacityPreview"
+            @change="saveBackgroundOpacity"
+          ></m3e-slider-thumb></m3e-slider
       ></m3e-list-item>
-      <template v-if="!isMobileRuntime">
-        <m3e-divider inset></m3e-divider>
-        <m3e-list-item class="settings-control-list__item"
-          >背景透明度<span slot="supporting-text">调整背景和作业列表表面的透明度，不影响应用栏。</span
-          ><m3e-slider
-            ref="backgroundOpacitySlider"
-            slot="trailing"
-            min="0"
-            max="100"
-            step="5"
-            labelled
-            @pointerdown="backgroundOpacityDrag.onPointerDown"
-            ><m3e-slider-thumb
-              ref="backgroundOpacityThumb"
-              :value="backgroundOpacity"
-              aria-label="背景不透明度百分比"
-              @input="updateBackgroundOpacityPreview"
-              @change="saveBackgroundOpacity"
-            ></m3e-slider-thumb></m3e-slider
-        ></m3e-list-item>
-        <m3e-divider inset></m3e-divider>
-        <m3e-list-item class="settings-control-list__item"
-          >作业界面缩放<span slot="supporting-text">仅调整主界面的作业内容，不影响设置、应用栏和对话框。</span
-          ><m3e-slider
-            ref="homeworkScaleSlider"
-            slot="trailing"
-            min="75"
-            max="200"
-            step="5"
-            labelled
-            @pointerdown="homeworkScaleDrag.onPointerDown"
-            ><m3e-slider-thumb
-              ref="homeworkScaleThumb"
-              :value="homeworkScale"
-              :aria-label="`作业界面缩放百分比 ${homeworkScale}`"
-              @input="updateHomeworkScalePreview"
-              @change="saveHomeworkScale"
-            ></m3e-slider-thumb></m3e-slider
-        ></m3e-list-item>
-        <m3e-divider inset></m3e-divider>
-        <m3e-list-item class="settings-control-list__item"
-          >置底<span slot="supporting-text">开启后，桌面端窗口始终显示在其他窗口下方</span
-          ><m3e-switch
-            slot="trailing"
-            icons="selected"
-            :checked="appData.settings.alwaysOnBottom"
-            @change="updateAlwaysOnBottom"
-          ></m3e-switch
-        ></m3e-list-item>
-        <m3e-divider inset></m3e-divider>
-        <m3e-list-item class="settings-control-list__item"
-          >开机自启动<span slot="supporting-text">登录系统后自动启动应用。</span
-          ><m3e-switch
-            slot="trailing"
-            icons="selected"
-            :checked="appData.settings.autoStart"
-            @change="updateAutoStart"
-          ></m3e-switch
-        ></m3e-list-item>
-      </template>
-    </m3e-list>
-  </SettingsPage>
+      <m3e-divider inset></m3e-divider>
+      <m3e-list-item class="settings-control-list__item"
+        >作业界面缩放<span slot="supporting-text">仅调整主界面的作业内容，不影响设置、应用栏和对话框。</span
+        ><m3e-slider
+          ref="homeworkScaleSlider"
+          slot="trailing"
+          min="75"
+          max="200"
+          step="5"
+          labelled
+          @pointerdown="homeworkScaleDrag.onPointerDown"
+          ><m3e-slider-thumb
+            ref="homeworkScaleThumb"
+            :value="homeworkScale"
+            :aria-label="`作业界面缩放百分比 ${homeworkScale}`"
+            @input="updateHomeworkScalePreview"
+            @change="saveHomeworkScale"
+          ></m3e-slider-thumb></m3e-slider
+      ></m3e-list-item>
+      <m3e-divider inset></m3e-divider>
+      <m3e-list-item class="settings-control-list__item"
+        >置底<span slot="supporting-text">开启后，桌面端窗口始终显示在其他窗口下方</span
+        ><m3e-switch
+          slot="trailing"
+          icons="selected"
+          :checked="appData.settings.alwaysOnBottom"
+          @change="updateAlwaysOnBottom"
+        ></m3e-switch
+      ></m3e-list-item>
+      <m3e-divider inset></m3e-divider>
+      <m3e-list-item class="settings-control-list__item"
+        >开机自启动<span slot="supporting-text">登录系统后自动启动应用。</span
+        ><m3e-switch
+          slot="trailing"
+          icons="selected"
+          :checked="appData.settings.autoStart"
+          @change="updateAutoStart"
+        ></m3e-switch
+      ></m3e-list-item>
+    </template>
+  </m3e-list>
 </template>
