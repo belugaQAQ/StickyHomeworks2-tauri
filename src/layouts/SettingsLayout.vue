@@ -76,7 +76,7 @@ onUnmounted(() => {
             :aria-current="route.path === section.path ? 'page' : undefined"
           >
             <m3e-icon slot="leading" :name="section.icon"></m3e-icon>
-            {{ section.title }}
+            <span>{{ section.title }}</span>
           </m3e-list-action>
         </m3e-action-list>
       </nav>
