@@ -21,8 +21,9 @@
 }
 
 .settings-layout {
+  --settings-sidebar-width: 16rem;
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: var(--settings-sidebar-width) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   width: 100%;
   min-width: 0;
@@ -107,15 +108,9 @@
 .settings-layout__sidebar {
   display: grid;
   align-content: start;
-  gap: 1rem;
-  min-width: 300px;
-  padding: 2rem 1rem 5rem;
-  background: var(--app-surface-low, var(--md-sys-color-surface-container-low));
-}
-
-.settings-layout__sidebar > m3e-heading {
-  padding-inline: 0.75rem;
-  color: var(--md-sys-color-on-surface);
+  min-width: var(--settings-sidebar-width, 16rem);
+  padding: 1rem 0.75rem 1.5rem;
+  background: var(--md-sys-color-background);
 }
 
 .settings-navigation__list {
@@ -166,17 +161,22 @@
 
 .settings-navigation__item {
   --m3e-list-item-label-text-color: var(--md-sys-color-on-surface);
-  --m3e-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
   --m3e-list-item-leading-color: var(--md-sys-color-on-surface-variant);
-  --m3e-list-item-padding-block: 0.75rem;
-  --m3e-list-item-padding-inline: 0.75rem;
+  /* 行高与 padding-block 取大值，一起调才能同时撑开视觉行高和上下留白。 */
+  --m3e-list-item-padding-block: 1rem;
+  --m3e-list-item-padding-inline: 1.125rem;
+  --m3e-list-item-between-space: 0.875rem;
+  --m3e-list-item-font-size: 1rem;
+  --m3e-list-item-icon-size: 1.75rem;
+  --m3e-icon-size: 1.75rem;
+  --m3e-list-item-one-line-height: 3.5rem;
 }
 
 .settings-navigation__item--active {
   --m3e-list-item-container-color: var(--md-sys-color-secondary-container);
   --m3e-list-item-label-text-color: var(--md-sys-color-on-secondary-container);
-  --m3e-list-item-supporting-text-color: var(--md-sys-color-on-secondary-container);
   --m3e-list-item-leading-color: var(--md-sys-color-on-secondary-container);
+  --m3e-list-item-font-weight: 600;
 }
 
 .settings-layout__content {
@@ -197,8 +197,9 @@
   padding: 0 max(1.25rem, env(safe-area-inset-right, 0px)) 5rem max(1.25rem, env(safe-area-inset-left, 0px));
 }
 
+/* 宽屏下沿用基线的 48rem 上限并水平居中：表单行过长会难读，这里覆盖的是“撑满整列”。 */
 .settings-page--split:not(.settings-page--mobile):not(.settings-page--narrow) .settings-layout__content-inner {
-  max-width: none;
+  margin-inline: auto;
 }
 
 .settings-insufficient-overlay {
@@ -369,6 +370,41 @@
 
 .settings-page--narrow .settings-layout__content {
   width: 100%;
+}
+
+.settings-page--index .settings-layout {
+  display: block;
+  height: auto;
+}
+
+.settings-page--index .settings-layout__sidebar {
+  display: none;
+}
+
+.settings-page--index .settings-layout__content {
+  position: static;
+  min-height: 0;
+  background: transparent;
+}
+
+.settings-page--index .settings-layout__content-inner {
+  max-width: none;
+  min-height: 0;
+  padding: 0;
+}
+
+.settings-pane-host {
+  position: relative;
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+
+.settings-pane {
+  display: grid;
+  align-content: start;
+  gap: 1.25rem;
+  min-width: 0;
 }
 
 .settings-group {

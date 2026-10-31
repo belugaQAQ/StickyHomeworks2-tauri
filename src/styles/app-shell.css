@@ -173,42 +173,29 @@
 
 .app-content--settings .settings-detail-enter-active,
 .app-content--settings .settings-detail-leave-active {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  min-height: 100%;
   pointer-events: none;
-}
-
-.app-content--settings .settings-detail-enter-active .settings-layout__content,
-.app-content--settings .settings-detail-leave-active .settings-layout__content {
   transition-property: opacity, transform;
   will-change: opacity, transform;
 }
 
-.app-content--settings .settings-detail-enter-active .settings-layout__content {
+.app-content--settings .settings-detail-enter-active {
   transition-duration: var(--md-sys-motion-duration-medium-2, 300ms);
   transition-timing-function: var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1));
 }
 
-.app-content--settings .settings-detail-leave-active .settings-layout__content {
+.app-content--settings .settings-detail-leave-active {
   transition-duration: var(--md-sys-motion-duration-short-4, 200ms);
   transition-timing-function: var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15));
 }
 
-.app-content--settings .settings-detail-enter-from .settings-layout__content {
+.app-content--settings .settings-detail-enter-from {
   opacity: 0;
   transform: translateX(1.5rem);
 }
 
-.app-content--settings .settings-detail-leave-to .settings-layout__content {
+.app-content--settings .settings-detail-leave-to {
   opacity: 0;
   transform: translateX(-0.75rem);
-}
-
-.app-content--settings .settings-detail-enter-active .settings-layout__sidebar,
-.app-content--settings .settings-detail-leave-active .settings-layout__sidebar {
-  transform: none;
 }
 
 .settings-forward-enter-active,
@@ -413,6 +400,7 @@
   display: inline-block;
   transform: skewX(-6deg);
   transform-origin: 0 50%;
+  text-decoration: inherit;
 }
 
 .homework-editor-content img {

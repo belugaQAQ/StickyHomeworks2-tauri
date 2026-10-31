@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAppContext } from "../app-context";
-import SettingsPage from "../components/SettingsPage.vue";
 import { visibleSettingsSections } from "../settings/sections";
 import { SETTINGS_DETAIL_MIN_WIDTH } from "../ui/breakpoints";
 import "../styles/settings-view.css";
@@ -28,14 +27,12 @@ const visibleSections = computed(() => visibleSettingsSections(isMobileRuntime.v
 </script>
 
 <template>
-  <SettingsPage title="设置" heading-id="settings-index-title">
-    <m3e-action-list variant="segmented" class="settings-action-list">
-      <m3e-list-action v-for="section in visibleSections" :key="section.path" :href="`#${section.path}`">
-        <m3e-icon slot="leading" :name="section.icon"></m3e-icon>
-        {{ section.title }}
-        <span slot="supporting-text">{{ section.detail }}</span>
-        <m3e-icon slot="trailing" name="chevron_right"></m3e-icon>
-      </m3e-list-action>
-    </m3e-action-list>
-  </SettingsPage>
+  <m3e-action-list variant="segmented" class="settings-action-list">
+    <m3e-list-action v-for="section in visibleSections" :key="section.path" :href="`#${section.path}`">
+      <m3e-icon slot="leading" :name="section.icon"></m3e-icon>
+      {{ section.title }}
+      <span slot="supporting-text">{{ section.detail }}</span>
+      <m3e-icon slot="trailing" name="chevron_right"></m3e-icon>
+    </m3e-list-action>
+  </m3e-action-list>
 </template>

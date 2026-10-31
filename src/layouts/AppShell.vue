@@ -332,7 +332,7 @@ onUnmounted(() => {
             :name="routeTransitionName"
             :mode="routeTransitionName === 'settings-detail' ? undefined : 'out-in'"
           >
-            <div :key="route.fullPath" class="route-view">
+            <div :key="route.matched[0]?.path ?? route.path" class="route-view">
               <component :is="Component" />
             </div>
           </Transition>

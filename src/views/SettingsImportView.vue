@@ -2,7 +2,6 @@
 import { computed, ref } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 import { M3eSnackbar } from "@m3e/web/all";
-import SettingsPage from "../components/SettingsPage.vue";
 import { useAppContext } from "../app-context";
 import { logError, logInfo } from "../services/logging";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
@@ -13,7 +12,7 @@ type DialogElement = HTMLElement & {
   hide: () => void;
 };
 
-const { importLegacyData, settingsError } = useAppContext();
+const { importLegacyData } = useAppContext();
 const profileInput = ref<HTMLInputElement | null>(null);
 const settingsInput = ref<HTMLInputElement | null>(null);
 const confirmDialog = ref<DialogElement | null>(null);
@@ -109,61 +108,59 @@ async function confirmImport() {
 </script>
 
 <template>
-  <SettingsPage title="导入旧版数据" heading-id="settings-import-title" :error="settingsError" show-back>
-    <section class="settings-group settings-import" aria-labelledby="settings-import-files-title">
-      <m3e-heading id="settings-import-files-title" variant="title" size="large" level="2">选择文件</m3e-heading>
-      <input
-        ref="profileInput"
-        class="settings-file-input"
-        type="file"
-        accept="application/json,.json"
-        @change="updateProfile"
-      />
-      <input
-        ref="settingsInput"
-        class="settings-file-input"
-        type="file"
-        accept="application/json,.json"
-        @change="updateSettings"
-      />
-      <m3e-list class="settings-control-list">
-        <m3e-list-item class="settings-control-list__item">
-          Profile.json（可选）
-          <span slot="supporting-text">{{ profileFile?.name ?? "保留当前作业" }}</span>
-          <m3e-button slot="trailing" variant="outlined" :disabled="!isTauri()" @click="selectProfile">
-            <m3e-icon slot="icon" name="folder_open"></m3e-icon>
-            选择
-          </m3e-button>
-        </m3e-list-item>
-        <m3e-divider inset></m3e-divider>
-        <m3e-list-item class="settings-control-list__item">
-          Settings.json
-          <span slot="supporting-text">{{ settingsFile?.name ?? "必须选择" }}</span>
-          <m3e-button slot="trailing" variant="outlined" :disabled="!isTauri()" @click="selectSettings">
-            <m3e-icon slot="icon" name="folder_open"></m3e-icon>
-            选择
-          </m3e-button>
-        </m3e-list-item>
-      </m3e-list>
-    </section>
+  <section class="settings-group settings-import" aria-labelledby="settings-import-files-title">
+    <m3e-heading id="settings-import-files-title" variant="title" size="large" level="2">选择文件</m3e-heading>
+    <input
+      ref="profileInput"
+      class="settings-file-input"
+      type="file"
+      accept="application/json,.json"
+      @change="updateProfile"
+    />
+    <input
+      ref="settingsInput"
+      class="settings-file-input"
+      type="file"
+      accept="application/json,.json"
+      @change="updateSettings"
+    />
+    <m3e-list class="settings-control-list">
+      <m3e-list-item class="settings-control-list__item">
+        Profile.json（可选）
+        <span slot="supporting-text">{{ profileFile?.name ?? "保留当前作业" }}</span>
+        <m3e-button slot="trailing" variant="outlined" :disabled="!isTauri()" @click="selectProfile">
+          <m3e-icon slot="icon" name="folder_open"></m3e-icon>
+          选择
+        </m3e-button>
+      </m3e-list-item>
+      <m3e-divider inset></m3e-divider>
+      <m3e-list-item class="settings-control-list__item">
+        Settings.json
+        <span slot="supporting-text">{{ settingsFile?.name ?? "必须选择" }}</span>
+        <m3e-button slot="trailing" variant="outlined" :disabled="!isTauri()" @click="selectSettings">
+          <m3e-icon slot="icon" name="folder_open"></m3e-icon>
+          选择
+        </m3e-button>
+      </m3e-list-item>
+    </m3e-list>
+  </section>
 
-    <p v-if="!isTauri()" class="settings-import__notice" role="status">旧版数据导入仅可在 Tauri 应用中使用。</p>
-    <m3e-button variant="filled" :disabled="!canImport" @click="requestImport">
-      <m3e-icon slot="icon" name="file_upload"></m3e-icon>
-      导入
-    </m3e-button>
+  <p v-if="!isTauri()" class="settings-import__notice" role="status">旧版数据导入仅可在 Tauri 应用中使用。</p>
+  <m3e-button variant="filled" :disabled="!canImport" @click="requestImport">
+    <m3e-icon slot="icon" name="file_upload"></m3e-icon>
+    导入
+  </m3e-button>
 
-    <m3e-dialog ref="confirmDialog" alert disable-close>
-      <m3e-heading slot="header" variant="headline" size="small" level="2">导入旧版数据？</m3e-heading>
-      {{
-        profileFile
-          ? "导入会替换当前的作业和设置，并导入标签和科目，无法撤销。"
-          : "导入会覆盖当前设置，保留现有作业，并导入标签和科目。"
-      }}
-      <div slot="actions" end>
-        <m3e-button variant="text" :disabled="isImporting" @click="closeConfirmDialog">取消</m3e-button>
-        <m3e-button variant="filled" :disabled="isImporting" @click="confirmImport">导入并替换</m3e-button>
-      </div>
-    </m3e-dialog>
-  </SettingsPage>
+  <m3e-dialog ref="confirmDialog" alert disable-close>
+    <m3e-heading slot="header" variant="headline" size="small" level="2">导入旧版数据？</m3e-heading>
+    {{
+      profileFile
+        ? "导入会替换当前的作业和设置，并导入标签和科目，无法撤销。"
+        : "导入会覆盖当前设置，保留现有作业，并导入标签和科目。"
+    }}
+    <div slot="actions" end>
+      <m3e-button variant="text" :disabled="isImporting" @click="closeConfirmDialog">取消</m3e-button>
+      <m3e-button variant="filled" :disabled="isImporting" @click="confirmImport">导入并替换</m3e-button>
+    </div>
+  </m3e-dialog>
 </template>
