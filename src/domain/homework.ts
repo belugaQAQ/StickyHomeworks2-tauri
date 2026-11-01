@@ -1,5 +1,5 @@
 import type { AppData, AppSettings, HomeworkRecord } from "../types/app-data";
-import { isHomeworkExpired, toTiptapHtml } from "../utils/homework-content.ts";
+import { isHomeworkExpired, toHomeworkDisplayText, toTiptapHtml } from "../utils/homework-content.ts";
 import { parseHomeworkContent } from "../types/homework-content";
 import { uniqueVocabulary } from "./vocabulary.ts";
 import type { SubjectGroup } from "../types/homework-board";
@@ -149,6 +149,7 @@ export function groupHomeworks(
     group.homeworks.push({
       id: homework.id,
       content: toTiptapHtml(homework.content),
+      text: toHomeworkDisplayText(homework.content),
       tags: homework.tags,
       expired: expiryMarkSettings.isExpiredMarkEnabled && isHomeworkExpired(homework.dueTime),
       expiredMarkColor: expiryMarkSettings.expiredMarkColor,

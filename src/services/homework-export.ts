@@ -1,8 +1,16 @@
 import { domToBlob } from "modern-screenshot";
 import { distributeMasonry, type MasonryItem } from "../composables/masonryDistribution";
 import { saveHomeworkExportToFile } from "./platform-adapter";
+import {
+  UAF_PAGE_MARGIN_PT,
+  UAF_PAGE_WIDTH_PT,
+  UAF_WATERMARK_TEXT,
+  buildUafAssignments,
+  createUafPdf,
+  serializeUafCsv,
+} from "./uaf";
 import type { SubjectGroup } from "../types/homework-board";
-import type { HomeworkExportOptions, HomeworkExportResult } from "../types/homework-export";
+import type { HomeworkExportOptions, HomeworkExportResult, HomeworkUafPdfResult } from "../types/homework-export";
 import "../styles/homework-export.css";
 
 const BOARD_PADDING = 32;
@@ -31,9 +39,37 @@ type MeasuredGroup = MasonryItem & {
   element: HTMLElement;
 };
 
+type RenderedExport = {
+  blob: Blob;
+  cssWidth: number;
+  cssHeight: number;
+  pixelWidth: number;
+  pixelHeight: number;
+};
+
 export async function exportHomeworkImage(options: HomeworkExportOptions): Promise<HomeworkExportResult> {
   if (typeof document === "undefined") throw new Error("当前环境不支持图片导出。");
 
+  const rendered = await renderExportImage(options);
+  return { blob: rendered.blob, width: rendered.pixelWidth, height: rendered.pixelHeight };
+}
+
+export async function exportHomeworkUafPdf(options: HomeworkExportOptions): Promise<HomeworkUafPdfResult> {
+  if (typeof document === "undefined") throw new Error("当前环境不支持 PDF 导出。");
+
+  const csv = serializeUafCsv(buildUafAssignments(options.groups));
+  const rendered = await renderExportImage(options);
+  const png = new Uint8Array(await rendered.blob.arrayBuffer());
+  const bytes = await createUafPdf({
+    png,
+    pageHeight: rendered.cssHeight,
+    csv,
+    title: options.title.trim() || "作业",
+  });
+  return { bytes, pageWidth: UAF_PAGE_WIDTH_PT, pageHeight: rendered.cssHeight };
+}
+
+async function renderExportImage(options: HomeworkExportOptions): Promise<RenderedExport> {
   const colors = readExportColors();
   const root = createExportRoot(options, colors);
   document.body.append(root);
@@ -60,7 +96,7 @@ export async function exportHomeworkImage(options: HomeworkExportOptions): Promi
       fetch: { placeholderImage: FAILURE_IMAGE_DATA_URL },
     });
 
-    return { blob, width: pixelWidth, height: pixelHeight };
+    return { blob, cssWidth, cssHeight, pixelWidth, pixelHeight };
   } finally {
     root.remove();
   }
@@ -71,30 +107,57 @@ export async function saveHomeworkExport(result: HomeworkExportResult, filename:
   const tauriSaved = await saveHomeworkExportToFile(result.blob, safeFilename);
   if (tauriSaved !== null) return tauriSaved;
 
-  const url = URL.createObjectURL(result.blob);
+  downloadBlob(result.blob, safeFilename);
+  return true;
+}
+
+export async function saveHomeworkUafPdf(result: HomeworkUafPdfResult, filename: string): Promise<boolean> {
+  const safeFilename = sanitizeFilename(filename);
+  const buffer = new ArrayBuffer(result.bytes.byteLength);
+  new Uint8Array(buffer).set(result.bytes);
+  const blob = new Blob([buffer], { type: "application/pdf" });
+
+  const tauriSaved = await saveHomeworkExportToFile(blob, safeFilename, "pdf");
+  if (tauriSaved !== null) return tauriSaved;
+
+  downloadBlob(blob, safeFilename);
+  return true;
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = safeFilename;
+  anchor.download = filename;
   anchor.style.display = "none";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return true;
 }
 
-export function createHomeworkExportFilename(title: string, date = new Date()): string {
-  const safeTitle = sanitizeFilename(title.trim() || "作业").replace(/\.png$/i, "") || "作业";
+export function createHomeworkExportFilename(
+  title: string,
+  date = new Date(),
+  extension: "png" | "pdf" = "png",
+): string {
+  const safeTitle = sanitizeFilename(title.trim() || "作业").replace(/\.(?:png|pdf)$/i, "") || "作业";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return `${safeTitle}-${year}-${month}-${day}.png`;
+  return `${safeTitle}-${year}-${month}-${day}.${extension}`;
 }
+
 function createExportRoot(options: HomeworkExportOptions, colors: ExportColors): HTMLDivElement {
   const root = document.createElement("div");
   const configuredWidth = normalizePanelWidth(options.maxPanelWidth);
-  const outerWidth = options.layout === "board" ? BOARD_BASE_WIDTH : configuredWidth;
-  const contentWidth = options.layout === "board" ? configuredWidth : Math.max(1, outerWidth - BOARD_PADDING * 2);
+  const isUaf = options.layout === "uaf-pdf";
+  const outerWidth = isUaf ? UAF_PAGE_WIDTH_PT : options.layout === "board" ? BOARD_BASE_WIDTH : configuredWidth;
+  const contentWidth = isUaf
+    ? UAF_PAGE_WIDTH_PT - UAF_PAGE_MARGIN_PT * 2
+    : options.layout === "board"
+      ? configuredWidth
+      : Math.max(1, outerWidth - BOARD_PADDING * 2);
   root.className = `homework-export-root homework-export-root--${options.layout}`;
   root.style.width = `${outerWidth}px`;
   root.style.minHeight = options.layout === "board" ? `${BOARD_BASE_HEIGHT}px` : "0";
@@ -129,6 +192,13 @@ function createExportRoot(options: HomeworkExportOptions, colors: ExportColors):
     root.style.width = `${longImageWidth}px`;
     root.style.setProperty("--export-panel-width", `${Math.max(1, longImageWidth - 48)}px`);
   }
+  if (isUaf) {
+    // 水印
+    const watermark = document.createElement("div");
+    watermark.className = "homework-export-watermark";
+    watermark.textContent = UAF_WATERMARK_TEXT;
+    root.append(watermark);
+  }
   return root;
 }
 
@@ -139,10 +209,12 @@ async function buildLayout(root: HTMLDivElement, options: HomeworkExportOptions)
   const panelWidth =
     options.layout === "board"
       ? normalizePanelWidth(options.maxPanelWidth)
-      : Math.max(1, normalizePanelWidth(options.maxPanelWidth) - BOARD_PADDING * 2);
+      : options.layout === "uaf-pdf"
+        ? UAF_PAGE_WIDTH_PT - UAF_PAGE_MARGIN_PT * 2
+        : Math.max(1, normalizePanelWidth(options.maxPanelWidth) - BOARD_PADDING * 2);
   root.style.setProperty("--export-panel-width", `${panelWidth}px`);
 
-  if (options.layout === "long-image") {
+  if (options.layout !== "board") {
     const column = document.createElement("div");
     column.className = "homework-export-column";
     for (const group of options.groups) column.append(createGroupElement(group));
@@ -301,6 +373,7 @@ function readColor(styles: CSSStyleDeclaration, property: string, fallback: stri
 async function waitForFonts(): Promise<void> {
   if (typeof document.fonts !== "undefined") await document.fonts.ready;
 }
+
 async function waitForM3eComponents(root: HTMLElement): Promise<void> {
   const components = [...root.querySelectorAll<HTMLElement>("m3e-chip")];
   await Promise.all(

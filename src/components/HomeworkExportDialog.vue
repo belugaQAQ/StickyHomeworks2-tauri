@@ -3,7 +3,13 @@ import { nextTick, ref } from "vue";
 import { M3eSnackbar } from "@m3e/web/all";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import { prepareM3eDialog } from "../m3e-internals";
-import { createHomeworkExportFilename, exportHomeworkImage, saveHomeworkExport } from "../services/homework-export";
+import {
+  createHomeworkExportFilename,
+  exportHomeworkImage,
+  exportHomeworkUafPdf,
+  saveHomeworkExport,
+  saveHomeworkUafPdf,
+} from "../services/homework-export";
 import type { SubjectGroup } from "../types/homework-board";
 import type { HomeworkExportLayout, HomeworkExportPixelRatio } from "../types/homework-export";
 
@@ -28,6 +34,7 @@ const isExporting = ref(false);
 const layoutOptions = [
   { value: "board" as const, label: "横板宽图" },
   { value: "long-image" as const, label: "纵版长图" },
+  { value: "uaf-pdf" as const, label: "UAF PDF" },
 ];
 
 useWebKitGtkDialogExit(dialog);
@@ -65,13 +72,7 @@ async function hide() {
   }
 }
 
-async function exportImage() {
-  if (isExporting.value || isClosing.value) return;
-  if (!props.groups.length) {
-    M3eSnackbar.open("没有可导出的作业。");
-    return;
-  }
-
+async function closeForExport() {
   isClosing.value = true;
   try {
     await hideWebKitGtkDialog(dialog.value);
@@ -79,23 +80,39 @@ async function exportImage() {
   } finally {
     isClosing.value = false;
   }
+}
+
+async function exportSelected() {
+  if (isExporting.value || isClosing.value) return;
+  if (!props.groups.length) {
+    M3eSnackbar.open("没有可导出的作业。");
+    return;
+  }
+
+  const isUaf = layout.value === "uaf-pdf";
+  await closeForExport();
 
   isExporting.value = true;
   try {
-    M3eSnackbar.open("准备中");
-    await nextTick();
     M3eSnackbar.open("渲染中");
-    const exportGroups = cloneGroups(props.groups);
-    const result = await exportHomeworkImage({
+    await nextTick();
+    const options = {
       layout: layout.value,
       pixelRatio: pixelRatio.value,
       title: props.title,
-      groups: exportGroups,
+      groups: cloneGroups(props.groups),
       maxPanelWidth: props.maxPanelWidth,
-    });
+    };
     M3eSnackbar.open("保存中");
-    const saved = await saveHomeworkExport(result, createHomeworkExportFilename(props.title));
-    M3eSnackbar.open(saved ? "作业图片已保存" : "已取消保存");
+    if (isUaf) {
+      const result = await exportHomeworkUafPdf(options);
+      const saved = await saveHomeworkUafPdf(result, createHomeworkExportFilename(props.title, new Date(), "pdf"));
+      M3eSnackbar.open(saved ? "UAF 已保存" : "已取消保存");
+    } else {
+      const result = await exportHomeworkImage(options);
+      const saved = await saveHomeworkExport(result, createHomeworkExportFilename(props.title));
+      M3eSnackbar.open(saved ? "作业图片已保存" : "已取消保存");
+    }
   } catch (reason) {
     M3eSnackbar.open(reason instanceof Error ? reason.message : String(reason) || "导出失败，请重试。");
   } finally {
@@ -109,7 +126,7 @@ defineExpose({ show, hide });
 <template>
   <div class="homework-export-dialog-root">
     <m3e-dialog ref="dialog" class="homework-export-dialog" dismissible :disable-close="isExporting">
-      <m3e-heading slot="header" variant="headline" size="small" level="2">导出作业图片</m3e-heading>
+      <m3e-heading slot="header" variant="headline" size="small" level="2">导出作业</m3e-heading>
       <div class="homework-export-dialog__content">
         <div class="homework-export-dialog__control" aria-labelledby="homework-export-layout-label">
           <m3e-heading id="homework-export-layout-label" variant="label" size="large" level="3">图片布局</m3e-heading>
@@ -140,9 +157,9 @@ defineExpose({ show, hide });
       </div>
       <div slot="actions" end>
         <m3e-button variant="text" :disabled="isExporting" @click="hide">取消</m3e-button>
-        <m3e-button variant="filled" :disabled="isExporting || !groups.length" @click="exportImage">
+        <m3e-button variant="filled" :disabled="isExporting || !groups.length" @click="exportSelected">
           <m3e-icon slot="icon" name="download"></m3e-icon>
-          导出 PNG
+          {{ layout === "uaf-pdf" ? "导出 UAF PDF" : "导出 PNG" }}
         </m3e-button>
       </div>
     </m3e-dialog>

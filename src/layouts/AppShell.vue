@@ -372,7 +372,7 @@ onUnmounted(() => {
       <m3e-action-list class="window-control-action-list">
         <m3e-list-action @click="openHomeworkExport">
           <m3e-icon slot="leading" name="image"></m3e-icon>
-          <m3e-bottom-sheet-action>导出作业图片</m3e-bottom-sheet-action>
+          <m3e-bottom-sheet-action>导出作业</m3e-bottom-sheet-action>
         </m3e-list-action>
         <m3e-list-action v-if="isDesktopWindow" @click="toggleWindowMaximize">
           <m3e-icon slot="leading" :name="isWindowMaximized ? 'fullscreen_exit' : 'fullscreen'"></m3e-icon>
