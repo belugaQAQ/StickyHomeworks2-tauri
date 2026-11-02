@@ -22,4 +22,5 @@ export type HomeworkUafPdfResult = {
   bytes: Uint8Array;
   pageWidth: number;
   pageHeight: number;
+  pageCount: number;
 };

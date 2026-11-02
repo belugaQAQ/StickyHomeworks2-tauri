@@ -107,7 +107,7 @@ async function exportSelected() {
     if (isUaf) {
       const result = await exportHomeworkUafPdf(options);
       const saved = await saveHomeworkUafPdf(result, createHomeworkExportFilename(props.title, new Date(), "pdf"));
-      M3eSnackbar.open(saved ? "UAF 已保存" : "已取消保存");
+      M3eSnackbar.open(saved ? `UAF 已保存（${result.pageCount} 页）` : "已取消保存");
     } else {
       const result = await exportHomeworkImage(options);
       const saved = await saveHomeworkExport(result, createHomeworkExportFilename(props.title));

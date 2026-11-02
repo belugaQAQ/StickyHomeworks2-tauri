@@ -64,6 +64,62 @@ export function removeHomeworkRecord(data: AppData, homeworkId: string): AppData
   };
 }
 
+export type ImportedAssignment = {
+  subject: string;
+  date: string;
+  content: string;
+  tags: readonly string[];
+};
+
+export function appendImportedAssignments(
+  data: AppData,
+  assignments: readonly ImportedAssignment[],
+  now = new Date(),
+): AppData {
+  if (assignments.length === 0) return data;
+
+  const today = formatLocalDate(now);
+  const homeworks = [...data.homeworks];
+  const subjects = [...data.settings.subjects];
+  const tags = [...data.settings.tags];
+
+  for (const assignment of assignments) {
+    const subject = assignment.subject.trim() || "其它";
+    homeworks.push({
+      id: createHomeworkId(),
+      content: assignment.content,
+      subject,
+      dueTime: `${resolveImportedDueDate(assignment.date, today)}T00:00:00`,
+      tags: uniqueVocabulary([...assignment.tags]),
+      firstExpiredShowTime: null,
+    });
+    subjects.push(subject);
+    tags.push(...assignment.tags);
+  }
+
+  return {
+    ...data,
+    homeworks,
+    settings: {
+      ...data.settings,
+      subjects: uniqueVocabulary(subjects),
+      tags: uniqueVocabulary(tags),
+    },
+  };
+}
+
+function resolveImportedDueDate(value: string, today: string): string {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return today;
+  const date = formatLocalDate(new Date(parsed));
+  return date < today ? today : date;
+}
+
+function createHomeworkId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `homework-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 type ExpiryMarkSettings = Pick<AppSettings, "isExpiredMarkEnabled" | "expiredMarkColor">;
 
 export type RemovedHomework = {
