@@ -1,5 +1,4 @@
 import { nextTick, ref, watch, type Ref } from "vue";
-import HomeworkExportDialog from "../components/HomeworkExportDialog.vue";
 import { logInfo } from "../services/logging";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "./useWebKitGtkDialogExit";
 
@@ -15,7 +14,6 @@ export type HomeworkEditorDialogElement = {
 };
 
 type AppDialogsOptions = {
-  moreSheet: Ref<DialogElement | null>;
   isHomeworkFrozen: Ref<boolean>;
   saveHomeworkEditor: () => Promise<boolean>;
   resetHomeworkEditor: () => void;
@@ -23,14 +21,12 @@ type AppDialogsOptions = {
 };
 
 export function useAppDialogs({
-  moreSheet,
   isHomeworkFrozen,
   saveHomeworkEditor,
   resetHomeworkEditor,
   deleteHomework,
 }: AppDialogsOptions) {
   const editorDialog = ref<HomeworkEditorDialogElement | null>(null);
-  const exportDialog = ref<InstanceType<typeof HomeworkExportDialog> | null>(null);
   const exitDialog = ref<DialogElement | null>(null);
   const deleteDialog = ref<DialogElement | null>(null);
   const deleteHomeworkId = ref<string | null>(null);
@@ -41,12 +37,6 @@ export function useAppDialogs({
 
   function openMountedHomeworkEditor() {
     void nextTick(() => editorDialog.value?.show());
-  }
-
-  async function openHomeworkExport() {
-    await hideWebKitGtkDialog(moreSheet.value);
-    await nextTick();
-    exportDialog.value?.show();
   }
 
   async function closeHomeworkEditor() {
@@ -111,12 +101,10 @@ export function useAppDialogs({
 
   return {
     editorDialog,
-    exportDialog,
     exitDialog,
     deleteDialog,
     deleteError,
     openMountedHomeworkEditor,
-    openHomeworkExport,
     closeHomeworkEditor,
     saveEditedHomework,
     requestDeleteHomework,

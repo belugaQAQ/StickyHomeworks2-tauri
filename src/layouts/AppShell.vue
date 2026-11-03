@@ -2,8 +2,7 @@
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
-import HomeworkExportDialog from "../components/HomeworkExportDialog.vue";
-import UafImportDialog from "../components/UafImportDialog.vue";
+import HomeworkTransferDialog from "../components/HomeworkTransferDialog.vue";
 import WindowUnlockOverlay from "../components/WindowUnlockOverlay.vue";
 import { useAppBootstrap } from "../composables/useAppBootstrap";
 import { useAppDialogs, type DialogElement } from "../composables/useAppDialogs";
@@ -31,7 +30,7 @@ const isHomeworkFrozen = ref(false);
 const settingsError = ref("");
 const appDrawer = ref<HTMLElement | null>(null);
 const moreSheet = ref<DialogElement | null>(null);
-const uafImportDialog = ref<InstanceType<typeof UafImportDialog> | null>(null);
+const transferDialog = ref<InstanceType<typeof HomeworkTransferDialog> | null>(null);
 const cleanupConfirmDialog = ref<DialogElement | null>(null);
 const cleanupPendingCount = ref(0);
 let resolveCleanupConfirm: ((approved: boolean) => void) | undefined;
@@ -99,12 +98,10 @@ const currentContext = computed(() => (activeNavigation.value === "homeworks" ? 
 
 const {
   editorDialog,
-  exportDialog,
   exitDialog,
   deleteDialog,
   deleteError,
   openMountedHomeworkEditor,
-  openHomeworkExport,
   closeHomeworkEditor,
   saveEditedHomework,
   requestDeleteHomework,
@@ -113,7 +110,6 @@ const {
   closeExitDialog,
   confirmDeleteHomework,
 } = useAppDialogs({
-  moreSheet,
   isHomeworkFrozen,
   saveHomeworkEditor,
   resetHomeworkEditor,
@@ -222,10 +218,9 @@ async function importUafAssignments(assignments: readonly ImportedAssignment[]) 
   }
 }
 
-async function openUafImport() {
-  await hideWebKitGtkDialog(moreSheet.value);
-  await nextTick();
-  uafImportDialog.value?.show();
+async function openHomeworkTransfer() {
+  logInfo("homework.transfer.open", "已打开导入/导出作业");
+  transferDialog.value?.show();
 }
 
 provide(appContextKey, {
@@ -378,6 +373,10 @@ onUnmounted(() => {
         <m3e-icon slot="icon" name="add" filled></m3e-icon>
         新建作业
       </m3e-fab-menu-item>
+      <m3e-fab-menu-item @click="openHomeworkTransfer">
+        <m3e-icon slot="icon" name="import_export"></m3e-icon>
+        导入 / 导出作业
+      </m3e-fab-menu-item>
     </m3e-fab-menu>
 
     <m3e-bottom-sheet
@@ -391,14 +390,6 @@ onUnmounted(() => {
     >
       <m3e-heading id="sheetTitle" slot="header" variant="title" size="large">更多</m3e-heading>
       <m3e-action-list class="window-control-action-list">
-        <m3e-list-action @click="openHomeworkExport">
-          <m3e-icon slot="leading" name="image"></m3e-icon>
-          <m3e-bottom-sheet-action>导出作业</m3e-bottom-sheet-action>
-        </m3e-list-action>
-        <m3e-list-action @click="openUafImport">
-          <m3e-icon slot="leading" name="file_upload"></m3e-icon>
-          <m3e-bottom-sheet-action>导入 UAF 作业</m3e-bottom-sheet-action>
-        </m3e-list-action>
         <m3e-list-action v-if="isDesktopWindow" @click="toggleWindowMaximize">
           <m3e-icon slot="leading" :name="isWindowMaximized ? 'fullscreen_exit' : 'fullscreen'"></m3e-icon>
           <m3e-bottom-sheet-action>{{ isWindowMaximized ? "还原窗口" : "最大化" }}</m3e-bottom-sheet-action>
@@ -420,15 +411,13 @@ onUnmounted(() => {
     </m3e-bottom-sheet>
     <WindowUnlockOverlay v-if="isWindowUnlocked" @pointerdown="startWindowDrag" @touchstart="startWindowDrag" />
 
-    <HomeworkExportDialog
-      ref="exportDialog"
+    <HomeworkTransferDialog
+      ref="transferDialog"
       :groups="homeworkGroups"
       :title="appData.settings.title"
       :mobile-layout="isMobileLayout"
       :max-panel-width="appData.settings.maxPanelWidth"
     />
-
-    <UafImportDialog ref="uafImportDialog" />
 
     <HomeworkEditorDialog
       v-if="editingHomework"
