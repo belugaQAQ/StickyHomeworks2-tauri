@@ -1,5 +1,5 @@
 import type { AppData, AppSettings, HomeworkRecord } from "../types/app-data";
-import { isHomeworkExpired, toTiptapHtml } from "../utils/homework-content.ts";
+import { isHomeworkExpired, toHomeworkDisplayText, toTiptapHtml } from "../utils/homework-content.ts";
 import { parseHomeworkContent } from "../types/homework-content";
 import { uniqueVocabulary } from "./vocabulary.ts";
 import type { SubjectGroup } from "../types/homework-board";
@@ -62,6 +62,62 @@ export function removeHomeworkRecord(data: AppData, homeworkId: string): AppData
     ...data,
     homeworks: data.homeworks.filter((homework) => homework.id !== homeworkId),
   };
+}
+
+export type ImportedAssignment = {
+  subject: string;
+  date: string;
+  content: string;
+  tags: readonly string[];
+};
+
+export function appendImportedAssignments(
+  data: AppData,
+  assignments: readonly ImportedAssignment[],
+  now = new Date(),
+): AppData {
+  if (assignments.length === 0) return data;
+
+  const today = formatLocalDate(now);
+  const homeworks = [...data.homeworks];
+  const subjects = [...data.settings.subjects];
+  const tags = [...data.settings.tags];
+
+  for (const assignment of assignments) {
+    const subject = assignment.subject.trim() || "其它";
+    homeworks.push({
+      id: createHomeworkId(),
+      content: assignment.content,
+      subject,
+      dueTime: `${resolveImportedDueDate(assignment.date, today)}T00:00:00`,
+      tags: uniqueVocabulary([...assignment.tags]),
+      firstExpiredShowTime: null,
+    });
+    subjects.push(subject);
+    tags.push(...assignment.tags);
+  }
+
+  return {
+    ...data,
+    homeworks,
+    settings: {
+      ...data.settings,
+      subjects: uniqueVocabulary(subjects),
+      tags: uniqueVocabulary(tags),
+    },
+  };
+}
+
+function resolveImportedDueDate(value: string, today: string): string {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return today;
+  const date = formatLocalDate(new Date(parsed));
+  return date < today ? today : date;
+}
+
+function createHomeworkId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `homework-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 type ExpiryMarkSettings = Pick<AppSettings, "isExpiredMarkEnabled" | "expiredMarkColor">;
@@ -149,6 +205,7 @@ export function groupHomeworks(
     group.homeworks.push({
       id: homework.id,
       content: toTiptapHtml(homework.content),
+      text: toHomeworkDisplayText(homework.content),
       tags: homework.tags,
       expired: expiryMarkSettings.isExpiredMarkEnabled && isHomeworkExpired(homework.dueTime),
       expiredMarkColor: expiryMarkSettings.expiredMarkColor,

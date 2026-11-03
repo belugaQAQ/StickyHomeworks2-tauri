@@ -28,6 +28,10 @@
   padding: 32px 24px;
 }
 
+.homework-export-root--uaf-pdf {
+  padding: 0 40px 56px;
+}
+
 .homework-export-header {
   display: flex;
   align-items: baseline;
@@ -48,6 +52,10 @@
 
 .homework-export-root--long-image .homework-export-title {
   white-space: nowrap;
+}
+
+.homework-export-root--uaf-pdf .homework-export-title {
+  white-space: normal;
 }
 
 .homework-export-date {
@@ -228,6 +236,17 @@
   left: 0;
   visibility: hidden;
   width: var(--export-panel-width);
+  pointer-events: none;
+}
+
+.homework-export-watermark {
+  position: absolute;
+  inset-inline-end: 40px;
+  inset-block-end: 16px;
+  color: #94a3b8;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.5;
   pointer-events: none;
 }
 

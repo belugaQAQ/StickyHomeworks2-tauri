@@ -1,6 +1,6 @@
 import type { SubjectGroup } from "./homework-board";
 
-export type HomeworkExportLayout = "board" | "long-image";
+export type HomeworkExportLayout = "board" | "long-image" | "uaf-pdf";
 
 export type HomeworkExportPixelRatio = 2 | 4 | 8;
 
@@ -16,4 +16,11 @@ export type HomeworkExportResult = {
   blob: Blob;
   width: number;
   height: number;
+};
+
+export type HomeworkUafPdfResult = {
+  bytes: Uint8Array;
+  pageWidth: number;
+  pageHeight: number;
+  pageCount: number;
 };

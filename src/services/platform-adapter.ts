@@ -29,12 +29,16 @@ export async function exportDiagnosticBundleToFile(
   await writeFile(destination, bundle);
   return true;
 }
-export async function saveHomeworkExportToFile(blob: Blob, filename: string): Promise<boolean | null> {
+export async function saveHomeworkExportToFile(
+  blob: Blob,
+  filename: string,
+  format: "png" | "pdf" = "png",
+): Promise<boolean | null> {
   if (!isTauri()) return null;
   const destination = await save({
-    title: "导出作业图片",
+    title: format === "pdf" ? "导出作业 PDF" : "导出作业图片",
     defaultPath: filename,
-    filters: [{ name: "PNG 图片", extensions: ["png"] }],
+    filters: [format === "pdf" ? { name: "PDF 文档", extensions: ["pdf"] } : { name: "PNG 图片", extensions: ["png"] }],
   });
   if (!destination) return false;
   await writeFile(destination, new Uint8Array(await blob.arrayBuffer()));

@@ -1,8 +1,20 @@
 import { domToBlob } from "modern-screenshot";
 import { distributeMasonry, type MasonryItem } from "../composables/masonryDistribution";
 import { saveHomeworkExportToFile } from "./platform-adapter";
+import {
+  UAF_PAGE_CONTENT_HEIGHT_PT,
+  UAF_PAGE_HEIGHT_PT,
+  UAF_PAGE_MARGIN_PT,
+  UAF_PAGE_WIDTH_PT,
+  UAF_WATERMARK_GAP_PT,
+  UAF_WATERMARK_TEXT,
+  buildUafAssignments,
+  createUafPdf,
+  serializeUafCsv,
+} from "./uaf";
+import type { UafPdfPageImage } from "./uaf";
 import type { SubjectGroup } from "../types/homework-board";
-import type { HomeworkExportOptions, HomeworkExportResult } from "../types/homework-export";
+import type { HomeworkExportOptions, HomeworkExportResult, HomeworkUafPdfResult } from "../types/homework-export";
 import "../styles/homework-export.css";
 
 const BOARD_PADDING = 32;
@@ -13,6 +25,18 @@ const BOARD_BASE_HEIGHT = 756;
 const MAX_CANVAS_DIMENSION = 16384;
 const MAX_CANVAS_AREA = 268_435_456;
 const IMAGE_DECODE_TIMEOUT_MS = 5_000;
+const MIN_PAGE_SEGMENT_PX = 72;
+const MIN_PAGE_PROGRESS_RATIO = 0.3;
+const BREAK_SELECTOR = [
+  ".homework-export-header",
+  ".homework-export-group",
+  ".homework-export-group-list",
+  ".homework-export-item",
+  ".homework-export-content",
+  ".homework-export-tags",
+  ".homework-export-text > *",
+  ".homework-export-text :is(p, li, h1, h2, h3, h4, blockquote, pre, img)",
+].join(",");
 const FAILURE_IMAGE_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='96' viewBox='0 0 160 96'%3E%3Crect width='160' height='96' fill='%23d9d9d9'/%3E%3Cpath d='m38 68 25-25 18 18 12-12 29 29H38Z' fill='%23808080'/%3E%3Ccircle cx='98' cy='34' r='8' fill='%23808080'/%3E%3C/svg%3E";
 
@@ -31,9 +55,44 @@ type MeasuredGroup = MasonryItem & {
   element: HTMLElement;
 };
 
+type RenderedExport = {
+  blob: Blob;
+  cssWidth: number;
+  cssHeight: number;
+  pixelWidth: number;
+  pixelHeight: number;
+  background: string;
+  breakCandidates: number[];
+};
+
 export async function exportHomeworkImage(options: HomeworkExportOptions): Promise<HomeworkExportResult> {
   if (typeof document === "undefined") throw new Error("当前环境不支持图片导出。");
+  if (options.layout === "uaf-pdf") throw new Error("UAF PDF 不支持导出为图片。");
 
+  const rendered = await renderExportImage(options);
+  return { blob: rendered.blob, width: rendered.pixelWidth, height: rendered.pixelHeight };
+}
+
+export async function exportHomeworkUafPdf(options: HomeworkExportOptions): Promise<HomeworkUafPdfResult> {
+  if (typeof document === "undefined") throw new Error("当前环境不支持 PDF 导出。");
+
+  const csv = serializeUafCsv(buildUafAssignments(options.groups));
+  const rendered = await renderExportImage(options, { collectBreakCandidates: true });
+  const breaks = computePageBreaks(rendered.breakCandidates, rendered.cssHeight, UAF_PAGE_CONTENT_HEIGHT_PT);
+  const pages = await sliceRenderedPages(rendered, breaks);
+  const bytes = await createUafPdf({
+    pages,
+    csv,
+    title: options.title.trim() || "作业",
+    backgroundColor: rendered.background,
+  });
+  return { bytes, pageWidth: UAF_PAGE_WIDTH_PT, pageHeight: UAF_PAGE_HEIGHT_PT, pageCount: pages.length };
+}
+
+async function renderExportImage(
+  options: HomeworkExportOptions,
+  renderOptions: { collectBreakCandidates?: boolean } = {},
+): Promise<RenderedExport> {
   const colors = readExportColors();
   const root = createExportRoot(options, colors);
   document.body.append(root);
@@ -46,24 +105,140 @@ export async function exportHomeworkImage(options: HomeworkExportOptions): Promi
 
     const cssWidth = Math.ceil(root.getBoundingClientRect().width || root.offsetWidth);
     const cssHeight = Math.ceil(root.getBoundingClientRect().height || root.offsetHeight);
-    const pixelWidth = Math.ceil(cssWidth * options.pixelRatio);
-    const pixelHeight = Math.ceil(cssHeight * options.pixelRatio);
+    const scale = resolveRenderScale(options, cssWidth, cssHeight);
+    const pixelWidth = Math.ceil(cssWidth * scale);
+    const pixelHeight = Math.ceil(cssHeight * scale);
     assertCanvasSize(pixelWidth, pixelHeight);
+
+    const breakCandidates = renderOptions.collectBreakCandidates ? collectBreakCandidates(root, cssHeight) : [];
 
     const blob = await domToBlob(root, {
       width: cssWidth,
       height: cssHeight,
-      scale: options.pixelRatio,
+      scale,
       type: "image/png",
       backgroundColor: colors.background,
       font: false,
       fetch: { placeholderImage: FAILURE_IMAGE_DATA_URL },
     });
 
-    return { blob, width: pixelWidth, height: pixelHeight };
+    return { blob, cssWidth, cssHeight, pixelWidth, pixelHeight, background: colors.background, breakCandidates };
   } finally {
     root.remove();
   }
+}
+
+function resolveRenderScale(options: HomeworkExportOptions, cssWidth: number, cssHeight: number): number {
+  const desired = options.pixelRatio;
+  if (options.layout !== "uaf-pdf") return desired;
+  for (let scale = desired; scale > 1; scale -= 1) {
+    if (isCanvasWithinLimits(cssWidth * scale, cssHeight * scale)) return scale;
+  }
+  return 1;
+}
+
+function isCanvasWithinLimits(width: number, height: number): boolean {
+  const pixelWidth = Math.ceil(width);
+  const pixelHeight = Math.ceil(height);
+  return (
+    pixelWidth > 0 &&
+    pixelHeight > 0 &&
+    pixelWidth <= MAX_CANVAS_DIMENSION &&
+    pixelHeight <= MAX_CANVAS_DIMENSION &&
+    pixelWidth * pixelHeight <= MAX_CANVAS_AREA
+  );
+}
+
+function collectBreakCandidates(root: HTMLElement, cssHeight: number): number[] {
+  const rootRect = root.getBoundingClientRect();
+  const candidates = new Set<number>();
+  for (const element of root.querySelectorAll<HTMLElement>(BREAK_SELECTOR)) {
+    const rect = element.getBoundingClientRect();
+    if (rect.height <= 0) continue;
+    const top = Math.round(rect.top - rootRect.top);
+    const bottom = Math.round(rect.bottom - rootRect.top);
+    if (top > 0 && top < cssHeight) candidates.add(top);
+    if (bottom > 0 && bottom < cssHeight) candidates.add(bottom);
+  }
+  return [...candidates].sort((left, right) => left - right);
+}
+
+function computePageBreaks(candidates: readonly number[], cssHeight: number, maxSegment: number): number[] {
+  const segmentLimit = Math.max(1, maxSegment);
+  const points = [...new Set([0, ...candidates, cssHeight])]
+    .filter((value) => value >= 0 && value <= cssHeight)
+    .sort((left, right) => left - right);
+
+  const breaks: number[] = [0];
+  let cursor = 0;
+  let guard = 0;
+  // 留给水印的空白
+  const tailAllowance = segmentLimit + UAF_WATERMARK_GAP_PT;
+  while (cssHeight - cursor > tailAllowance) {
+    const limit = cursor + segmentLimit;
+    let next = -1;
+    for (const point of points) {
+      if (point <= cursor) continue;
+      if (point > limit) break;
+      next = point;
+    }
+    // 没找到安全切点时，退回硬切。
+    if (next <= cursor || next < cursor + segmentLimit * MIN_PAGE_PROGRESS_RATIO) next = limit;
+    breaks.push(next);
+    cursor = next;
+    guard += 1;
+    if (guard > 500) throw new Error("作业内容过多，无法自动分页。");
+  }
+
+  const last = breaks[breaks.length - 1];
+  if (cssHeight - last > 0) {
+    const previous = breaks.length > 1 ? breaks[breaks.length - 2] : 0;
+    const merged = cssHeight - previous;
+    const canMerge = breaks.length > 1 && cssHeight - last < MIN_PAGE_SEGMENT_PX && merged <= tailAllowance;
+    if (canMerge) breaks[breaks.length - 1] = cssHeight;
+    else breaks.push(cssHeight);
+  }
+
+  return breaks;
+}
+
+async function sliceRenderedPages(
+  rendered: RenderedExport,
+  breaks: readonly number[],
+): Promise<UafPdfPageImage[]> {
+  const png = new Uint8Array(await rendered.blob.arrayBuffer());
+  const bitmap = await createImageBitmap(new Blob([png], { type: "image/png" }));
+  try {
+    const scaleY = bitmap.height / rendered.cssHeight;
+    const pages: UafPdfPageImage[] = [];
+    for (let index = 0; index < breaks.length - 1; index += 1) {
+      const top = Math.max(0, Math.min(bitmap.height, Math.round(breaks[index] * scaleY)));
+      const bottom = Math.max(top, Math.min(bitmap.height, Math.round(breaks[index + 1] * scaleY)));
+      const pixelHeight = bottom - top;
+      if (pixelHeight <= 0) continue;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = pixelHeight;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("当前环境不支持 PDF 导出。");
+      context.drawImage(bitmap, 0, top, bitmap.width, pixelHeight, 0, 0, bitmap.width, pixelHeight);
+      const blob = await canvasToBlob(canvas);
+      pages.push({ png: new Uint8Array(await blob.arrayBuffer()), height: pixelHeight / scaleY });
+    }
+    return pages;
+  } finally {
+    bitmap.close();
+  }
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("生成 PDF 页面失败，请重试。"));
+    }, "image/png");
+  });
 }
 
 export async function saveHomeworkExport(result: HomeworkExportResult, filename: string): Promise<boolean> {
@@ -71,30 +246,57 @@ export async function saveHomeworkExport(result: HomeworkExportResult, filename:
   const tauriSaved = await saveHomeworkExportToFile(result.blob, safeFilename);
   if (tauriSaved !== null) return tauriSaved;
 
-  const url = URL.createObjectURL(result.blob);
+  downloadBlob(result.blob, safeFilename);
+  return true;
+}
+
+export async function saveHomeworkUafPdf(result: HomeworkUafPdfResult, filename: string): Promise<boolean> {
+  const safeFilename = sanitizeFilename(filename);
+  const buffer = new ArrayBuffer(result.bytes.byteLength);
+  new Uint8Array(buffer).set(result.bytes);
+  const blob = new Blob([buffer], { type: "application/pdf" });
+
+  const tauriSaved = await saveHomeworkExportToFile(blob, safeFilename, "pdf");
+  if (tauriSaved !== null) return tauriSaved;
+
+  downloadBlob(blob, safeFilename);
+  return true;
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = safeFilename;
+  anchor.download = filename;
   anchor.style.display = "none";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return true;
 }
 
-export function createHomeworkExportFilename(title: string, date = new Date()): string {
-  const safeTitle = sanitizeFilename(title.trim() || "作业").replace(/\.png$/i, "") || "作业";
+export function createHomeworkExportFilename(
+  title: string,
+  date = new Date(),
+  extension: "png" | "pdf" | "uaf.pdf" = "png",
+): string {
+  const safeTitle = sanitizeFilename(title.trim() || "作业").replace(/\.(?:uaf\.)?(?:png|pdf)$/i, "") || "作业";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return `${safeTitle}-${year}-${month}-${day}.png`;
+  return `${safeTitle}-${year}-${month}-${day}.${extension}`;
 }
+
 function createExportRoot(options: HomeworkExportOptions, colors: ExportColors): HTMLDivElement {
   const root = document.createElement("div");
   const configuredWidth = normalizePanelWidth(options.maxPanelWidth);
-  const outerWidth = options.layout === "board" ? BOARD_BASE_WIDTH : configuredWidth;
-  const contentWidth = options.layout === "board" ? configuredWidth : Math.max(1, outerWidth - BOARD_PADDING * 2);
+  const isUaf = options.layout === "uaf-pdf";
+  const outerWidth = isUaf ? UAF_PAGE_WIDTH_PT : options.layout === "board" ? BOARD_BASE_WIDTH : configuredWidth;
+  const contentWidth = isUaf
+    ? UAF_PAGE_WIDTH_PT - UAF_PAGE_MARGIN_PT * 2
+    : options.layout === "board"
+      ? configuredWidth
+      : Math.max(1, outerWidth - BOARD_PADDING * 2);
   root.className = `homework-export-root homework-export-root--${options.layout}`;
   root.style.width = `${outerWidth}px`;
   root.style.minHeight = options.layout === "board" ? `${BOARD_BASE_HEIGHT}px` : "0";
@@ -129,6 +331,13 @@ function createExportRoot(options: HomeworkExportOptions, colors: ExportColors):
     root.style.width = `${longImageWidth}px`;
     root.style.setProperty("--export-panel-width", `${Math.max(1, longImageWidth - 48)}px`);
   }
+  if (isUaf) {
+    // 水印
+    const watermark = document.createElement("div");
+    watermark.className = "homework-export-watermark";
+    watermark.textContent = UAF_WATERMARK_TEXT;
+    root.append(watermark);
+  }
   return root;
 }
 
@@ -139,10 +348,12 @@ async function buildLayout(root: HTMLDivElement, options: HomeworkExportOptions)
   const panelWidth =
     options.layout === "board"
       ? normalizePanelWidth(options.maxPanelWidth)
-      : Math.max(1, normalizePanelWidth(options.maxPanelWidth) - BOARD_PADDING * 2);
+      : options.layout === "uaf-pdf"
+        ? UAF_PAGE_WIDTH_PT - UAF_PAGE_MARGIN_PT * 2
+        : Math.max(1, normalizePanelWidth(options.maxPanelWidth) - BOARD_PADDING * 2);
   root.style.setProperty("--export-panel-width", `${panelWidth}px`);
 
-  if (options.layout === "long-image") {
+  if (options.layout !== "board") {
     const column = document.createElement("div");
     column.className = "homework-export-column";
     for (const group of options.groups) column.append(createGroupElement(group));
@@ -301,6 +512,7 @@ function readColor(styles: CSSStyleDeclaration, property: string, fallback: stri
 async function waitForFonts(): Promise<void> {
   if (typeof document.fonts !== "undefined") await document.fonts.ready;
 }
+
 async function waitForM3eComponents(root: HTMLElement): Promise<void> {
   const components = [...root.querySelectorAll<HTMLElement>("m3e-chip")];
   await Promise.all(

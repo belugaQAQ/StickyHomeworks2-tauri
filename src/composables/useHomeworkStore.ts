@@ -1,10 +1,12 @@
 import { computed, ref } from "vue";
 import {
+  appendImportedAssignments,
   groupHomeworks,
   pruneExpiredHomeworks,
   removeHomeworkRecord,
   restoreRemovedHomeworks,
   saveHomeworkRecord,
+  type ImportedAssignment,
   type RemovedHomework,
 } from "../domain/homework";
 import { removeGlobalTag, type SettingsMutator, updateAppSettings } from "../domain/settings";
@@ -141,6 +143,11 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     });
   }
 
+  function importUafAssignments(assignments: readonly ImportedAssignment[]) {
+    if (assignments.length === 0) return Promise.resolve();
+    return commit("homework.uaf-import", (data) => appendImportedAssignments(data, assignments));
+  }
+
   return {
     appData,
     homeworkGroups,
@@ -150,6 +157,7 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     updateSettings,
     deleteGlobalTag,
     importLegacyData,
+    importUafAssignments,
     cleanupExpiredHomeworks,
     restoreHomeworks,
   };

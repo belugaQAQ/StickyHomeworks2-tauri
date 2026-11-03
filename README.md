@@ -23,6 +23,7 @@ StickyHomeworks2·N 在作业大显身手，却不止于作业
 - [X] 插入链接
 - [X] 自动清理过期作业
 - [X] 导出作业截图
+- [X] 导入/出 UAF 格式
 - [ ] 时间机器
 - [x] 托盘菜单
 - [ ] oobe
@@ -86,6 +87,7 @@ npm run tauri build
 - [Tiptap](https://tiptap.dev/)：富文本文档编辑
 - [Glycoprotein 0.1.0](https://crates.io/crates/glycoprotein/0.1.0)：桌面端本机 IPC、窗口控制与作业变更事件
 - [modern-screenshot](https://github.com/qq15725/modern-screenshot)：将独立导出 DOM 渲染为 PNG 图片
+- [pdf-lib](https://pdf-lib.js.org/)：生成 UAF 作业 PDF 并嵌入 `uaf_payload.csv` 附件
 
 ```text
 src/                 Vue 前端入口与路由

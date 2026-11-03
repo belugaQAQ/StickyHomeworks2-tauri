@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import { appContextKey } from "../app-context";
-import HomeworkExportDialog from "../components/HomeworkExportDialog.vue";
+import HomeworkTransferDialog from "../components/HomeworkTransferDialog.vue";
 import WindowUnlockOverlay from "../components/WindowUnlockOverlay.vue";
 import { useAppBootstrap } from "../composables/useAppBootstrap";
 import { useAppDialogs, type DialogElement } from "../composables/useAppDialogs";
@@ -14,6 +14,7 @@ import { useLinuxClipboardWorkaround } from "../composables/useLinuxClipboardWor
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
 import { patchM3eAttributes } from "../m3e-internals";
 import { routeTransitionName } from "../router";
+import type { ImportedAssignment } from "../domain/homework";
 import { logInfo } from "../services/logging";
 import type { AppSettings } from "../types/app-data";
 import "../styles/app-shell.css";
@@ -29,6 +30,7 @@ const isHomeworkFrozen = ref(false);
 const settingsError = ref("");
 const appDrawer = ref<HTMLElement | null>(null);
 const moreSheet = ref<DialogElement | null>(null);
+const transferDialog = ref<InstanceType<typeof HomeworkTransferDialog> | null>(null);
 const cleanupConfirmDialog = ref<DialogElement | null>(null);
 const cleanupPendingCount = ref(0);
 let resolveCleanupConfirm: ((approved: boolean) => void) | undefined;
@@ -55,6 +57,7 @@ const {
   updateSettings,
   deleteGlobalTag: deleteGlobalTagFromStore,
   importLegacyData: importLegacyDataFromStore,
+  importUafAssignments: importUafAssignmentsFromStore,
   cleanupExpiredHomeworks,
   restoreHomeworks,
 } = useHomeworkStore();
@@ -95,12 +98,10 @@ const currentContext = computed(() => (activeNavigation.value === "homeworks" ? 
 
 const {
   editorDialog,
-  exportDialog,
   exitDialog,
   deleteDialog,
   deleteError,
   openMountedHomeworkEditor,
-  openHomeworkExport,
   closeHomeworkEditor,
   saveEditedHomework,
   requestDeleteHomework,
@@ -109,7 +110,6 @@ const {
   closeExitDialog,
   confirmDeleteHomework,
 } = useAppDialogs({
-  moreSheet,
   isHomeworkFrozen,
   saveHomeworkEditor,
   resetHomeworkEditor,
@@ -208,6 +208,21 @@ async function importLegacyData(profileContents: string | undefined, settingsCon
   }
 }
 
+async function importUafAssignments(assignments: readonly ImportedAssignment[]) {
+  settingsError.value = "";
+  try {
+    await importUafAssignmentsFromStore(assignments);
+  } catch (error) {
+    settingsError.value = "导入 UAF 作业失败，请重试。";
+    throw error;
+  }
+}
+
+async function openHomeworkTransfer() {
+  logInfo("homework.transfer.open", "已打开导入/导出作业");
+  transferDialog.value?.show();
+}
+
 provide(appContextKey, {
   appData,
   homeworkGroups,
@@ -220,6 +235,7 @@ provide(appContextKey, {
   updateAppSettings,
   deleteGlobalTag,
   importLegacyData,
+  importUafAssignments,
 });
 
 async function startWindowDrag(event: Event) {
@@ -357,6 +373,10 @@ onUnmounted(() => {
         <m3e-icon slot="icon" name="add" filled></m3e-icon>
         新建作业
       </m3e-fab-menu-item>
+      <m3e-fab-menu-item @click="openHomeworkTransfer">
+        <m3e-icon slot="icon" name="import_export"></m3e-icon>
+        导入 / 导出作业
+      </m3e-fab-menu-item>
     </m3e-fab-menu>
 
     <m3e-bottom-sheet
@@ -370,10 +390,6 @@ onUnmounted(() => {
     >
       <m3e-heading id="sheetTitle" slot="header" variant="title" size="large">更多</m3e-heading>
       <m3e-action-list class="window-control-action-list">
-        <m3e-list-action @click="openHomeworkExport">
-          <m3e-icon slot="leading" name="image"></m3e-icon>
-          <m3e-bottom-sheet-action>导出作业图片</m3e-bottom-sheet-action>
-        </m3e-list-action>
         <m3e-list-action v-if="isDesktopWindow" @click="toggleWindowMaximize">
           <m3e-icon slot="leading" :name="isWindowMaximized ? 'fullscreen_exit' : 'fullscreen'"></m3e-icon>
           <m3e-bottom-sheet-action>{{ isWindowMaximized ? "还原窗口" : "最大化" }}</m3e-bottom-sheet-action>
@@ -381,7 +397,6 @@ onUnmounted(() => {
         <m3e-list-action v-if="isDesktopWindow" @click="toggleWindowUnlocked">
           <m3e-icon slot="leading" :name="isWindowUnlocked ? 'lock' : 'lock_open'"></m3e-icon>
           <m3e-bottom-sheet-action>{{ isWindowUnlocked ? "锁定窗口" : "解锁窗口" }}</m3e-bottom-sheet-action>
-          <span slot="supporting-text">{{ isWindowUnlocked ? "窗口不可移动或调整大小" : "允许移动和调整大小" }}</span>
         </m3e-list-action>
         <m3e-list-action v-if="isDesktopWindow" @click="minimizeWindow">
           <m3e-icon slot="leading" name="minimize"></m3e-icon>
@@ -396,8 +411,8 @@ onUnmounted(() => {
     </m3e-bottom-sheet>
     <WindowUnlockOverlay v-if="isWindowUnlocked" @pointerdown="startWindowDrag" @touchstart="startWindowDrag" />
 
-    <HomeworkExportDialog
-      ref="exportDialog"
+    <HomeworkTransferDialog
+      ref="transferDialog"
       :groups="homeworkGroups"
       :title="appData.settings.title"
       :mobile-layout="isMobileLayout"
