@@ -38,7 +38,14 @@ export function useDesktopWindowControls() {
     return runWindowAction("window.always-on-bottom", (window) => window.setAlwaysOnBottom(alwaysOnBottom));
   }
 
-  async function initialize(isMobileRuntime: boolean, alwaysOnBottom: boolean) {
+  async function setHideTaskbarIcon(hideTaskbarIcon: boolean) {
+    return runWindowAction("window.taskbar-icon", async () => {
+      const detail = await invoke<string>("set_taskbar_icon_visible", { visible: !hideTaskbarIcon });
+      await logInfo("window.taskbar-icon.detail", detail);
+    });
+  }
+
+  async function initialize(isMobileRuntime: boolean, alwaysOnBottom: boolean, hideTaskbarIcon: boolean) {
     isDesktopWindow.value = isTauri() && !isMobileRuntime;
     if (!isDesktopWindow.value) return;
 
@@ -46,6 +53,7 @@ export function useDesktopWindowControls() {
       const appWindow = getCurrentWindow();
       await appWindow.setResizable(false);
       await appWindow.setAlwaysOnBottom(alwaysOnBottom);
+      await setHideTaskbarIcon(hideTaskbarIcon);
       await syncMaximized(appWindow);
       unlistenResized?.();
       // 只同步最大化状态：位置/尺寸由 window-state 插件负责持久化与恢复。
@@ -113,6 +121,7 @@ export function useDesktopWindowControls() {
     initialize,
     close,
     setAlwaysOnBottom,
+    setHideTaskbarIcon,
     minimize,
     toggleMaximize,
     toggleUnlocked,

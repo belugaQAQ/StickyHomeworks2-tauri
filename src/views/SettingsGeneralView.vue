@@ -32,6 +32,11 @@ function updateAlwaysOnBottom(event: Event) {
   logInfo("settings.always-on-bottom.change", "窗口置底设置已修改");
   void save({ alwaysOnBottom, ...(alwaysOnBottom ? { windowTopmost: false } : {}) });
 }
+function updateHideTaskbarIcon(event: Event) {
+  const hideTaskbarIcon = (event.currentTarget as SwitchElement).checked;
+  logInfo("settings.hide-taskbar-icon.change", "隐藏任务栏图标设置已修改");
+  void save({ hideTaskbarIcon });
+}
 async function updateAutoStart(event: Event) {
   const checked = (event.currentTarget as SwitchElement).checked;
   try {
@@ -149,6 +154,16 @@ const homeworkScaleDrag = useRangeSliderDrag({
           icons="selected"
           :checked="appData.settings.alwaysOnBottom"
           @change="updateAlwaysOnBottom"
+        ></m3e-switch
+      ></m3e-list-item>
+      <m3e-divider inset></m3e-divider>
+      <m3e-list-item class="settings-control-list__item"
+        >隐藏任务栏图标<span slot="supporting-text">开启后，桌面端窗口不再显示任务栏图标</span
+        ><m3e-switch
+          slot="trailing"
+          icons="selected"
+          :checked="appData.settings.hideTaskbarIcon"
+          @change="updateHideTaskbarIcon"
         ></m3e-switch
       ></m3e-list-item>
       <m3e-divider inset></m3e-divider>

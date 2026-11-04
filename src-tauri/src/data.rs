@@ -83,6 +83,8 @@ pub(crate) struct AppSettings {
     pub(crate) max_panel_width: f64,
     #[serde(default, alias = "AlwaysOnBottom", alias = "IsBottom")]
     pub(crate) always_on_bottom: bool,
+    #[serde(default = "default_true", alias = "HideTaskbarIcon")]
+    pub(crate) hide_taskbar_icon: bool,
     #[serde(default, alias = "AutoStart")]
     pub(crate) auto_start: bool,
     #[serde(default = "default_background_opacity", alias = "BackgroundOpacity")]
@@ -130,6 +132,7 @@ impl Default for AppSettings {
             expired_mark_color: default_expired_mark_color(),
             max_panel_width: default_max_panel_width(),
             always_on_bottom: false,
+            hide_taskbar_icon: true,
             auto_start: false,
             background_opacity: default_background_opacity(),
             homework_scale: default_homework_scale(),

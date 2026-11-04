@@ -14,8 +14,13 @@ type AppBootstrapOptions = {
   activeNavigation: () => string;
   load: () => Promise<void>;
   updateSettings: (mutate: (settings: AppSettings) => AppSettings) => Promise<void>;
-  initializeWindowControls: (isMobileRuntime: boolean, alwaysOnBottom: boolean) => Promise<void>;
+  initializeWindowControls: (
+    isMobileRuntime: boolean,
+    alwaysOnBottom: boolean,
+    hideTaskbarIcon: boolean,
+  ) => Promise<void>;
   setAlwaysOnBottom: (alwaysOnBottom: boolean) => Promise<boolean>;
+  setHideTaskbarIcon: (hideTaskbarIcon: boolean) => Promise<boolean>;
   navigate: (path: string) => void;
 };
 
@@ -28,6 +33,7 @@ export function useAppBootstrap(options: AppBootstrapOptions) {
   const isMobileLayout = computed(() => isMobileRuntime.value && isBelow(viewportWidth.value, MOBILE_LAYOUT_MAX_WIDTH));
 
   let stopAlwaysOnBottomWatch: (() => void) | undefined;
+  let stopHideTaskbarIconWatch: (() => void) | undefined;
   let stopMainNavigate: (() => void) | undefined;
   let unlistenGlycoproteinWindowSettings: (() => void) | undefined;
   let showFallbackTimer: number | undefined;
@@ -157,13 +163,23 @@ export function useAppBootstrap(options: AppBootstrapOptions) {
       }
     }
 
-    await revealMainWindow("load-complete");
+    await options.initializeWindowControls(
+      isMobileRuntime.value,
+      options.appData.value.settings.alwaysOnBottom,
+      options.appData.value.settings.hideTaskbarIcon,
+    );
 
-    await options.initializeWindowControls(isMobileRuntime.value, options.appData.value.settings.alwaysOnBottom);
+    await revealMainWindow("load-complete");
     stopAlwaysOnBottomWatch = watch(
       () => options.appData.value.settings.alwaysOnBottom,
       (alwaysOnBottom) => {
         void options.setAlwaysOnBottom(alwaysOnBottom);
+      },
+    );
+    stopHideTaskbarIconWatch = watch(
+      () => options.appData.value.settings.hideTaskbarIcon,
+      (hideTaskbarIcon) => {
+        void options.setHideTaskbarIcon(hideTaskbarIcon);
       },
     );
   }
@@ -175,6 +191,8 @@ export function useAppBootstrap(options: AppBootstrapOptions) {
     window.removeEventListener("resize", updateViewportWidth);
     stopAlwaysOnBottomWatch?.();
     stopAlwaysOnBottomWatch = undefined;
+    stopHideTaskbarIconWatch?.();
+    stopHideTaskbarIconWatch = undefined;
     stopMainNavigate?.();
     stopMainNavigate = undefined;
     unlistenGlycoproteinWindowSettings?.();

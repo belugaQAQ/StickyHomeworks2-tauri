@@ -103,6 +103,7 @@ function normalizeSettingsFields(value: unknown): AppSettings {
       | "delayedCleanupEnabled"
       | "isExpiredMarkEnabled"
       | "alwaysOnBottom"
+      | "hideTaskbarIcon"
       | "autoStart"
       | "glycoproteinEnabled"
       | "windowVisible"
@@ -125,6 +126,7 @@ function normalizeSettingsFields(value: unknown): AppSettings {
     expiredMarkColor: readString("expiredMarkColor"),
     maxPanelWidth: readNumber("maxPanelWidth"),
     alwaysOnBottom: readBoolean("alwaysOnBottom"),
+    hideTaskbarIcon: readBoolean("hideTaskbarIcon"),
     autoStart: readBoolean("autoStart"),
     backgroundOpacity: readNumber("backgroundOpacity"),
     homeworkScale: readNumber("homeworkScale"),

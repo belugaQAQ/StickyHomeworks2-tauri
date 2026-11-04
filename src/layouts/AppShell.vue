@@ -47,6 +47,7 @@ const {
   toggleUnlocked: toggleWindowUnlocked,
   startDragging: startWindowDragging,
   setAlwaysOnBottom,
+  setHideTaskbarIcon,
 } = useDesktopWindowControls();
 const {
   appData,
@@ -131,6 +132,7 @@ const {
   updateSettings,
   initializeWindowControls,
   setAlwaysOnBottom,
+  setHideTaskbarIcon,
   navigate: (path) => {
     void router.push(path);
   },
@@ -398,9 +400,12 @@ onUnmounted(() => {
           <m3e-icon slot="leading" :name="isWindowUnlocked ? 'lock' : 'lock_open'"></m3e-icon>
           <m3e-bottom-sheet-action>{{ isWindowUnlocked ? "锁定窗口" : "解锁窗口" }}</m3e-bottom-sheet-action>
         </m3e-list-action>
-        <m3e-list-action v-if="isDesktopWindow" @click="minimizeWindow">
+        <m3e-list-action v-if="isDesktopWindow" :disabled="appData.settings.hideTaskbarIcon" @click="minimizeWindow">
           <m3e-icon slot="leading" name="minimize"></m3e-icon>
           <m3e-bottom-sheet-action>最小化</m3e-bottom-sheet-action>
+          <span v-if="appData.settings.hideTaskbarIcon" slot="supporting-text"
+            >取消任务栏图标后使用</span
+          >
         </m3e-list-action>
         <m3e-list-action v-if="isDesktopWindow" @click="requestCloseWindow">
           <m3e-icon slot="leading" name="close"></m3e-icon>

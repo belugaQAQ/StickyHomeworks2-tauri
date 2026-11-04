@@ -16,6 +16,7 @@ export function normalizeSettings(settings: AppSettings): AppSettings {
     backgroundOpacity: normalizeBackgroundOpacity(settings.backgroundOpacity),
     homeworkScale: normalizeHomeworkScale(settings.homeworkScale),
     alwaysOnBottom: windowTopmost ? false : Boolean(settings.alwaysOnBottom),
+    hideTaskbarIcon: Boolean(settings.hideTaskbarIcon),
     glycoproteinEnabled: Boolean(settings.glycoproteinEnabled),
     glycoproteinNodeId: settings.glycoproteinNodeId.trim() || createGlycoproteinNodeId(),
     windowVisible: Boolean(settings.windowVisible),
