@@ -14,7 +14,10 @@ export type AppContext = {
   requestDeleteHomework: (id: string) => void;
   updateAppSettings: (mutate: (settings: AppSettings) => AppSettings) => Promise<void>;
   deleteGlobalTag: (tag: string) => Promise<void>;
-  importLegacyData: (profileContents: string | undefined, settingsContents: string) => Promise<LegacyImportResult>;
+  importLegacyData: (
+    profileContents: string | undefined,
+    settingsContents: string | undefined,
+  ) => Promise<LegacyImportResult>;
   importUafAssignments: (assignments: readonly ImportedAssignment[]) => Promise<void>;
 };
 

@@ -37,7 +37,7 @@ export async function saveAppData(data: AppData, requestId = createRequestId("ap
 
 export async function importLegacyData(
   profileContents: string | undefined,
-  settingsContents: string,
+  settingsContents: string | undefined,
   requestId = createRequestId("legacy-import"),
 ): Promise<LegacyImportResult> {
   if (!isTauri()) throw new Error("旧版数据导入仅可在 Tauri 应用中使用。");

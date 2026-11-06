@@ -20,7 +20,7 @@ useWebKitGtkDialogExit(confirmDialog);
 const profileFile = ref<File | null>(null);
 const settingsFile = ref<File | null>(null);
 const isImporting = ref(false);
-const canImport = computed(() => isTauri() && settingsFile.value && !isImporting.value);
+const canImport = computed(() => isTauri() && Boolean(profileFile.value || settingsFile.value) && !isImporting.value);
 
 function selectProfile() {
   if (!isTauri()) {
@@ -71,13 +71,13 @@ async function closeConfirmDialog() {
 }
 
 async function confirmImport() {
-  if (!settingsFile.value || isImporting.value) return;
+  if (!canImport.value) return;
 
   isImporting.value = true;
   let profileContents: string | undefined;
-  let settingsContents: string;
+  let settingsContents: string | undefined;
   try {
-    [profileContents, settingsContents] = await Promise.all([profileFile.value?.text(), settingsFile.value.text()]);
+    [profileContents, settingsContents] = await Promise.all([profileFile.value?.text(), settingsFile.value?.text()]);
   } catch (error) {
     logError("legacy.import.file.read", error);
     M3eSnackbar.open("无法读取所选文件，请确认文件可访问后重试。");
@@ -93,9 +93,12 @@ async function confirmImport() {
       result.replacedSubjectCount ? `${result.replacedSubjectCount} 项作业科目被移除` : "",
     ].filter(Boolean);
     const changeMessage = changes.length ? `${changes.join("；")}。` : "";
-    const message = profileFile.value
-      ? `已导入 ${result.data.homeworks.length} 项作业和设置。${changeMessage}`
-      : `已导入旧版设置，保留当前作业。${changeMessage}`;
+    const message =
+      profileFile.value && settingsFile.value
+        ? `已导入 ${result.data.homeworks.length} 项作业和设置。${changeMessage}`
+        : profileFile.value
+          ? `已导入 ${result.data.homeworks.length} 项作业。${changeMessage}`
+          : `已导入设置。${changeMessage}`;
     M3eSnackbar.open(message);
     closeConfirmDialog();
   } catch (error) {
@@ -126,7 +129,7 @@ async function confirmImport() {
     />
     <m3e-list class="settings-control-list">
       <m3e-list-item class="settings-control-list__item">
-        Profile.json（可选）
+        Profile.json
         <span slot="supporting-text">{{ profileFile?.name ?? "保留当前作业" }}</span>
         <m3e-button slot="trailing" variant="outlined" :disabled="!isTauri()" @click="selectProfile">
           <m3e-icon slot="icon" name="folder_open"></m3e-icon>
@@ -136,7 +139,7 @@ async function confirmImport() {
       <m3e-divider inset></m3e-divider>
       <m3e-list-item class="settings-control-list__item">
         Settings.json
-        <span slot="supporting-text">{{ settingsFile?.name ?? "必须选择" }}</span>
+        <span slot="supporting-text">{{ settingsFile?.name ?? "保留当前设置" }}</span>
         <m3e-button slot="trailing" variant="outlined" :disabled="!isTauri()" @click="selectSettings">
           <m3e-icon slot="icon" name="folder_open"></m3e-icon>
           选择
@@ -146,6 +149,7 @@ async function confirmImport() {
   </section>
 
   <p v-if="!isTauri()" class="settings-import__notice" role="status">旧版数据导入仅可在 Tauri 应用中使用。</p>
+  <p v-else-if="!profileFile && !settingsFile" class="settings-import__notice" role="status">请至少选择一个文件进行导入操作。</p>
   <m3e-button variant="filled" :disabled="!canImport" @click="requestImport">
     <m3e-icon slot="icon" name="file_upload"></m3e-icon>
     导入
@@ -154,9 +158,11 @@ async function confirmImport() {
   <m3e-dialog ref="confirmDialog" alert disable-close>
     <m3e-heading slot="header" variant="headline" size="small" level="2">导入旧版数据？</m3e-heading>
     {{
-      profileFile
+      profileFile && settingsFile
         ? "导入会替换当前的作业和设置，并导入标签和科目，无法撤销。"
-        : "导入会覆盖当前设置，保留现有作业，并导入标签和科目。"
+        : profileFile
+          ? "导入会替换当前的作业，并导入标签和科目；设置保持现状。无法撤销。"
+          : "导入会覆盖当前设置，保留现有作业，并导入标签和科目。"
     }}
     <div slot="actions" end>
       <m3e-button variant="text" :disabled="isImporting" @click="closeConfirmDialog">取消</m3e-button>

@@ -22,7 +22,7 @@ type HomeworkStoreDependencies = {
   saveData: (data: AppData, requestId?: string) => Promise<AppData | void>;
   importData: (
     profileContents: string | undefined,
-    settingsContents: string,
+    settingsContents: string | undefined,
     requestId?: string,
   ) => Promise<LegacyImportResult>;
 };
@@ -128,7 +128,7 @@ export function useHomeworkStore(dependencies: Partial<HomeworkStoreDependencies
     return commit("homework.cleanup.restore", (data) => restoreRemovedHomeworks(data, removed));
   }
 
-  function importLegacyData(profileContents: string | undefined, settingsContents: string) {
+  function importLegacyData(profileContents: string | undefined, settingsContents: string | undefined) {
     return enqueueCommit(async () => {
       const requestId = createRequestId("legacy-import");
       try {
