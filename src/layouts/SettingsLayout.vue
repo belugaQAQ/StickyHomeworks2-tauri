@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import "../styles/settings-view.css";
 import { useAppContext } from "../app-context";
 import { routeTransitionName } from "../router";
-import { settingsSectionByPath, visibleSettingsSections } from "../settings/sections";
+import { settingsSectionByPath, settingsSections } from "../settings/sections";
 import { SETTINGS_RIGHT_PANEL_MIN_WIDTH, SPLIT_LAYOUT_MIN_WIDTH, isAtLeast, isBelow } from "../ui/breakpoints";
 
 const router = useRouter();
@@ -12,13 +12,12 @@ const route = useRoute();
 const { isMobileRuntime, settingsError } = useAppContext();
 const viewportWidth = ref(0);
 
-const activeSection = computed(() => settingsSectionByPath.get(route.path));
+const activeSection = computed(() => settingsSectionByPath[route.path]);
 const isIndexRoute = computed(() => activeSection.value === undefined);
 const pageTitle = computed(() => activeSection.value?.title ?? "设置");
 const headingId = computed(() =>
   activeSection.value ? `settings-${activeSection.value.id}-title` : "settings-index-title",
 );
-const visibleSections = computed(() => visibleSettingsSections(isMobileRuntime.value));
 
 const isNarrowSplitLayout = computed(
   () => !isIndexRoute.value && !isMobileRuntime.value && isBelow(viewportWidth.value, SPLIT_LAYOUT_MIN_WIDTH),
@@ -72,7 +71,7 @@ onUnmounted(() => {
       <nav class="settings-layout__sidebar" aria-label="设置分类">
         <m3e-action-list variant="segmented" class="settings-navigation__list">
           <m3e-list-action
-            v-for="section in visibleSections"
+            v-for="section in settingsSections"
             :key="section.path"
             class="settings-navigation__item"
             :class="{ 'settings-navigation__item--active': route.path === section.path }"
@@ -96,7 +95,7 @@ onUnmounted(() => {
         </m3e-action-list>
         <Teleport to="body">
           <m3e-tooltip
-            v-for="section in visibleSections.filter((item) => item.experimental)"
+            v-for="section in settingsSections.filter((item) => item.experimental)"
             :key="`tooltip-${section.path}`"
             :for="experimentalIconId(section)"
             >实验性功能</m3e-tooltip

@@ -1,0 +1,380 @@
+# dev 分支专用的 Canary 流水线。
+# 固定 tag `Canary`
+name: Build Dev Canary
+
+on:
+  push:
+    branches: [dev]
+    paths-ignore:
+      - "**.md"
+      - "assets/**"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: dev-pre-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pre-release-metadata:
+    name: Canary metadata
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.metadata.outputs.tag }}
+      title: ${{ steps.metadata.outputs.title }}
+      notes: ${{ steps.metadata.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Compose canary release identity
+        id: metadata
+        shell: bash
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          tauri_version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [[ "$package_version" != "$tauri_version" ]]; then
+            echo "版本不一致：package.json=$package_version，tauri.conf.json=$tauri_version" >&2
+            exit 1
+          fi
+
+          # 固定 tag 让 Canary 始终是同一份发布；时间戳只进标题，不参与 tag。
+          tag="Canary"
+          stamp="$(TZ=Asia/Shanghai date +'%Y/%m/%d-%H/%M')"
+          title="Canary Version-${stamp}"
+          {
+            echo "tag=$tag"
+            echo "title=$title"
+            echo 'notes<<CANARY_NOTES'
+            echo "dev 分支 Canary 构建，每次推送整体替换，不代表稳定版本。"
+            echo
+            echo "构建时间：${stamp} (UTC+8)"
+            echo "提交：${GITHUB_SHA}"
+            echo
+            printf '%s\n' "${COMMIT_MESSAGE:-}"
+            echo CANARY_NOTES
+          } >> "$GITHUB_OUTPUT"
+          echo "Canary 发布：$title"
+
+  desktop:
+    name: Desktop (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            bundles: nsis,msi
+            artifact: stickyhomeworks2-windows
+            path: |
+              src-tauri/target/release/bundle/nsis/*.exe
+              src-tauri/target/release/bundle/msi/*.msi
+          - name: macOS
+            os: macos-latest
+            bundles: app,dmg
+            artifact: stickyhomeworks2-macos
+            path: |
+              src-tauri/target/release/bundle/macos/*.app
+              src-tauri/target/release/bundle/dmg/*.dmg
+          - name: Linux
+            os: ubuntu-22.04
+            bundles: deb,rpm,appimage
+            artifact: stickyhomeworks2-linux
+            path: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/rpm/*.rpm
+              src-tauri/target/release/bundle/appimage/*.AppImage
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux WebView dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            libayatana-appindicator3-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            patchelf \
+            libfuse2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build desktop installer
+        run: npm run tauri -- build --bundles ${{ matrix.bundles }}
+
+      - name: Upload desktop artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error
+
+  android:
+    name: Android
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 12266719
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: true
+          packages: platform-tools
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Initialize Android target
+        run: npm run tauri -- android init --ci --skip-targets-install
+
+      - name: Restore Android signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          python - <<'PY' > "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          import base64
+          import binascii
+          import os
+          import sys
+
+          raw = "".join(os.environ["ANDROID_KEYSTORE_BASE64"].split())
+          try:
+              decoded = base64.b64decode(raw, validate=True)
+          except (binascii.Error, ValueError) as error:
+              print(
+                  f"ANDROID_KEYSTORE_BASE64 is not strict Base64 ({error}); "
+                  "replace the secret with the output of: base64 -w 0 <keystore>",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          sys.stdout.buffer.write(decoded)
+          PY
+
+          chmod 600 "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          keystore_type=""
+          for candidate in JKS PKCS12; do
+            if keytool -list -keystore "$RUNNER_TEMP/stickyhomeworks2-release.jks" \
+                -storetype "$candidate" \
+                -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+                -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+              keystore_type="$candidate"
+              break
+            fi
+          done
+          if [ -z "$keystore_type" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 is unreadable, or its type/password/alias is wrong" >&2
+            exit 1
+          fi
+          echo "Detected Android keystore type: $keystore_type"
+          cat > src-tauri/gen/android/keystore.properties <<EOF
+          storeType=$keystore_type
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=$RUNNER_TEMP/stickyhomeworks2-release.jks
+          EOF
+
+      - name: Configure Android release signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src-tauri/gen/android/app/build.gradle.kts")
+          text = path.read_text()
+          if "import java.io.FileInputStream" not in text:
+              text = "import java.io.FileInputStream\n" + text
+          if "import java.util.Properties" not in text:
+              text = "import java.util.Properties\n" + text
+          signing = '''
+          signingConfigs {
+              create("release") {
+                  val keystorePropertiesFile = rootProject.file("keystore.properties")
+                  val keystoreProperties = Properties()
+                  if (keystorePropertiesFile.exists()) {
+                      keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+                  }
+                  keyAlias = keystoreProperties["keyAlias"] as String
+                  keyPassword = keystoreProperties["keyPassword"] as String
+                  storeFile = file(keystoreProperties["storeFile"] as String)
+                  storePassword = keystoreProperties["storePassword"] as String
+                  storeType = keystoreProperties["storeType"] as String
+              }
+          }
+          '''
+          if 'create("release")' not in text:
+              if "buildTypes {" not in text:
+                  raise SystemExit("Android Gradle template has no buildTypes block")
+              text = text.replace("buildTypes {", signing + "\nbuildTypes {", 1)
+          if 'signingConfigs.getByName("release")' not in text:
+              marker = 'getByName("release") {'
+              if marker not in text:
+                  raise SystemExit("Android Gradle template has no release build type")
+              text = text.replace(
+                  marker,
+                  marker + '\n                  signingConfig = signingConfigs.getByName("release")',
+                  1,
+              )
+          if 'signingConfigs.getByName("release")' not in text:
+              raise SystemExit("Failed to configure Android release signing")
+          path.write_text(text)
+          PY
+
+      - name: Build signed Android APK and AAB
+        run: npm run tauri -- android build
+
+      - name: Verify Android APK signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' -print)
+          test "${#apks[@]}" -gt 0
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$apksigner"
+          for apk in "${apks[@]}"; do
+            "$apksigner" verify --verbose "$apk"
+
+          done
+
+      - name: Remove temporary Android signing files
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/stickyhomeworks2-release.jks"
+          rm -f src-tauri/gen/android/keystore.properties
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stickyhomeworks2-android
+          path: |
+            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
+          if-no-files-found: error
+
+  ios:
+    name: iOS (unsigned IPA)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Initialize iOS target
+        run: npm run tauri -- ios init --ci --skip-targets-install
+
+      - name: Build unsigned IPA
+        run: npm run tauri -- ios build --no-sign
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stickyhomeworks2-ios-unsigned
+          path: src-tauri/gen/apple/build/arm64/*.ipa
+          if-no-files-found: error
+
+  publish-pre-release:
+    name: Publish GitHub Canary
+    needs: [pre-release-metadata, desktop, android, ios]
+    if: needs.desktop.result == 'success' && needs.android.result == 'success' && needs.ios.result == 'success'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stickyhomeworks2-*
+          path: release-artifacts
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: release-artifacts
+        run: find . -type f ! -name 'SHA256SUMS.txt' -print0 | xargs -0 sha256sum > SHA256SUMS.txt
+      - name: Replace GitHub Canary release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.pre-release-metadata.outputs.tag }}
+          RELEASE_TITLE: ${{ needs.pre-release-metadata.outputs.title }}
+          RELEASE_NOTES: ${{ needs.pre-release-metadata.outputs.notes }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find release-artifacts -type f ! -name 'SHA256SUMS.txt' -print)
+          test "${#files[@]}" -gt 0
+          # 删旧发布时一并删 tag，否则 create 会撞 tag 名；不存在则跳过。
+          # 若只剩孤立 tag（发布被手工删过），也一并清掉，避免 create 因 tag 已存在失败。
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          elif git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$RELEASE_TAG"
+          fi
+          # 必须显式指定目标提交：默认会按仓库默认分支 HEAD 打 tag，dev 的产物就会挂到 master 上。
+          gh release create "$RELEASE_TAG" "${files[@]}" release-artifacts/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$RELEASE_TITLE" \
+            --notes "$RELEASE_NOTES" \
+            --prerelease

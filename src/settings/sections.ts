@@ -14,7 +14,6 @@ export type SettingsSection = {
   readonly title: string;
   readonly detail: string;
   readonly icon: string;
-  readonly desktopOnly?: boolean;
   readonly experimental?: boolean;
   readonly depth: number;
 };
@@ -38,7 +37,7 @@ export const settingsSections: readonly SettingsSection[] = [
   },
   { id: "expiry",
     path: "/settings/expiry",
-    title: "作业处理",
+    title: "过期作业",
     detail: "清理和标记过期作业",
     icon: "event_busy",
     depth: 1 
@@ -55,7 +54,6 @@ export const settingsSections: readonly SettingsSection[] = [
     title: "Glycoprotein",
     detail: "Glycoprotein联动设置",
     icon: "hub",
-    desktopOnly: true,
     experimental: true,
     depth: 1,
   },
@@ -84,7 +82,7 @@ export const settingsSections: readonly SettingsSection[] = [
   },
 ];
 
-export const settingsSectionByPath: ReadonlyMap<string, SettingsSection> = new Map(
+export const settingsSectionByPath: Readonly<Record<string, SettingsSection | undefined>> = Object.fromEntries(
   settingsSections.map((section) => [section.path, section]),
 );
 
@@ -101,8 +99,4 @@ export const settingsSectionComponents: Readonly<Record<string, Component>> = {
 
 export function settingsRouteName(section: SettingsSection): string {
   return `settings-${section.id}`;
-}
-
-export function visibleSettingsSections(isMobileRuntime: boolean): readonly SettingsSection[] {
-  return settingsSections.filter((section) => !section.desktopOnly || !isMobileRuntime);
 }
