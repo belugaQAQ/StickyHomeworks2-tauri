@@ -42,6 +42,10 @@
   overflow-y: auto;
 }
 
+.settings-page--split:not(.settings-page--mobile):not(.settings-page--narrow) .settings-layout__content {
+  overflow-x: hidden;
+}
+
 .settings-page--split:not(.settings-page--mobile):not(.settings-page--narrow) .settings-layout__content-inner {
   min-height: max-content;
 }

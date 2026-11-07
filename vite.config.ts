@@ -47,7 +47,8 @@ export default defineConfig(async () => ({
     watch: {
       ignored: [
         "**/src-tauri/**",
-        "**/.cargo-tmp/**"
+        "**/.cargo-tmp/**",
+        "**/.tmp-shot/**",
       ]
     }
   },

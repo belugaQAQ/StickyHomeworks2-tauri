@@ -158,7 +158,7 @@ pub(crate) async fn import_legacy_data_contents(
     coordinator: State<'_, AppDataCoordinator>,
     glycoprotein: State<'_, GlycoproteinService>,
     profile_contents: Option<String>,
-    settings_contents: String,
+    settings_contents: Option<String>,
     request_id: Option<String>,
 ) -> Result<LegacyImportResult, String> {
     let (previous_homeworks, result) = {
@@ -169,8 +169,12 @@ pub(crate) async fn import_legacy_data_contents(
         let current_data = load_current_app_data(&app)
             .map_err(|error| record_error(&app, "legacy-import.load", error, request_id.clone()))?;
         let previous_homeworks = current_data.homeworks.clone();
-        let mut result = import_legacy_data_from_sources(current_data, profile_contents.as_deref(), &settings_contents)
-            .map_err(|error| record_error(&app, "legacy-import.parse", error, request_id.clone()))?;
+        let mut result = import_legacy_data_from_sources(
+            current_data,
+            profile_contents.as_deref(),
+            settings_contents.as_deref(),
+        )
+        .map_err(|error| record_error(&app, "legacy-import.parse", error, request_id.clone()))?;
         let path = app_state_path(&app)
             .map_err(|error| record_error(&app, "legacy-import.path", error, request_id.clone()))?;
         write_app_data(&path, &mut result.data)

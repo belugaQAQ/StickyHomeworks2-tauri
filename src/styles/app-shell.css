@@ -155,20 +155,53 @@
   overflow-x: hidden;
   overflow-y: auto;
   background: var(--md-sys-color-background);
+  scrollbar-color: var(--m3e-scrollbar-thumb-color, var(--md-sys-color-outline-variant)) transparent;
+  scrollbar-width: thin;
+}
+
+.app-content--settings::-webkit-scrollbar {
+  width: 0.25rem;
+  height: 0.25rem;
+}
+
+.app-content--settings::-webkit-scrollbar-track,
+.app-content--settings::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.app-content--settings::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background-color: var(--m3e-scrollbar-thumb-color, var(--md-sys-color-outline-variant));
 }
 
 .app-content--settings .route-view {
-  height: 100%;
-  min-height: 0;
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
 }
 
 .app-content--settings .route-view > .settings-page {
-  height: 100%;
-  min-height: 0;
+  height: auto;
+  min-height: 100%;
 }
 
 .app-content--settings:has(.settings-page--split:not(.settings-page--mobile):not(.settings-page--narrow)) {
   overflow: hidden;
+}
+
+.app-content--settings:has(.settings-page--split:not(.settings-page--mobile):not(.settings-page--narrow)) .route-view {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-content--settings:has(.settings-page--split:not(.settings-page--mobile):not(.settings-page--narrow))
+  .route-view
+  > .settings-page {
+  height: 100%;
+  min-height: 0;
 }
 
 .app-content--settings .settings-detail-enter-active,

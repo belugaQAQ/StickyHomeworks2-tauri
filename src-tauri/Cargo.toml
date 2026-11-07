@@ -39,3 +39,9 @@ tokio = { version = "1", features = ["sync"] }
 tauri-plugin-single-instance = "2"
 # 窗口位置/尺寸/最大化由官方插件持久化，取代自己写 settings 的几何字段
 tauri-plugin-window-state = "2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_UI_WindowsAndMessaging",
+] }

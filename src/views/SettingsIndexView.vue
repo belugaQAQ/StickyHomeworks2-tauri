@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import { useAppContext } from "../app-context";
-import { visibleSettingsSections } from "../settings/sections";
+import { settingsSections } from "../settings/sections";
 import { SETTINGS_DETAIL_MIN_WIDTH } from "../ui/breakpoints";
 import "../styles/settings-view.css";
 
 const router = useRouter();
-const { isMobileRuntime } = useAppContext();
 
 function redirectToGeneralOnWideWindow() {
   if (window.innerWidth > SETTINGS_DETAIL_MIN_WIDTH) {
@@ -22,17 +20,31 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("resize", redirectToGeneralOnWideWindow);
 });
-
-const visibleSections = computed(() => visibleSettingsSections(isMobileRuntime.value));
 </script>
 
 <template>
   <m3e-action-list variant="segmented" class="settings-action-list">
-    <m3e-list-action v-for="section in visibleSections" :key="section.path" :href="`#${section.path}`">
+    <m3e-list-action v-for="section in settingsSections" :key="section.path" :href="`#${section.path}`">
       <m3e-icon slot="leading" :name="section.icon"></m3e-icon>
       {{ section.title }}
       <span slot="supporting-text">{{ section.detail }}</span>
-      <m3e-icon slot="trailing" name="chevron_right"></m3e-icon>
+      <span slot="trailing" class="settings-index__trailing">
+        <m3e-chip-set v-if="section.experimental">
+          <m3e-chip variant="outlined">
+            <m3e-icon slot="icon" name="science"></m3e-icon>
+            实验性
+          </m3e-chip>
+        </m3e-chip-set>
+        <m3e-icon name="chevron_right"></m3e-icon>
+      </span>
     </m3e-list-action>
   </m3e-action-list>
 </template>
+
+<style scoped>
+.settings-index__trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+</style>

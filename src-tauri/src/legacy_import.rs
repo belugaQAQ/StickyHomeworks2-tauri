@@ -13,14 +13,20 @@ pub(crate) struct LegacyImport {
 pub(crate) fn import_legacy_data_from_sources(
     current_data: AppData,
     profile_source: Option<&str>,
-    settings_source: &str,
+    settings_source: Option<&str>,
 ) -> Result<LegacyImport, String> {
+    if profile_source.is_none() && settings_source.is_none() {
+        return Err("请至少选择一个文件进行导入操作".to_owned());
+    }
+
     let (mut data, legacy_rich_text_count) = match profile_source {
         Some(source) => import_profile(source)?,
         None => (current_data, 0),
     };
 
-    data.settings = read_legacy_settings_source(settings_source)?;
+    if let Some(source) = settings_source {
+        data.settings = read_legacy_settings_source(source)?;
+    }
     normalize_settings(&mut data.settings);
     let (removed_tag_reference_count, replaced_subject_count) = reconcile_homework_vocabulary(&mut data);
     normalize_app_data(&mut data);

@@ -51,6 +51,70 @@ fn set_window_visibility(
     Ok(())
 }
 
+// 显示/隐藏主窗口的任务栏图标。
+#[tauri::command]
+fn set_taskbar_icon_visible(visible: bool, app: tauri::AppHandle) -> Result<String, String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "主窗口不存在".to_owned())?;
+
+    #[cfg(windows)]
+    {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetAncestor, GetWindow, GetWindowLongPtrW, IsWindowVisible, SetWindowLongPtrW,
+            SetWindowPos, GA_ROOT, GWL_EXSTYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_NOACTIVATE,
+            SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+        };
+
+        let raw = window.hwnd().map_err(|error| error.to_string())?;
+        let window_handle = HWND(raw.0);
+        unsafe {
+            // 拿真正的顶层窗口
+            let root = GetAncestor(window_handle, GA_ROOT);
+            let hwnd = if root.is_invalid() { window_handle } else { root };
+
+            let owner = GetWindow(hwnd, GW_OWNER).map(|handle| handle.0).unwrap_or_default();
+            let before = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let mut after = before;
+            if visible {
+                after = (after | WS_EX_APPWINDOW.0 as isize) & !(WS_EX_TOOLWINDOW.0 as isize);
+            } else {
+                after = (after | WS_EX_TOOLWINDOW.0 as isize) & !(WS_EX_APPWINDOW.0 as isize);
+            }
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, after);
+            let _ = SetWindowPos(
+                hwnd,
+                None,
+                0,
+                0,
+                0,
+                0,
+                SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+            );
+
+            let was_visible = IsWindowVisible(hwnd).as_bool();
+            let read_back = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let taskbar_result = window.set_skip_taskbar(!visible);
+            return Ok(format!(
+                "hwnd={:?} root={:?} owner={owner:?} ex_before={before:#x} ex_after={after:#x} ex_readback={read_back:#x} was_visible={was_visible} taskbar={}",
+                window_handle.0,
+                hwnd.0,
+                match taskbar_result {
+                    Ok(()) => "ok".to_owned(),
+                    Err(error) => format!("error: {error}"),
+                }
+            ));
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = (visible, window);
+        Ok("non-windows".to_owned())
+    }
+}
+
 #[tauri::command]
 fn quit_application(app: tauri::AppHandle) {
     #[cfg(desktop)]
@@ -199,6 +263,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             window_visibility,
             set_window_visibility,
+            set_taskbar_icon_visible,
             show_main_window,
             navigate_main_window,
             hide_tray_menu,

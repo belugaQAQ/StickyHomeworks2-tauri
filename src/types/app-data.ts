@@ -21,6 +21,7 @@ export type AppSettings = {
   expiredMarkColor: string;
   maxPanelWidth: number;
   alwaysOnBottom: boolean;
+  hideTaskbarIcon: boolean;
   autoStart: boolean;
   backgroundOpacity: number;
   homeworkScale: number;
@@ -57,6 +58,7 @@ export function createDefaultAppData(): AppData {
       expiredMarkColor: "#333333",
       maxPanelWidth: 350,
       alwaysOnBottom: false,
+      hideTaskbarIcon: true,
       autoStart: false,
       backgroundOpacity: 100,
       homeworkScale: 100,

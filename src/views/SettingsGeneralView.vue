@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useAppContext } from "../app-context";
 import { useSettingsAutosave } from "../composables/useSettingsAutosave";
 import { useRangeSliderDrag } from "../composables/useRangeSliderDrag";
@@ -9,6 +9,7 @@ import { isTauri } from "@tauri-apps/api/core";
 type SwitchElement = HTMLElement & { checked: boolean };
 type SliderThumbElement = HTMLElement & { value?: string | number };
 const { isMobileRuntime } = useAppContext();
+const isDesktopApp = computed(() => !isMobileRuntime.value && isTauri());
 const { appData, save } = useSettingsAutosave();
 const title = ref(appData.value.settings.title);
 const backgroundOpacity = ref(appData.value.settings.backgroundOpacity);
@@ -31,6 +32,11 @@ function updateAlwaysOnBottom(event: Event) {
   const alwaysOnBottom = (event.currentTarget as SwitchElement).checked;
   logInfo("settings.always-on-bottom.change", "窗口置底设置已修改");
   void save({ alwaysOnBottom, ...(alwaysOnBottom ? { windowTopmost: false } : {}) });
+}
+function updateHideTaskbarIcon(event: Event) {
+  const hideTaskbarIcon = (event.currentTarget as SwitchElement).checked;
+  logInfo("settings.hide-taskbar-icon.change", "隐藏任务栏图标设置已修改");
+  void save({ hideTaskbarIcon });
 }
 async function updateAutoStart(event: Event) {
   const checked = (event.currentTarget as SwitchElement).checked;
@@ -105,7 +111,7 @@ const homeworkScaleDrag = useRangeSliderDrag({
     <template v-if="!isMobileRuntime">
       <m3e-divider inset></m3e-divider>
       <m3e-list-item class="settings-control-list__item"
-        >背景透明度<span slot="supporting-text">调整背景和作业列表表面的透明度，不影响应用栏。</span
+        >主界面不透明度<span slot="supporting-text">调整背景和作业列表表面的不透明度</span
         ><m3e-slider
           ref="backgroundOpacitySlider"
           slot="trailing"
@@ -124,7 +130,7 @@ const homeworkScaleDrag = useRangeSliderDrag({
       ></m3e-list-item>
       <m3e-divider inset></m3e-divider>
       <m3e-list-item class="settings-control-list__item"
-        >作业界面缩放<span slot="supporting-text">仅调整主界面的作业内容，不影响设置、应用栏和对话框。</span
+        >主界面缩放<span slot="supporting-text">调整主界面的作业内容大小</span
         ><m3e-slider
           ref="homeworkScaleSlider"
           slot="trailing"
@@ -141,6 +147,8 @@ const homeworkScaleDrag = useRangeSliderDrag({
             @change="saveHomeworkScale"
           ></m3e-slider-thumb></m3e-slider
       ></m3e-list-item>
+    </template>
+    <template v-if="isDesktopApp">
       <m3e-divider inset></m3e-divider>
       <m3e-list-item class="settings-control-list__item"
         >置底<span slot="supporting-text">开启后，桌面端窗口始终显示在其他窗口下方</span
@@ -151,6 +159,18 @@ const homeworkScaleDrag = useRangeSliderDrag({
           @change="updateAlwaysOnBottom"
         ></m3e-switch
       ></m3e-list-item>
+      <m3e-divider inset></m3e-divider>
+      <m3e-list-item class="settings-control-list__item"
+        >隐藏任务栏图标<span slot="supporting-text">开启后，桌面端窗口不再显示任务栏图标</span
+        ><m3e-switch
+          slot="trailing"
+          icons="selected"
+          :checked="appData.settings.hideTaskbarIcon"
+          @change="updateHideTaskbarIcon"
+        ></m3e-switch
+      ></m3e-list-item>
+    </template>
+    <template v-if="isDesktopApp">
       <m3e-divider inset></m3e-divider>
       <m3e-list-item class="settings-control-list__item"
         >开机自启动<span slot="supporting-text">登录系统后自动启动应用。</span

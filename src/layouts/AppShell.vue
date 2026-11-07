@@ -47,6 +47,7 @@ const {
   toggleUnlocked: toggleWindowUnlocked,
   startDragging: startWindowDragging,
   setAlwaysOnBottom,
+  setHideTaskbarIcon,
 } = useDesktopWindowControls();
 const {
   appData,
@@ -131,6 +132,7 @@ const {
   updateSettings,
   initializeWindowControls,
   setAlwaysOnBottom,
+  setHideTaskbarIcon,
   navigate: (path) => {
     void router.push(path);
   },
@@ -198,7 +200,7 @@ async function deleteGlobalTag(tag: string) {
   }
 }
 
-async function importLegacyData(profileContents: string | undefined, settingsContents: string) {
+async function importLegacyData(profileContents: string | undefined, settingsContents: string | undefined) {
   settingsError.value = "";
   try {
     return await importLegacyDataFromStore(profileContents, settingsContents);
@@ -335,7 +337,7 @@ onUnmounted(() => {
             :selected="activeNavigation === item.id"
             @click="selectNavigation(item.id)"
           >
-            <m3e-icon slot="icon" :name="item.hint"></m3e-icon>
+            <m3e-icon slot="icon" :name="item.hint" :filled="activeNavigation === item.id"></m3e-icon>
             <span slot="label">{{ item.label }}</span>
           </m3e-nav-menu-item>
         </m3e-nav-menu>
@@ -365,7 +367,7 @@ onUnmounted(() => {
       @pointerdown="preserveMobileScrollPosition"
     >
       <m3e-fab-menu-trigger for="fab-menu">
-        <m3e-icon name="edit" variant="rounded"></m3e-icon>
+        <m3e-icon name="edit"></m3e-icon>
       </m3e-fab-menu-trigger>
     </m3e-fab>
     <m3e-fab-menu id="fab-menu" variant="primary">
@@ -398,9 +400,10 @@ onUnmounted(() => {
           <m3e-icon slot="leading" :name="isWindowUnlocked ? 'lock' : 'lock_open'"></m3e-icon>
           <m3e-bottom-sheet-action>{{ isWindowUnlocked ? "锁定窗口" : "解锁窗口" }}</m3e-bottom-sheet-action>
         </m3e-list-action>
-        <m3e-list-action v-if="isDesktopWindow" @click="minimizeWindow">
+        <m3e-list-action v-if="isDesktopWindow" :disabled="appData.settings.hideTaskbarIcon" @click="minimizeWindow">
           <m3e-icon slot="leading" name="minimize"></m3e-icon>
           <m3e-bottom-sheet-action>最小化</m3e-bottom-sheet-action>
+          <span v-if="appData.settings.hideTaskbarIcon" slot="supporting-text">取消任务栏图标后使用</span>
         </m3e-list-action>
         <m3e-list-action v-if="isDesktopWindow" @click="requestCloseWindow">
           <m3e-icon slot="leading" name="close"></m3e-icon>
