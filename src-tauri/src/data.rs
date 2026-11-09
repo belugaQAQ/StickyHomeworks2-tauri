@@ -4,6 +4,8 @@ use uuid::Uuid;
 
 pub(crate) const OTHER_SUBJECT: &str = "其它";
 
+pub(crate) const SCHEMA_VERSION: u8 = 1;
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HomeworkRecord {
@@ -187,7 +189,7 @@ pub(crate) fn normalize_settings(settings: &mut AppSettings) {
 }
 
 fn schema_version() -> u8 {
-    1
+    SCHEMA_VERSION
 }
 
 fn default_title() -> String {

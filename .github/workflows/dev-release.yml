@@ -53,7 +53,7 @@ jobs:
             echo "tag=$tag"
             echo "title=$title"
             echo 'notes<<CANARY_NOTES'
-            echo "dev 分支 Canary 构建，每次推送整体替换，不代表稳定版本。"
+            echo "dev 分支 Canary 构建，不代表稳定版本。"
             echo
             echo "构建时间：${stamp} (UTC+8)"
             echo "提交：${GITHUB_SHA}"

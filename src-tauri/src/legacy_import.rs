@@ -175,7 +175,8 @@ mod tests {
         let result = import_legacy_data_from_sources(
             AppData::default(),
             None,
-            r#"{
+            Some(
+                r#"{
                 "IsBottom": true,
                 "IsGlycoproteinEnabled": true,
                 "GlycoproteinNodeId": "legacy-glyco",
@@ -186,6 +187,7 @@ mod tests {
                 "WindowWidth": 500.2,
                 "WindowHeight": 700.8
             }"#,
+            ),
         )
         .expect("legacy settings should import");
 
@@ -206,12 +208,14 @@ mod tests {
         let result = import_legacy_data_from_sources(
             AppData::default(),
             None,
-            r#"{
+            Some(
+                r#"{
                 "AutoStart": true,
                 "BackgroundOpacity": 64.4,
                 "HomeworkScale": 120,
                 "AutoOutwork": false
             }"#,
+            ),
         )
         .expect("legacy auto start and presentation settings should import");
 
@@ -224,8 +228,9 @@ mod tests {
 
     #[test]
     fn legacy_autooutwork_key_spelling_is_still_supported() {
-        let result = import_legacy_data_from_sources(AppData::default(), None, r#"{ "Autooutwork": false }"#)
-            .expect("legacy Autooutwork key should import");
+        let result =
+            import_legacy_data_from_sources(AppData::default(), None, Some(r#"{ "Autooutwork": false }"#))
+                .expect("legacy Autooutwork key should import");
 
         assert!(!result.data.settings.auto_outwork);
     }

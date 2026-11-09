@@ -55,7 +55,7 @@ pub(crate) fn diagnostic_bundle(
 ) -> Result<Vec<u8>, String> {
     let snapshot = diagnostic_log_snapshot(app, MAX_REPORT_ENTRIES)?;
     let report = format_report(&environment, &snapshot.entries, disclosure, app_data.as_ref());
-    let app_state = if disclosure == DiagnosticDisclosure::Full {
+    let app_data_snapshot = if disclosure == DiagnosticDisclosure::Full {
         app_data
             .map(|data| serde_json::to_vec_pretty(&data).map_err(|error| error.to_string()))
             .transpose()?
@@ -67,7 +67,7 @@ pub(crate) fn diagnostic_bundle(
     } else {
         Vec::new()
     };
-    create_diagnostic_bundle(app_state.as_deref(), &log_files, &report)
+    create_diagnostic_bundle(app_data_snapshot.as_deref(), &log_files, &report)
 }
 
 fn format_report(
