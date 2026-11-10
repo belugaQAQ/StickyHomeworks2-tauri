@@ -45,7 +45,6 @@ const {
   minimize: minimizeWindow,
   toggleMaximize: toggleWindowMaximize,
   toggleUnlocked: toggleWindowUnlocked,
-  startDragging: startWindowDragging,
   setAlwaysOnBottom,
   setHideTaskbarIcon,
 } = useDesktopWindowControls();
@@ -240,13 +239,6 @@ provide(appContextKey, {
   importUafAssignments,
 });
 
-async function startWindowDrag(event: Event) {
-  if (event instanceof PointerEvent && event.pointerType !== "mouse") return;
-  if (!isWindowUnlocked.value) return;
-  event.preventDefault();
-  await startWindowDragging();
-}
-
 function syncDrawerState(event: Event) {
   isDrawerOpen.value = (event.currentTarget as HTMLElement & { start: boolean }).start;
 }
@@ -292,12 +284,10 @@ onUnmounted(() => {
     class="app-frame"
     :class="{
       'app-frame--mobile': isMobileLayout,
-      'app-frame--window-unlocked': isWindowUnlocked,
     }"
     :style="{ '--background-opacity': `${appData.settings.backgroundOpacity}%` }"
-    :data-tauri-drag-region="isWindowUnlocked ? 'deep' : undefined"
   >
-    <m3e-app-bar class="app-bar" :class="{ 'app-bar--unlocked': isWindowUnlocked }">
+    <m3e-app-bar class="app-bar">
       <m3e-icon-button slot="leading" aria-label="Menu" toggle :selected="isDrawerOpen" @change="syncMenuToggle">
         <m3e-icon name="menu"></m3e-icon>
         <m3e-icon slot="selected" name="menu_open"></m3e-icon>
@@ -412,7 +402,7 @@ onUnmounted(() => {
       </m3e-action-list>
       <p v-if="windowControlError" class="window-control-error" role="alert">{{ windowControlError }}</p>
     </m3e-bottom-sheet>
-    <WindowUnlockOverlay v-if="isWindowUnlocked" @pointerdown="startWindowDrag" @touchstart="startWindowDrag" />
+    <WindowUnlockOverlay v-if="isWindowUnlocked" />
 
     <HomeworkTransferDialog
       ref="transferDialog"
