@@ -8,6 +8,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "node scripts/tauri.mjs",
+    "msix": "node scripts/msix.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml"

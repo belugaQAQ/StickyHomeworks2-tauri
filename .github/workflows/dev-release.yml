@@ -76,6 +76,7 @@ jobs:
             path: |
               src-tauri/target/release/bundle/nsis/*.exe
               src-tauri/target/release/bundle/msi/*.msi
+              src-tauri/target/msix/*.msix
           - name: macOS
             os: macos-latest
             bundles: app,dmg
@@ -125,6 +126,10 @@ jobs:
 
       - name: Build desktop installer
         run: npm run tauri -- build --bundles ${{ matrix.bundles }}
+
+      - name: Package unsigned MSIX for Microsoft Store
+        if: runner.os == 'Windows'
+        run: node scripts/msix.mjs
 
       - name: Upload desktop artifact
         uses: actions/upload-artifact@v4
