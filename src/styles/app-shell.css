@@ -70,11 +70,6 @@
   overflow: hidden;
 }
 
-.app-frame--window-unlocked {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
 .app-bar {
   position: sticky;
   top: 0;
@@ -85,14 +80,6 @@
 
 .homework-freeze-button {
   margin-inline-end: 4px;
-}
-
-.app-bar--unlocked {
-  cursor: grab;
-}
-
-.app-bar--unlocked:active {
-  cursor: grabbing;
 }
 
 .window-control-error {

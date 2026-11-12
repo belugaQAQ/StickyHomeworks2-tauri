@@ -1,7 +1,6 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
@@ -16,9 +15,9 @@ use crate::glycoprotein_service::{
 };
 use crate::legacy_import::import_legacy_data_from_sources;
 use crate::logger::{append_event, clear_logs, LogEvent};
-use crate::persistence::{read_app_data as read_persisted_app_data, write_app_data};
-
-const APP_STATE_FILE: &str = "app-state.json";
+use crate::persistence::{
+    read_app_data as read_persisted_app_data, write_app_data, write_app_data_preserving_profile,
+};
 
 #[derive(Default)]
 pub(crate) struct AppDataCoordinator {
@@ -44,69 +43,38 @@ pub(crate) fn load_app_data(
         .operation
         .lock()
         .map_err(|error| record_error(&app, "app-data.lock", error.to_string(), request_id.clone()))?;
-    let mut data =
-        load_current_app_data(&app).map_err(|error| record_error(&app, "app-data.load", error, request_id.clone()))?;
-    let path = app_state_path(&app).map_err(|error| record_error(&app, "app-data.path", error, request_id.clone()))?;
+    let mut data = load_current_app_data(&app, request_id.clone())
+        .map_err(|error| record_error(&app, "app-data.load", error, request_id.clone()))?;
+    let directory = app_data_directory(&app)
+        .map_err(|error| record_error(&app, "app-data.path", error, request_id.clone()))?;
     // 写回归一化结果只是 best-effort：写失败不影响本次已读到的数据。
-    if let Err(error) = write_app_data(&path, &mut data) {
+    if let Err(error) = write_app_data(&directory, &mut data) {
         let _ = record_error(&app, "app-data.normalize", error, request_id.clone());
     }
     record_info(&app, "app-data.load", "应用数据加载完成", request_id);
     Ok(data)
 }
 
-fn load_current_app_data(app: &AppHandle) -> Result<AppData, String> {
-    let path = app_state_path(app)?;
-    if !path.exists() {
-        return Ok(AppData::default());
+fn load_current_app_data(app: &AppHandle, request_id: Option<String>) -> Result<AppData, String> {
+    let directory = app_data_directory(app)?;
+    let outcome = read_persisted_app_data(&directory).map_err(|error| error.to_string())?;
+    for notice in &outcome.notices {
+        let _ = append_event(
+            app,
+            LogEvent {
+                level: "warn".to_owned(),
+                operation: "app-data.recovery".to_owned(),
+                message: notice.clone(),
+                request_id: request_id.clone(),
+                details: None,
+            },
+        );
     }
-
-    match read_persisted_app_data(&path) {
-        Ok(data) => Ok(data),
-        Err(error) => recover_corrupted_app_data(app, &path, &error),
-    }
+    Ok(outcome.data)
 }
 
-fn recover_corrupted_app_data(app: &AppHandle, path: &Path, error: &str) -> Result<AppData, String> {
-    let (data, backup) = recover_corrupted_app_data_files(path);
-    let message = match &backup {
-        Ok(name) => format!("应用数据损坏，已备份为 {name} 并回落到默认值：{error}"),
-        Err(backup_error) => format!("应用数据损坏但备份失败（{backup_error}），保持原文件不动：{error}"),
-    };
-    let _ = append_event(
-        app,
-        LogEvent {
-            level: "error".to_owned(),
-            operation: "app-data.recovery".to_owned(),
-            message: message.clone(),
-            request_id: None,
-            details: None,
-        },
-    );
-    match backup {
-        Ok(_) => Ok(data),
-        Err(_) => Err(message),
-    }
-}
-
-/// 可单测的恢复动作：返回默认数据与备份文件路径（`app-state.corrupt-<unix秒>.json`）。
-fn recover_corrupted_app_data_files(path: &Path) -> (AppData, Result<String, String>) {
-    (AppData::default(), backup_corrupted_app_data(path))
-}
-
-fn backup_corrupted_app_data(path: &Path) -> Result<String, String> {
-    let directory = path.parent().ok_or("应用数据路径没有父目录")?;
-    let seconds = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs())
-        .unwrap_or_default();
-    let stem = APP_STATE_FILE.strip_suffix(".json").unwrap_or(APP_STATE_FILE);
-    let backup = directory.join(format!("{stem}.corrupt-{seconds}.json"));
-    fs::rename(path, &backup).map_err(|error| error.to_string())?;
-    Ok(backup.to_string_lossy().into_owned())
-}
 pub(crate) fn persisted_window_visibility(app: &AppHandle) -> Result<bool, String> {
-    Ok(load_current_app_data(app)?.settings.window_visible)
+    Ok(load_current_app_data(app, None)?.settings.window_visible)
 }
 
 pub(crate) fn set_persisted_window_visibility(
@@ -115,10 +83,10 @@ pub(crate) fn set_persisted_window_visibility(
     visible: bool,
 ) -> Result<(), String> {
     let _guard = coordinator.operation.lock().map_err(|error| error.to_string())?;
-    let mut data = load_current_app_data(app)?;
+    let mut data = load_current_app_data(app, None)?;
     data.settings.window_visible = visible;
-    let path = app_state_path(app)?;
-    write_app_data(&path, &mut data)
+    let directory = app_data_directory(app)?;
+    write_app_data(&directory, &mut data)
 }
 
 #[tauri::command]
@@ -134,12 +102,12 @@ pub(crate) async fn save_app_data(
             .operation
             .lock()
             .map_err(|error| record_error(&app, "app-data.lock", error.to_string(), request_id.clone()))?;
-        let previous = load_current_app_data(&app)
+        let previous = load_current_app_data(&app, request_id.clone())
             .map_err(|error| record_error(&app, "app-data.load-before-save", error, request_id.clone()))?;
         let mut data = data;
-        let path =
-            app_state_path(&app).map_err(|error| record_error(&app, "app-data.path", error, request_id.clone()))?;
-        write_app_data(&path, &mut data)
+        let directory =
+            app_data_directory(&app).map_err(|error| record_error(&app, "app-data.path", error, request_id.clone()))?;
+        write_app_data_preserving_profile(&directory, &mut data, &previous.homeworks)
             .map_err(|error| record_error(&app, "app-data.save", error, request_id.clone()))?;
         (previous, data)
     };
@@ -166,7 +134,7 @@ pub(crate) async fn import_legacy_data_contents(
             .operation
             .lock()
             .map_err(|error| record_error(&app, "app-data.lock", error.to_string(), request_id.clone()))?;
-        let current_data = load_current_app_data(&app)
+        let current_data = load_current_app_data(&app, request_id.clone())
             .map_err(|error| record_error(&app, "legacy-import.load", error, request_id.clone()))?;
         let previous_homeworks = current_data.homeworks.clone();
         let mut result = import_legacy_data_from_sources(
@@ -175,9 +143,9 @@ pub(crate) async fn import_legacy_data_contents(
             settings_contents.as_deref(),
         )
         .map_err(|error| record_error(&app, "legacy-import.parse", error, request_id.clone()))?;
-        let path = app_state_path(&app)
+        let directory = app_data_directory(&app)
             .map_err(|error| record_error(&app, "legacy-import.path", error, request_id.clone()))?;
-        write_app_data(&path, &mut result.data)
+        write_app_data(&directory, &mut result.data)
             .map_err(|error| record_error(&app, "legacy-import.save", error, request_id.clone()))?;
         (previous_homeworks, result)
     };
@@ -208,7 +176,7 @@ pub(crate) async fn initialize_glycoprotein(
             .operation
             .lock()
             .map_err(|error| record_error(&app, "app-data.lock", error.to_string(), request_id.clone()))?;
-        load_current_app_data(&app)
+        load_current_app_data(&app, request_id.clone())
             .map_err(|error| record_error(&app, "glycoprotein.initialize.load", error, request_id.clone()))?
     };
     correct_window_geometry_from_plugin(&app);
@@ -219,9 +187,9 @@ pub(crate) async fn initialize_glycoprotein(
             .operation
             .lock()
             .map_err(|error| record_error(&app, "app-data.lock", error.to_string(), request_id.clone()))?;
-        let path =
-            app_state_path(&app).map_err(|error| record_error(&app, "app-data.path", error, request_id.clone()))?;
-        if let Err(error) = write_app_data(&path, &mut data) {
+        let directory =
+            app_data_directory(&app).map_err(|error| record_error(&app, "app-data.path", error, request_id.clone()))?;
+        if let Err(error) = write_app_data(&directory, &mut data) {
             let _ = record_error(&app, "window.geometry.migrate.save", error, request_id.clone());
         }
     }
@@ -412,9 +380,9 @@ async fn synchronize_runtime(
                 .operation
                 .lock()
                 .map_err(|error| record_error(app, "app-data.lock", error.to_string(), request_id.clone()))?;
-            let path =
-                app_state_path(app).map_err(|error| record_error(app, "app-data.path", error, request_id.clone()))?;
-            write_app_data(&path, &mut data)
+            let directory =
+                app_data_directory(app).map_err(|error| record_error(app, "app-data.path", error, request_id.clone()))?;
+            write_app_data(&directory, &mut data)
                 .map_err(|error| record_error(app, "glycoprotein.window-visible.recover", error, request_id.clone()))?;
         }
         let patch = WindowSettingsPatch {
@@ -473,41 +441,6 @@ fn record_error(app: &AppHandle, operation: &str, error: String, request_id: Opt
     error
 }
 
-fn app_state_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let data_dir = app.path().app_data_dir().map_err(|error| error.to_string())?;
-    Ok(data_dir.join(APP_STATE_FILE))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::recover_corrupted_app_data_files;
-    use crate::data::AppData;
-    use std::fs;
-    use uuid::Uuid;
-
-    #[test]
-    fn corrupted_app_data_is_backed_up_and_falls_back_to_default() {
-        let directory = std::env::temp_dir().join(format!("stickyhomeworks2-recovery-{}", Uuid::new_v4()));
-        fs::create_dir_all(&directory).expect("temp directory should be created");
-        let path = directory.join("app-state.json");
-        fs::write(&path, b"{ not a valid app state").expect("corrupted fixture should be written");
-
-        let (data, backup) = recover_corrupted_app_data_files(&path);
-
-        // `AppData::default()` 的 glycoprotein 节点 ID 是随机的，比较时先对齐。
-        let mut expected = AppData::default();
-        expected.settings.glycoprotein_node_id = data.settings.glycoprotein_node_id.clone();
-        assert_eq!(data, expected);
-        let backup = backup.expect("损坏文件应被备份");
-        let backup_name = std::path::Path::new(&backup)
-            .file_name()
-            .expect("backup should have a file name")
-            .to_string_lossy()
-            .into_owned();
-        assert!(backup_name.starts_with("app-state.corrupt-"));
-        assert!(backup_name.ends_with(".json"));
-        assert!(!path.exists());
-        assert!(std::path::Path::new(&backup).exists());
-        fs::remove_dir_all(directory).expect("temp directory should be removed");
-    }
+fn app_data_directory(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path().app_data_dir().map_err(|error| error.to_string())
 }

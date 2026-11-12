@@ -1,26 +1,8 @@
 <script setup lang="ts">
-function preventTouchScroll(event: PointerEvent) {
-  if (event.pointerType !== "mouse") event.preventDefault();
-}
-
-function captureTouchPointer(event: PointerEvent) {
-  if (event.pointerType !== "mouse") event.preventDefault();
-}
 </script>
 
 <template>
-  <aside
-    class="window-unlock-overlay"
-    aria-live="polite"
-    @pointerdown="captureTouchPointer"
-    @pointermove="preventTouchScroll"
-    @pointerup="preventTouchScroll"
-    @pointercancel="preventTouchScroll"
-    @touchstart.prevent
-    @touchmove.prevent
-    @touchend.prevent
-    @touchcancel.prevent
-  >
+  <aside class="window-unlock-overlay" aria-live="polite">
     <div class="window-unlock-overlay__guide">
       <div class="window-unlock-overlay__demo" aria-hidden="true">
         <div class="window-unlock-overlay__preview">
@@ -54,8 +36,8 @@ function captureTouchPointer(event: PointerEvent) {
   place-items: center;
   box-sizing: border-box;
   touch-action: none;
+  -webkit-app-region: drag;
   background: color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent);
-  cursor: grab;
   user-select: none;
   --window-unlock-loop: calc(var(--md-sys-motion-duration-extra-long-4, 1000ms) * 6);
   --window-unlock-demo-width: 20rem;
@@ -72,11 +54,8 @@ function captureTouchPointer(event: PointerEvent) {
   --window-unlock-preview-moved-y: calc(var(--window-unlock-preview-offset-y) + var(--window-unlock-move-distance-y));
 }
 
-.window-unlock-overlay:active {
-  cursor: grabbing;
-}
-
 .window-unlock-overlay__guide {
+  pointer-events: none;
   display: grid;
   justify-items: center;
   gap: 1.5rem;
