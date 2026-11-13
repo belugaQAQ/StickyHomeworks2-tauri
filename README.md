@@ -62,22 +62,6 @@ npm run build
 npm run tauri build
 ```
 
-## 数据与旧版兼容
-
-应用数据采用版本化内容联合模型：
-
-| 内容类型 | 用途 |
-| --- | --- |
-| `plain-text` | 旧纯文本与编辑器降级文本 |
-| `tiptap-json@1` | 当前富文本编辑器保存格式 |
-| `legacy-flowdocument-xaml` | 原版 WPF `FlowDocument` XAML 原文，仅作为迁移输入保存 |
-
-旧字符串会按内容识别为纯文本或 `FlowDocument` XAML。编辑并保存后进入新的内容格式；XAML 不会直接注入 WebView，当前兼容路径只提取可见文本作为编辑器回退内容。
-
-图片以嵌入式 `data:` 保存，支持 PNG、JPEG、GIF、WebP，单张上限 2 MB。链接展示前会进行协议校验；外部打开需要确认。
-
-旧版导入入口位于设置页：`Settings.json` 是必需文件，`Profile.json` 可选。导入过程中会报告旧富文本数量，以及被移除的标签引用和被替换的科目数量。
-
 ## 技术栈与目录
 
 - [Tauri 2](https://tauri.app/)：桌面与移动运行时
