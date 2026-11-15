@@ -19,13 +19,13 @@ export type SettingsSection = {
 };
 
 export const settingsSections: readonly SettingsSection[] = [
-  { 
+  {
     id: "general",
     path: "/settings/general",
     title: "通用",
     detail: "关于软件基础的一些配置项",
     icon: "tune",
-    depth: 1 
+    depth: 1,
   },
   {
     id: "vocabulary",
@@ -35,19 +35,15 @@ export const settingsSections: readonly SettingsSection[] = [
     icon: "category",
     depth: 1,
   },
-  { id: "expiry",
+  {
+    id: "expiry",
     path: "/settings/expiry",
     title: "过期作业",
     detail: "清理和标记过期作业",
     icon: "event_busy",
-    depth: 1 
+    depth: 1,
   },
-  { id: "board",
-    path: "/settings/board",
-    title: "看板",
-    detail: "面板大小配置",
-    icon: "view_column",
-    depth: 1 },
+  { id: "board", path: "/settings/board", title: "看板", detail: "面板大小配置", icon: "view_column", depth: 1 },
   {
     id: "glycoprotein",
     path: "/settings/glycoprotein",
@@ -73,13 +69,7 @@ export const settingsSections: readonly SettingsSection[] = [
     icon: "content_copy",
     depth: 1,
   },
-  { id: "about",
-    path: "/settings/about",
-    title: "关于",
-    detail: "版本、项目与许可证",
-    icon: "info",
-    depth: 1
-  },
+  { id: "about", path: "/settings/about", title: "关于", detail: "版本、项目与许可证", icon: "info", depth: 1 },
 ];
 
 export const settingsSectionByPath: Readonly<Record<string, SettingsSection | undefined>> = Object.fromEntries(

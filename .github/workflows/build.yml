@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: github.event_name == 'push'
         with:
-          node-version: 20
+          node-version: 24
       - name: Detect release commit
         id: metadata
         shell: bash
@@ -113,7 +113,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
@@ -124,6 +124,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib --no-fail-fast
 
       - name: Build desktop installer
         run: npm run tauri -- build --bundles ${{ matrix.bundles }}
@@ -147,7 +150,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - uses: actions/setup-java@v4
@@ -317,7 +320,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable

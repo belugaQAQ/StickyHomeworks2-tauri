@@ -228,9 +228,8 @@ mod tests {
 
     #[test]
     fn legacy_autooutwork_key_spelling_is_still_supported() {
-        let result =
-            import_legacy_data_from_sources(AppData::default(), None, Some(r#"{ "Autooutwork": false }"#))
-                .expect("legacy Autooutwork key should import");
+        let result = import_legacy_data_from_sources(AppData::default(), None, Some(r#"{ "Autooutwork": false }"#))
+            .expect("legacy Autooutwork key should import");
 
         assert!(!result.data.settings.auto_outwork);
     }

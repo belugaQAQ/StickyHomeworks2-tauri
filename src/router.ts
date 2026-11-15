@@ -10,6 +10,7 @@ import { settingsSectionComponents, settingsRouteName, settingsSections } from "
 import HomeworksView from "./views/HomeworksView.vue";
 import SettingsIndexView from "./views/SettingsIndexView.vue";
 import TemplatesView from "./views/TemplatesView.vue";
+import TimeMachineView from "./views/TimeMachineView.vue";
 import TrayMenuView from "./views/TrayMenuView.vue";
 import { SETTINGS_DETAIL_MIN_WIDTH } from "./ui/breakpoints";
 
@@ -34,6 +35,7 @@ export const router = createRouter({
     { path: "/", name: "homeworks", component: HomeworksView },
     { path: "/tray-menu", name: "tray-menu", component: TrayMenuView },
     { path: "/templates", name: "templates", component: TemplatesView },
+    { path: "/time-machine", name: "time-machine", component: TimeMachineView },
     {
       path: "/settings",
       component: SettingsLayout,

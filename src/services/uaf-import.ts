@@ -1,13 +1,4 @@
-import {
-  PDFArray,
-  PDFDict,
-  PDFDocument,
-  PDFHexString,
-  PDFName,
-  PDFObject,
-  PDFRawStream,
-  PDFString,
-} from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFRawStream, PDFString } from "pdf-lib";
 import { UAF_PAYLOAD_FILENAME, uafAssignmentErrors, type UafAssignment } from "./uaf";
 
 const CSV_HEADER = "subject,date,content,tags";
@@ -43,7 +34,10 @@ export async function readUafPayloadFromPdf(bytes: Uint8Array): Promise<string> 
 }
 
 export function parseUafCsv(csv: string): UafAssignment[] {
-  const text = csv.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const text = csv
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
   const rows = parseCsvRows(text).filter((row) => row.some((cell) => cell.trim().length > 0));
   if (rows.length === 0) throw new Error("作业数据是空的。");
 
@@ -72,9 +66,7 @@ export function parseUafCsv(csv: string): UafAssignment[] {
   if (errors.length > 0) throw new Error(errors.join("；"));
 
   // 正文里的换行在这里拆成多条作业，导入后一项一条。
-  return records.flatMap((record) =>
-    splitImportLines(record.content).map((line) => ({ ...record, content: line })),
-  );
+  return records.flatMap((record) => splitImportLines(record.content).map((line) => ({ ...record, content: line })));
 }
 
 function splitImportLines(content: string): string[] {

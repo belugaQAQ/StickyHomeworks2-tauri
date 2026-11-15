@@ -235,7 +235,7 @@ fn limit_text(value: &str, max: usize) -> String {
 mod tests {
     use super::{append_entry, normalize_level, rotate_logs, LogEntry, MAX_LOG_BYTES};
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -246,24 +246,22 @@ mod tests {
 
     #[test]
     fn rotation_keeps_only_expected_files() {
-        let directory = temp();
-        fs::create_dir_all(&directory).unwrap();
+        let directory = TempDirectory::new();
+        let directory_path = directory.path();
         for suffix in ["", ".1", ".2", ".3"] {
-            fs::write(directory.join(format!("app.log{suffix}")), b"old").unwrap();
+            fs::write(directory_path.join(format!("app.log{suffix}")), b"old").unwrap();
         }
-        rotate_logs(&directory).unwrap();
-        assert!(!directory.join("app.log").exists());
-        assert!(directory.join("app.log.1").exists());
-        assert!(directory.join("app.log.2").exists());
-        assert!(!directory.join("app.log.3").exists());
-        fs::remove_dir_all(directory).unwrap();
+        rotate_logs(directory_path).unwrap();
+        assert!(!directory_path.join("app.log").exists());
+        assert!(directory_path.join("app.log.1").exists());
+        assert!(directory_path.join("app.log.2").exists());
+        assert!(!directory_path.join("app.log.3").exists());
     }
 
     #[test]
     fn concurrent_appends_preserve_entries() {
-        let directory = temp();
-        fs::create_dir_all(&directory).unwrap();
-        let path = directory.join("app.log");
+        let directory = TempDirectory::new();
+        let path = directory.path().join("app.log");
         fs::write(&path, vec![b'x'; MAX_LOG_BYTES as usize]).unwrap();
         let workers: Vec<_> = (0..16)
             .map(|index| {
@@ -287,11 +285,29 @@ mod tests {
             worker.join().unwrap().unwrap();
         }
         assert_eq!(fs::read_to_string(&path).unwrap().lines().count(), 16);
-        fs::remove_dir_all(directory).unwrap();
     }
 
-    fn temp() -> PathBuf {
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        std::env::temp_dir().join(format!("stickyhomeworks2-logger-{nanos}"))
+    struct TempDirectory(PathBuf);
+
+    impl TempDirectory {
+        fn new() -> Self {
+            let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+            let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("target")
+                .join("test-tmp")
+                .join(format!("logger-{nanos}"));
+            fs::create_dir_all(&directory).unwrap();
+            Self(directory)
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+
+    impl Drop for TempDirectory {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
     }
 }

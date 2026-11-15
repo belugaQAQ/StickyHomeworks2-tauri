@@ -202,10 +202,7 @@ function computePageBreaks(candidates: readonly number[], cssHeight: number, max
   return breaks;
 }
 
-async function sliceRenderedPages(
-  rendered: RenderedExport,
-  breaks: readonly number[],
-): Promise<UafPdfPageImage[]> {
+async function sliceRenderedPages(rendered: RenderedExport, breaks: readonly number[]): Promise<UafPdfPageImage[]> {
   const png = new Uint8Array(await rendered.blob.arrayBuffer());
   const bitmap = await createImageBitmap(new Blob([png], { type: "image/png" }));
   try {

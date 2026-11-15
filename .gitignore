@@ -15,6 +15,12 @@ StickyHomeworks2-old
 # scripts/tauri.mjs 给 cargo 用的项目内临时目录
 .cargo-tmp
 
+# tsconfig 的类型检查产物
+*.tsbuildinfo
+
+# CDP 截图与注入脚本
+.tmp-shot
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

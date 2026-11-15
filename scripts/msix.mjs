@@ -179,7 +179,8 @@ function prepareStaging(architecture) {
 
   for (const icon of MSIX_ICON_FILES) {
     const iconPath = join(iconsDirectory, icon);
-    if (!existsSync(iconPath)) fail(`缺少图标 ${icon}，请先运行 \`npm run tauri -- icon\` 或手动补齐 src-tauri/icons。`);
+    if (!existsSync(iconPath))
+      fail(`缺少图标 ${icon}，请先运行 \`npm run tauri -- icon\` 或手动补齐 src-tauri/icons。`);
     cpSync(iconPath, join(stagingDirectory, "Assets", icon));
   }
 

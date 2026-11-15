@@ -100,6 +100,8 @@ export function useExpiredHomeworkCleanup({
         markCleanupConfirmed();
       }
 
+      if (isSuppressedToday() || declinedThisSession) return;
+
       const removed = await cleanup(reason, protectedId);
       if (removed.length === 0) return;
       await logInfo("homework.cleanup.sweep", `过期作业清理完成（${reason}）`);
@@ -144,6 +146,14 @@ export function useExpiredHomeworkCleanup({
     },
   );
 
+  function suppressToday(): () => void {
+    const previous = suppressedDate.value;
+    suppressedDate.value = localDateKey();
+    return () => {
+      suppressedDate.value = previous;
+    };
+  }
+
   function start() {
     if (disposed) return;
     lastCheckedDate.value = localDateKey();
@@ -162,5 +172,5 @@ export function useExpiredHomeworkCleanup({
 
   onUnmounted(dispose);
 
-  return { start, dispose, sweep, lastCheckedDate };
+  return { start, dispose, sweep, lastCheckedDate, suppressToday, isSuppressedToday };
 }

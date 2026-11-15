@@ -1,0 +1,356 @@
+.time-machine {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 0 max(1.25rem, env(safe-area-inset-right, 0px)) 1.5rem max(1.25rem, env(safe-area-inset-left, 0px));
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.time-machine--dual {
+  overflow: hidden;
+}
+
+.time-machine__panes {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.time-machine--dual .time-machine__panes {
+  display: grid;
+  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 1.5rem;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.time-machine__pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+}
+
+.time-machine--dual .time-machine__pane {
+  padding-block-start: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.time-machine__day {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.time-machine__day-label {
+  margin-block-start: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.time-machine__list {
+  --m3e-segmented-list-segment-gap: 0.125rem;
+  --m3e-segmented-list-container-shape: 0.75rem;
+  --m3e-segmented-list-item-container-color: var(--md-sys-color-surface-container-low);
+  --m3e-segmented-list-item-container-shape: 0;
+}
+
+.time-machine__item--selected {
+  --m3e-list-item-container-color: var(--md-sys-color-secondary-container);
+  --m3e-list-item-label-text-color: var(--md-sys-color-on-secondary-container);
+  --m3e-list-item-leading-color: var(--md-sys-color-on-secondary-container);
+  --m3e-list-item-supporting-text-color: var(--md-sys-color-on-secondary-container);
+}
+
+.time-machine__detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-machine__detail-actions {
+  margin-inline-start: auto;
+}
+
+.time-machine__detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.time-machine .time-machine-detail-enter-active,
+.time-machine .time-machine-detail-leave-active {
+  pointer-events: none;
+  transition-property: opacity, transform;
+  will-change: opacity, transform;
+}
+
+.time-machine .time-machine-detail-enter-active {
+  transition-duration: var(--md-sys-motion-duration-medium-2, 300ms);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1));
+}
+
+.time-machine .time-machine-detail-leave-active {
+  transition-duration: var(--md-sys-motion-duration-short-4, 200ms);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0, 0.8, 0.15));
+}
+
+.time-machine .time-machine-detail-enter-from {
+  opacity: 0;
+  transform: translateX(1.5rem);
+}
+
+.time-machine .time-machine-detail-leave-to {
+  opacity: 0;
+  transform: translateX(-0.75rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .time-machine .time-machine-detail-enter-active,
+  .time-machine .time-machine-detail-leave-active {
+    transition: none;
+  }
+}
+
+.time-machine__detail-title {
+  display: flex;
+  flex: 1 1 10rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.time-machine__detail-meta {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.time-machine__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.time-machine__intro p {
+  margin: 0 0 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: normal;
+}
+
+.time-machine__intro p:last-of-type {
+  margin-block-end: 0;
+}
+
+.time-machine__intro b {
+  color: var(--md-sys-color-error);
+  font-weight: 500;
+}
+/
+.time-machine__intro-confirm {
+  --m3e-filled-button-container-color: var(--md-sys-color-error);
+  --m3e-filled-button-label-text-color: var(--md-sys-color-on-error);
+}
+
+.time-machine__tabs {
+  display: block;
+  flex-shrink: 0;
+  margin-block-start: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.time-machine__panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.time-machine__content-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.time-machine__content-group + .time-machine__content-group {
+  margin-block-start: 0.875rem;
+}
+
+.time-machine__content-list {
+  --m3e-list-item-padding-block: 0.5rem;
+  --m3e-segmented-list-segment-gap: 0.125rem;
+  --m3e-segmented-list-container-shape: 0.75rem;
+  --m3e-segmented-list-item-container-color: var(--md-sys-color-surface-container-low);
+  --m3e-segmented-list-item-container-shape: 0;
+}
+
+.time-machine__content-text {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.time-machine__content-text :is(p, ul, ol) {
+  margin: 0 0 0.25rem;
+}
+
+.time-machine__content-text :is(p, ul, ol):last-child {
+  margin-block-end: 0;
+}
+
+.time-machine__content-text img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.25rem;
+}
+
+.time-machine__content-text a {
+  color: var(--md-sys-color-primary);
+}
+
+.time-machine__content-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.time-machine__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 2rem 1rem;
+  color: var(--md-sys-color-on-surface-variant);
+  text-align: center;
+}
+
+.time-machine__empty p {
+  margin: 0;
+}
+
+.time-machine__loading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.time-machine__error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+  color: var(--md-sys-color-error);
+}
+
+.time-machine__muted {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.time-machine-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.time-machine-diff__empty {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.time-machine-diff__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.time-machine-diff__lines {
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 0.75rem;
+  /* 两个方向都要 auto：只写 overflow-x 时纵向仍是 visible，行底色会溢出圆角。 */
+  overflow: auto;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.time-machine-diff__line {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  align-items: start;
+}
+
+.time-machine-diff__line--block-start:not(:first-child) {
+  margin-block-start: 0.5rem;
+  border-block-start: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.time-machine-diff__line--separated:not(.time-machine-diff__line--block-start) {
+  margin-block-start: 0.25rem;
+}
+
+.time-machine-diff__line--context.time-machine-diff__line--block-start {
+  background: var(--md-sys-color-surface-container-high);
+  font-weight: 500;
+}
+
+.time-machine-diff__marker {
+  text-align: center;
+  user-select: none;
+}
+
+.time-machine-diff__text {
+  padding-inline-end: 0.75rem;
+  white-space: pre;
+}
+
+.time-machine-diff__line--remove {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.time-machine-diff__line--remove .time-machine-diff__marker {
+  color: var(--md-sys-color-on-error-container);
+}
+
+.time-machine-diff__line--add {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+.time-machine-diff__line--add .time-machine-diff__marker {
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+.time-machine-diff__truncated {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 600px) {
+  .time-machine-diff__text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}

@@ -7,6 +7,7 @@ mod legacy_import;
 mod logger;
 mod persistence;
 mod platform;
+mod time_machine;
 #[cfg(desktop)]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 #[cfg(desktop)]
@@ -62,9 +63,9 @@ fn set_taskbar_icon_visible(visible: bool, app: tauri::AppHandle) -> Result<Stri
     {
         use windows::Win32::Foundation::HWND;
         use windows::Win32::UI::WindowsAndMessaging::{
-            GetAncestor, GetWindow, GetWindowLongPtrW, IsWindowVisible, SetWindowLongPtrW,
-            SetWindowPos, GA_ROOT, GWL_EXSTYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_NOACTIVATE,
-            SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+            GetAncestor, GetWindow, GetWindowLongPtrW, IsWindowVisible, SetWindowLongPtrW, SetWindowPos, GA_ROOT,
+            GWL_EXSTYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+            WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
         };
 
         let raw = window.hwnd().map_err(|error| error.to_string())?;
@@ -274,6 +275,9 @@ pub fn run() {
             commands::load_app_data,
             commands::save_app_data,
             commands::import_legacy_data_contents,
+            commands::list_time_machine_snapshots,
+            commands::read_time_machine_snapshot,
+            commands::restore_time_machine_snapshot,
             commands::initialize_glycoprotein,
             commands::glycoprotein_status,
             commands::log_event,

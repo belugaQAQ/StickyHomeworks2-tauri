@@ -19,6 +19,7 @@ export type AppContext = {
     settingsContents: string | undefined,
   ) => Promise<LegacyImportResult>;
   importUafAssignments: (assignments: readonly ImportedAssignment[]) => Promise<void>;
+  restoreTimeMachineSnapshot: (id: string) => Promise<void>;
 };
 
 export const appContextKey: InjectionKey<AppContext> = Symbol("StickyHomeworks2 app context");

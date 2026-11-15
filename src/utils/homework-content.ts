@@ -14,6 +14,50 @@ export function toHomeworkDisplayText(content: HomeworkContent | string): string
   return tiptapText(parsed.document.content);
 }
 
+/**
+ * 渲染成类似 Markdown 的纯文本：加粗 `**x**`、斜体 `*x*`、删除线 `~~x~~`、
+ * 下划线 `<u>x</u>`、代码 `` `x` ``，图片 `[图片]`，超链接 `[URL:地址]`。
+ */
+export function toHomeworkMarkupText(content: HomeworkContent | string): string {
+  const parsed = parseHomeworkContent(content);
+  if (parsed.kind === "plain-text") return normalizeMarkup(parsed.text);
+  if (parsed.kind === "legacy-flowdocument-xaml") return normalizeMarkup(flowDocumentText(parsed.xaml));
+  return markupText(parsed.document.content);
+}
+
+function normalizeMarkup(text: string): string {
+  return text.replace(/ {2,}/g, " ").replace(/ +$/gm, "").trim();
+}
+
+function markupText(nodes: TiptapNode[]): string {
+  return normalizeMarkup(nodes.map(markupNode).join(""));
+}
+
+function markupNode(node: TiptapNode): string {
+  if (node.type === "image") return " [图片] ";
+  if (node.type === "text") {
+    const marks = node.marks ?? [];
+    const link = marks.find((mark) => mark.type === "link");
+    if (link) {
+      const href = typeof link.attrs?.href === "string" ? link.attrs.href : "";
+      return ` [URL:${href}] `;
+    }
+    let text = node.text ?? "";
+    for (const mark of marks) {
+      if (mark.type === "bold") text = `**${text}**`;
+      else if (mark.type === "italic") text = `*${text}*`;
+      else if (mark.type === "underline") text = `<u>${text}</u>`;
+      else if (mark.type === "strike") text = `~~${text}~~`;
+      else if (mark.type === "code") text = `\`${text}\``;
+    }
+    return marks.length > 0 ? ` ${text} ` : text;
+  }
+  if (node.type === "hardBreak") return "\n";
+  const inner = markupText(node.content ?? []);
+  if (node.type === "paragraph" || node.type === "heading") return `${inner}\n`;
+  return inner;
+}
+
 export function toTiptapHtml(content: HomeworkContent | string): string {
   const parsed = parseHomeworkContent(content);
   if (parsed.kind === "plain-text") return escapeHtml(parsed.text).replace(/\n/g, "<br>");

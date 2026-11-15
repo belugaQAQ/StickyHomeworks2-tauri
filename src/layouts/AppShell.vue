@@ -17,11 +17,12 @@ import { routeTransitionName } from "../router";
 import type { ImportedAssignment } from "../domain/homework";
 import { logInfo } from "../services/logging";
 import type { AppSettings } from "../types/app-data";
+import { describeError } from "../utils/error-message";
 import "../styles/app-shell.css";
 
 const HomeworkEditorDialog = defineAsyncComponent(() => import("../components/HomeworkEditorDialog.vue"));
 
-type NavigationItem = "homeworks" | "templates" | "settings";
+type NavigationItem = "homeworks" | "templates" | "time-machine" | "settings";
 
 const route = useRoute();
 const router = useRouter();
@@ -60,6 +61,7 @@ const {
   importUafAssignments: importUafAssignmentsFromStore,
   cleanupExpiredHomeworks,
   restoreHomeworks,
+  restoreFromSnapshot,
 } = useHomeworkStore();
 const {
   editingHomework,
@@ -81,12 +83,14 @@ useLinuxClipboardWorkaround();
 const navigationItems: Array<{ id: NavigationItem; label: string; hint: string }> = [
   { id: "homeworks", label: "作业", hint: "home" },
   { id: "templates", label: "模板", hint: "article" },
+  { id: "time-machine", label: "时间机器", hint: "history" },
   { id: "settings", label: "设置", hint: "settings" },
 ];
 
 const activeNavigation = computed<NavigationItem>(() => {
   if (route.path.startsWith("/settings")) return "settings";
   if (route.path === "/templates") return "templates";
+  if (route.path === "/time-machine") return "time-machine";
   return "homeworks";
 });
 
@@ -137,13 +141,31 @@ const {
   },
 });
 
-const { start: startExpiredHomeworkCleanup } = useExpiredHomeworkCleanup({
+let cleanupSkipCheck: (() => boolean) | null = null;
+const {
+  start: startExpiredHomeworkCleanup,
+  suppressToday: suppressExpiredCleanupToday,
+  isSuppressedToday: isExpiredCleanupSuppressedToday,
+} = useExpiredHomeworkCleanup({
   appData,
-  cleanup: cleanupExpiredHomeworks,
+  cleanup: (reason, protectedId) => cleanupExpiredHomeworks(reason, protectedId, () => cleanupSkipCheck?.() ?? false),
   restore: restoreHomeworks,
   getProtectedHomeworkId: () => editingHomework.value?.id ?? null,
   confirmFirstCleanup,
 });
+cleanupSkipCheck = isExpiredCleanupSuppressedToday;
+
+/** 恢复快照：冻结时禁止；恢复成功后当天不再自动清理，避免刚找回的过期作业被立刻删掉。 */
+async function restoreTimeMachineSnapshot(id: string) {
+  if (isHomeworkFrozen.value) throw new Error("请先解除作业冻结。");
+  const rollbackSuppression = suppressExpiredCleanupToday();
+  try {
+    await restoreFromSnapshot(id);
+  } catch (error) {
+    rollbackSuppression();
+    throw error;
+  }
+}
 
 /** 首次自动清理前的确认 */
 function confirmFirstCleanup(count: number) {
@@ -181,12 +203,14 @@ function openEditHomework(id: string) {
   if (openEdit(id)) logInfo("homework.edit.request", "已请求编辑作业");
 }
 
+const describeSaveError = describeError;
+
 async function updateAppSettings(mutate: (settings: AppSettings) => AppSettings) {
   settingsError.value = "";
   try {
     await updateSettings(mutate);
-  } catch {
-    settingsError.value = "保存失败，请重试。";
+  } catch (error) {
+    settingsError.value = describeSaveError(error, "保存失败，请重试。");
   }
 }
 
@@ -194,8 +218,8 @@ async function deleteGlobalTag(tag: string) {
   settingsError.value = "";
   try {
     await deleteGlobalTagFromStore(tag);
-  } catch {
-    settingsError.value = "保存失败，请重试。";
+  } catch (error) {
+    settingsError.value = describeSaveError(error, "保存失败，请重试。");
   }
 }
 
@@ -204,7 +228,7 @@ async function importLegacyData(profileContents: string | undefined, settingsCon
   try {
     return await importLegacyDataFromStore(profileContents, settingsContents);
   } catch (error) {
-    settingsError.value = "导入失败，请检查所选文件后重试。";
+    settingsError.value = describeSaveError(error, "导入失败，请检查所选文件后重试。");
     throw error;
   }
 }
@@ -214,7 +238,7 @@ async function importUafAssignments(assignments: readonly ImportedAssignment[]) 
   try {
     await importUafAssignmentsFromStore(assignments);
   } catch (error) {
-    settingsError.value = "导入 UAF 作业失败，请重试。";
+    settingsError.value = describeSaveError(error, "导入 UAF 作业失败，请重试。");
     throw error;
   }
 }
@@ -237,6 +261,7 @@ provide(appContextKey, {
   deleteGlobalTag,
   importLegacyData,
   importUafAssignments,
+  restoreTimeMachineSnapshot,
 });
 
 function syncDrawerState(event: Event) {

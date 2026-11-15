@@ -183,7 +183,10 @@ fn backup_corrupted(path: &Path) -> Result<String, String> {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
-    let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or("应用数据文件名无效")?;
+    let stem = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .ok_or("应用数据文件名无效")?;
     let backup = directory.join(format!("{stem}.corrupt-{seconds}.json"));
     fs::rename(path, &backup).map_err(|error| error.to_string())?;
     Ok(backup
@@ -197,10 +200,13 @@ fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T, String> {
     serde_json::from_str(&source).map_err(|error| error.to_string())
 }
 
-fn write_json_atomically<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
+pub(crate) fn write_json_atomically<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let directory = path.parent().ok_or("应用数据路径没有父目录")?;
-    fs::create_dir_all(directory).map_err(|error| error.to_string())?;
-    let file_name = path.file_name().and_then(|name| name.to_str()).ok_or("应用数据文件名无效")?;
+    fs::create_dir_all(directory).map_err(|error| format!("创建目录 {directory:?} 失败：{error}"))?;
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("应用数据文件名无效")?;
     let temporary = directory.join(format!(
         ".{file_name}.{}.tmp",
         SystemTime::now()
@@ -208,11 +214,11 @@ fn write_json_atomically<T: Serialize>(path: &Path, value: &T) -> Result<(), Str
             .map_err(|error| error.to_string())?
             .as_nanos()
     ));
-    let contents = serde_json::to_vec_pretty(value).map_err(|error| error.to_string())?;
-    fs::write(&temporary, contents).map_err(|error| error.to_string())?;
+    let contents = serde_json::to_vec_pretty(value).map_err(|error| format!("序列化 {file_name} 失败：{error}"))?;
+    fs::write(&temporary, contents).map_err(|error| format!("写入临时文件 {temporary:?} 失败：{error}"))?;
     fs::rename(&temporary, path).map_err(|error| {
         let _ = fs::remove_file(&temporary);
-        error.to_string()
+        format!("替换 {path:?} 失败：{error}")
     })
 }
 
@@ -236,7 +242,10 @@ mod tests {
 
     impl TempDirectory {
         fn new() -> Self {
-            let directory = std::env::temp_dir().join(format!("stickyhomeworks2-persistence-{}", Uuid::new_v4()));
+            let directory = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("target")
+                .join("test-tmp")
+                .join(format!("persistence-{}", Uuid::new_v4()));
             fs::create_dir_all(&directory).expect("temp directory should be created");
             Self(directory)
         }
@@ -292,7 +301,10 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(directory.file(APP_DATA_FILE)).unwrap()).unwrap();
         assert!(state.get("homeworks").is_none(), "app-data.json 不应再写入作业");
         assert_eq!(state["settings"]["title"], json!("测试标题"));
-        assert!(!directory.file(LEGACY_APP_STATE_FILE).exists(), "不应再产生 app-state.json");
+        assert!(
+            !directory.file(LEGACY_APP_STATE_FILE).exists(),
+            "不应再产生 app-state.json"
+        );
     }
 
     #[test]
@@ -379,18 +391,28 @@ mod tests {
             }],
             "settings": { "title": "旧标题" }
         });
-        fs::write(directory.file(LEGACY_APP_STATE_FILE), serde_json::to_vec(&legacy).unwrap()).unwrap();
+        fs::write(
+            directory.file(LEGACY_APP_STATE_FILE),
+            serde_json::to_vec(&legacy).unwrap(),
+        )
+        .unwrap();
 
         let mut outcome = read_app_data(directory.path()).expect("legacy state should be readable");
         assert_eq!(outcome.data.homeworks.len(), 1);
         assert_eq!(outcome.data.settings.title, "旧标题");
         assert_eq!(outcome.data.homeworks[0].subject, "语文");
         assert!(
-            outcome.notices.iter().any(|notice| notice.contains("迁移为 app-data.json")),
+            outcome
+                .notices
+                .iter()
+                .any(|notice| notice.contains("迁移为 app-data.json")),
             "旧文件名应产生一条改名提示"
         );
         assert!(
-            outcome.notices.iter().any(|notice| notice.contains("迁移到 profile.json")),
+            outcome
+                .notices
+                .iter()
+                .any(|notice| notice.contains("迁移到 profile.json")),
             "旧作业应产生一条迁移提示"
         );
 
@@ -450,7 +472,11 @@ mod tests {
     #[test]
     fn corrupted_profile_is_backed_up_without_losing_settings() {
         let directory = TempDirectory::new();
-        fs::write(directory.file(APP_DATA_FILE), r#"{ "settings": { "title": "保留我" } }"#).unwrap();
+        fs::write(
+            directory.file(APP_DATA_FILE),
+            r#"{ "settings": { "title": "保留我" } }"#,
+        )
+        .unwrap();
         fs::write(directory.file(PROFILE_FILE), b"{ not a valid profile").unwrap();
 
         let outcome = read_app_data(directory.path()).expect("corrupted profile should fall back");

@@ -9,6 +9,7 @@ import {
   type LegacyImportResult,
 } from "../types/app-data";
 import { parseHomeworkContent, serializeHomeworkContent, type HomeworkContent } from "../types/homework-content";
+import type { SnapshotSource } from "../types/time-machine";
 const browserStorageKey = "stickyhomeworks2.app-data.v1";
 
 export async function loadAppData(): Promise<AppData> {
@@ -20,9 +21,18 @@ export async function loadAppData(): Promise<AppData> {
   return loadBrowserFallback(requestId);
 }
 
-export async function saveAppData(data: AppData, requestId = createRequestId("app-data.save")): Promise<AppData> {
+export async function saveAppData(
+  data: AppData,
+  requestId: string | undefined,
+  source: SnapshotSource,
+): Promise<AppData> {
+  const resolvedRequestId = requestId ?? createRequestId("app-data.save");
   if (isTauri()) {
-    const saved = await invoke<unknown>("save_app_data", { data: serializeAppDataForTauri(data), requestId });
+    const saved = await invoke<unknown>("save_app_data", {
+      data: serializeAppDataForTauri(data),
+      source,
+      requestId: resolvedRequestId,
+    });
     return normalizeAppData(saved);
   }
   try {
@@ -30,7 +40,7 @@ export async function saveAppData(data: AppData, requestId = createRequestId("ap
     window.localStorage.setItem(browserStorageKey, JSON.stringify(normalized));
     return normalized;
   } catch (error) {
-    logError("browser.data.save", error, requestId);
+    logError("browser.data.save", error, resolvedRequestId);
     throw error;
   }
 }
@@ -70,7 +80,7 @@ export function serializeAppDataForTauri(data: AppData): AppData {
   };
 }
 
-function normalizeHomeworkRecord(value: unknown, index: number): HomeworkRecord {
+export function normalizeHomeworkRecord(value: unknown, index: number): HomeworkRecord {
   const record = isRecord(value) ? value : {};
 
   return {
@@ -141,7 +151,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function normalizeAppData(value: unknown): AppData {
+export function normalizeAppData(value: unknown): AppData {
   const defaults = createDefaultAppData();
   if (!isRecord(value)) return defaults;
 

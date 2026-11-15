@@ -92,8 +92,7 @@ export async function createUafPdf(options: {
   backgroundColor?: string | null;
 }): Promise<Uint8Array> {
   if (options.pages.length === 0) throw new Error("没有可导出的作业内容。");
-  if (options.pages.length > UAF_MAX_PAGES)
-    throw new Error(`作业内容过多，最多导出 ${UAF_MAX_PAGES} 页，请分批导出。`);
+  if (options.pages.length > UAF_MAX_PAGES) throw new Error(`作业内容过多，最多导出 ${UAF_MAX_PAGES} 页，请分批导出。`);
 
   const document = await PDFDocument.create();
   document.setTitle(options.title);

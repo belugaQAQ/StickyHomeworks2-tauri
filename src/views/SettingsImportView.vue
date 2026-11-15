@@ -149,7 +149,9 @@ async function confirmImport() {
   </section>
 
   <p v-if="!isTauri()" class="settings-import__notice" role="status">旧版数据导入仅可在 Tauri 应用中使用。</p>
-  <p v-else-if="!profileFile && !settingsFile" class="settings-import__notice" role="status">请至少选择一个文件进行导入操作。</p>
+  <p v-else-if="!profileFile && !settingsFile" class="settings-import__notice" role="status">
+    请至少选择一个文件进行导入操作。
+  </p>
   <m3e-button variant="filled" :disabled="!canImport" @click="requestImport">
     <m3e-icon slot="icon" name="file_upload"></m3e-icon>
     导入
