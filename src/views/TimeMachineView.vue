@@ -402,8 +402,8 @@ onUnmounted(() => {
 
     <m3e-dialog ref="introDialog" class="time-machine__intro" disable-close>
       <m3e-heading slot="header" variant="headline" size="small" level="2">注意！</m3e-heading>
-      <p>时间机器在每次作业或科目、标签词库<b>变动前</b>，保存备份以方便还原</p>
-      <p>最近 24 小时的备份将会全部保留，之后每天<b>只会保留一份</b>，最多 30 天</p>
+      <p>时间机器在每次作业或科目、标签词库<b>变动后</b>，保存一份当时的备份以方便还原</p>
+      <p>最近 3 天的备份<b>全部保留</b>；再往前一个月内，每天只保留最后 5 份，一年内每天只保留 1 份，超过一年删除</p>
       <p>选择一条记录可以看到备份与当前作业数据的差异，也可以选择恢复到那个时间点；恢复前同样会备份当前状态</p>
       <div slot="actions" end>
         <m3e-button variant="filled" class="time-machine__intro-confirm" @click="closeIntro">知道了</m3e-button>

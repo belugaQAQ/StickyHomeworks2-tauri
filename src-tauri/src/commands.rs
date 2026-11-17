@@ -109,9 +109,9 @@ pub(crate) async fn save_app_data(
             app_data_directory(&app).map_err(|error| record_error(&app, "app-data.path", error, request_id.clone()))?;
         // 先归一化再比较，否则比较的是未归一化的输入，会产生假的历史记录。
         normalize_app_data(&mut data);
-        backup_before_change(&app, &directory, &previous, &data, source, request_id.clone());
         write_app_data_preserving_profile(&directory, &mut data, &previous.homeworks)
             .map_err(|error| record_error(&app, "app-data.save", error, request_id.clone()))?;
+        record_after_change(&app, &directory, &previous, &data, source, request_id.clone());
         prune_time_machine(&app, &snapshot_root(&directory), request_id.clone());
         (previous, data)
     };
@@ -148,7 +148,9 @@ pub(crate) async fn import_legacy_data_contents(
         let directory = app_data_directory(&app)
             .map_err(|error| record_error(&app, "legacy-import.path", error, request_id.clone()))?;
         normalize_app_data(&mut result.data);
-        backup_before_change(
+        write_app_data(&directory, &mut result.data)
+            .map_err(|error| record_error(&app, "legacy-import.save", error, request_id.clone()))?;
+        record_after_change(
             &app,
             &directory,
             &previous_data,
@@ -156,8 +158,6 @@ pub(crate) async fn import_legacy_data_contents(
             SnapshotSource::LegacyImport,
             request_id.clone(),
         );
-        write_app_data(&directory, &mut result.data)
-            .map_err(|error| record_error(&app, "legacy-import.save", error, request_id.clone()))?;
         prune_time_machine(&app, &snapshot_root(&directory), request_id.clone());
         (previous_homeworks, result)
     };
@@ -386,10 +386,9 @@ fn snapshot_root(directory: &Path) -> PathBuf {
     directory.join(TIME_MACHINE_DIRECTORY)
 }
 
-/// 数据即将变动前，先把变动前的状态存一份。
 ///
 /// 备份失败只记日志，不连累用户正在做的业务操作；恢复前的那次备份例外，由调用方中止。
-fn backup_before_change(
+fn record_after_change(
     app: &AppHandle,
     directory: &Path,
     previous: &AppData,
@@ -400,8 +399,8 @@ fn backup_before_change(
     if !time_machine::payload_changed(previous, next) {
         return;
     }
-    if let Err(error) = time_machine::record_snapshot(&snapshot_root(directory), previous, source, now_millis()) {
-        let _ = record_error(app, "time-machine.record", format!("备份失败：{error}"), request_id);
+    if let Err(error) = time_machine::record_snapshot(&snapshot_root(directory), next, source, now_millis()) {
+        let _ = record_error(app, "time-machine.record", format!("记录快照失败：{error}"), request_id);
     }
 }
 
@@ -507,6 +506,15 @@ pub(crate) async fn restore_time_machine_snapshot(
         let homeworks_changed = next.homeworks != current.homeworks;
         write_app_data_preserving_profile(&directory, &mut next, &current.homeworks)
             .map_err(|error| record_error(&app, "time-machine.restore.save", error, request_id.clone()))?;
+
+        if let Err(error) = time_machine::record_snapshot(&root, &next, SnapshotSource::SnapshotRestore, now_millis()) {
+            let _ = record_error(
+                &app,
+                "time-machine.restore.record",
+                format!("恢复后记录快照失败：{error}"),
+                request_id.clone(),
+            );
+        }
 
         prune_time_machine(&app, &root, request_id.clone());
         (next, homeworks_changed)

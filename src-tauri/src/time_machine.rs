@@ -1,6 +1,6 @@
 //! 时间机器：作业与科目/标签词库的历史备份。
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -14,10 +14,15 @@ pub(crate) const TIME_MACHINE_DIRECTORY: &str = "time-machine";
 
 const SNAPSHOT_SCHEMA_VERSION: u8 = 1;
 const SNAPSHOT_EXTENSION: &str = "json";
-/// 最近 24 小时全部保留。
-const RECENT_RETENTION_MS: i64 = 24 * 60 * 60 * 1000;
-/// 超过 30 天全部删除
-const MAX_RETENTION_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+/// 最近三天全部保留。
+const RECENT_RETENTION_MS: i64 = 3 * 24 * 60 * 60 * 1000;
+/// 一个月内的日子，每天只保留最新的这么多条。
+const MONTHLY_DAILY_KEEP: usize = 5;
+const MONTHLY_RETENTION_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+/// 一年内更早的日子，每天只留一条。
+const YEARLY_DAILY_KEEP: usize = 1;
+/// 超过一年全部删除。
+const MAX_RETENTION_MS: i64 = 365 * 24 * 60 * 60 * 1000;
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -187,27 +192,10 @@ pub(crate) fn prune_snapshots(directory: &Path, now_ms: i64) -> Result<usize, St
 }
 
 fn select_expired(entries: &[(i64, i64)], now_ms: i64, offset: FixedOffset) -> Vec<i64> {
-    let mut keepers: HashMap<(i32, u32, u32), (i64, i64)> = HashMap::new();
-    for (id, created_at) in entries {
-        if *created_at > now_ms {
-            continue;
-        }
-        let age = now_ms.saturating_sub(*created_at);
-        if age < RECENT_RETENTION_MS || age > MAX_RETENTION_MS {
-            continue;
-        }
-        let Some(day) = local_day(*created_at, offset) else {
-            continue;
-        };
-        let candidate = (*created_at, *id);
-        let slot = keepers.entry(day).or_insert(candidate);
-        if candidate > *slot {
-            *slot = candidate;
-        }
-    }
-
-    let kept: HashSet<i64> = keepers.values().map(|(_, id)| *id).collect();
     let mut expired = Vec::new();
+    let mut monthly: HashMap<(i32, u32, u32), Vec<(i64, i64)>> = HashMap::new();
+    let mut yearly: HashMap<(i32, u32, u32), Vec<(i64, i64)>> = HashMap::new();
+
     for (id, created_at) in entries {
         if *created_at > now_ms {
             continue;
@@ -216,10 +204,32 @@ fn select_expired(entries: &[(i64, i64)], now_ms: i64, offset: FixedOffset) -> V
         if age < RECENT_RETENTION_MS {
             continue;
         }
-        if age > MAX_RETENTION_MS || !kept.contains(id) {
+        let Some(day) = local_day(*created_at, offset) else {
+            continue;
+        };
+        let slot = if age > MAX_RETENTION_MS {
             expired.push(*id);
+            continue;
+        } else if age <= MONTHLY_RETENTION_MS {
+            monthly.entry(day).or_default()
+        } else {
+            yearly.entry(day).or_default()
+        };
+        slot.push((*created_at, *id));
+    }
+
+    for (buckets, keep) in [(monthly, MONTHLY_DAILY_KEEP), (yearly, YEARLY_DAILY_KEEP)] {
+        for (_, mut items) in buckets {
+            // 新的排前面，超出保留数的从尾巴删。
+            items.sort_by(|left, right| right.cmp(left));
+            for (index, (_, id)) in items.into_iter().enumerate() {
+                if index >= keep {
+                    expired.push(id);
+                }
+            }
         }
     }
+
     expired
 }
 
@@ -375,7 +385,7 @@ mod tests {
     }
 
     #[test]
-    fn records_the_state_before_a_change() {
+    fn records_the_given_state() {
         let directory = TempDirectory::new();
         let data = data_with(&["数学"], &["重点"], vec![homework("数学", "作业")]);
 
@@ -468,7 +478,7 @@ mod tests {
         record_snapshot(directory.path(), &second, SnapshotSource::HomeworkUpdate, 2_000).unwrap();
         record_snapshot(directory.path(), &third, SnapshotSource::HomeworkUpdate, 3_000).unwrap();
 
-        assert_eq!(ids(directory.path()).len(), 3, "连续改动不合并，每次变动前各留一份");
+        assert_eq!(ids(directory.path()).len(), 3, "连续改动不合并，每次变动后各留一份");
     }
 
     #[test]
@@ -558,24 +568,31 @@ mod tests {
     }
 
     #[test]
-    fn retention_keeps_recent_daily_and_30_day_boundaries() {
+    fn retention_keeps_three_days_whole_five_a_day_for_a_month_and_one_beyond() {
         let offset = FixedOffset::east_opt(8 * 3600).unwrap();
         let hour = 60 * 60 * 1000;
-        let now = 40 * 24 * hour;
+        let day = 24 * hour;
+        let now = 400 * day;
+        let at = |days: i64, hours: i64| now - days * day + hours * hour;
 
         let entries = vec![
-            (1, now - hour),
-            (2, now - 23 * hour),
-            (3, now - 2 * 24 * hour),
-            (4, now - 2 * 24 * hour + hour),
-            (5, now - 10 * 24 * hour),
-            (6, now - 31 * 24 * hour),
-            (7, now + hour),
-            (8, now - 30 * 24 * hour),
+            (10, at(0, 0)),
+            (11, at(2, 0)),
+            (20, at(4, 0)),
+            (21, at(4, 1)),
+            (22, at(4, 2)),
+            (23, at(4, 3)),
+            (24, at(4, 4)),
+            (25, at(4, 5)),
+            (30, at(40, 0)),
+            (31, at(40, 1)),
+            (32, at(40, 2)),
+            (40, at(400, 0)),
         ];
 
-        let expired = select_expired(&entries, now, offset);
-        assert_eq!(expired, vec![3, 6], "只删同日旧记录与超期记录");
+        let mut expired = select_expired(&entries, now, offset);
+        expired.sort_unstable();
+        assert_eq!(expired, vec![20, 30, 31, 40]);
     }
 
     #[test]
@@ -585,7 +602,6 @@ mod tests {
         let now = 200 * 24 * hour;
         let data = data_with(&["数学"], &[], vec![homework("数学", "A")]);
 
-        // 一小时前的快照按 id 就足以判定「肯定在 24 小时内」，把文件内容破坏掉也不该影响判定。
         let recent = now - hour;
         record_snapshot(directory.path(), &data, SnapshotSource::HomeworkCreate, recent).unwrap();
         fs::write(directory.file(&format!("{recent}.json")), b"{ broken").unwrap();
@@ -599,20 +615,85 @@ mod tests {
         let directory = TempDirectory::new();
         let data = data_with(&["数学"], &[], vec![homework("数学", "A")]);
         let hour = 60 * 60 * 1000;
-        let now = 200 * 24 * hour;
+        let now = 400 * 24 * hour;
         record_snapshot(
             directory.path(),
             &data,
             SnapshotSource::HomeworkCreate,
-            now - 31 * 24 * hour,
+            now - 400 * 24 * hour,
         )
         .unwrap();
         fs::write(directory.file("5.json"), b"{ broken").unwrap();
 
         assert_eq!(prune_snapshots(directory.path(), now).expect("prune should succeed"), 1);
         let (listed, notices) = list_snapshots(directory.path()).unwrap();
-        assert!(listed.is_empty(), "超过 30 天的快照应被删除");
+        assert!(listed.is_empty(), "超过一年的快照应被删除");
         assert_eq!(notices.len(), 1, "损坏文件留在原位并继续提示");
+    }
+
+    #[test]
+    fn restore_records_both_sides_so_the_restore_itself_can_be_undone() {
+        let directory = TempDirectory::new();
+        // 记忆里的旧状态，也是这次恢复的目标。
+        let target = data_with(&["历史科目"], &["历史标签"], vec![homework("历史科目", "旧作业")]);
+        record_snapshot(directory.path(), &target, SnapshotSource::HomeworkUpdate, 1_000).unwrap();
+        let target_detail = read_snapshot(directory.path(), "1000").unwrap();
+
+        // 恢复前的当前数据。
+        let current = data_with(&["当前科目"], &["当前标签"], vec![homework("当前科目", "新作业")]);
+
+        record_snapshot(directory.path(), &current, SnapshotSource::SnapshotRestore, 2_000).unwrap();
+        let next = apply_snapshot(current.clone(), target_detail);
+        record_snapshot(directory.path(), &next, SnapshotSource::SnapshotRestore, 2_001).unwrap();
+
+
+        assert_eq!(
+            ids(directory.path()),
+            vec!["2001".to_owned(), "2000".to_owned(), "1000".to_owned()]
+        );
+        assert_eq!(read_snapshot(directory.path(), "2001").unwrap().homeworks, target.homeworks);
+        assert_eq!(read_snapshot(directory.path(), "2000").unwrap().homeworks, current.homeworks);
+    }
+
+    #[test]
+    fn restore_keeps_the_state_it_replaced_readable() {
+        let directory = TempDirectory::new();
+        let target = data_with(&["历史科目"], &["历史标签"], vec![homework("历史科目", "旧作业")]);
+        record_snapshot(directory.path(), &target, SnapshotSource::HomeworkUpdate, 1_000).unwrap();
+        let target_detail = read_snapshot(directory.path(), "1000").unwrap();
+
+        let current = data_with(&["当前科目"], &["当前标签"], vec![homework("当前科目", "新作业")]);
+        record_snapshot(directory.path(), &current, SnapshotSource::HomeworkUpdate, 1_500).unwrap();
+
+        record_snapshot(directory.path(), &current, SnapshotSource::SnapshotRestore, 2_000).unwrap();
+        let next = apply_snapshot(current.clone(), target_detail);
+        record_snapshot(directory.path(), &next, SnapshotSource::SnapshotRestore, 2_001).unwrap();
+
+        assert_eq!(
+            ids(directory.path()),
+            vec!["2001".to_owned(), "1500".to_owned(), "1000".to_owned()]
+        );
+        assert_eq!(read_snapshot(directory.path(), "2001").unwrap().homeworks, target.homeworks);
+        assert_eq!(read_snapshot(directory.path(), "1500").unwrap().homeworks, current.homeworks);
+    }
+
+    #[test]
+    fn restore_to_the_same_state_leaves_the_list_alone() {
+        let directory = TempDirectory::new();
+        let data = data_with(&["数学"], &[], vec![homework("数学", "一样")]);
+        let detail = read_snapshot_after_recording(&directory, &data);
+
+        // 恢复到的状态和当前完全一样：安全网与锚点都与最新一份重复，一条都不新增。
+        record_snapshot(directory.path(), &data, SnapshotSource::SnapshotRestore, 2_000).unwrap();
+        let next = apply_snapshot(data.clone(), detail);
+        record_snapshot(directory.path(), &next, SnapshotSource::SnapshotRestore, 2_001).unwrap();
+
+        assert_eq!(ids(directory.path()), vec!["1000".to_owned()]);
+    }
+
+    fn read_snapshot_after_recording(directory: &TempDirectory, data: &AppData) -> SnapshotDetail {
+        record_snapshot(directory.path(), data, SnapshotSource::HomeworkUpdate, 1_000).unwrap();
+        read_snapshot(directory.path(), "1000").unwrap()
     }
 
     #[test]
