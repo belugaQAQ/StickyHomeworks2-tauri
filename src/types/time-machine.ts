@@ -19,6 +19,9 @@ export type SnapshotSummary = {
   homeworkCount: number;
   subjectCount: number;
   tagCount: number;
+  subjects?: string[];
+  tags?: string[];
+  searchText?: string;
 };
 
 export type SnapshotDetail = {

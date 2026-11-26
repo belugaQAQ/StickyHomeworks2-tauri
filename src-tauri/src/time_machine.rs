@@ -66,6 +66,12 @@ pub(crate) struct SnapshotSummary {
     pub(crate) homework_count: usize,
     pub(crate) subject_count: usize,
     pub(crate) tag_count: usize,
+    #[serde(default)]
+    pub(crate) subjects: Vec<String>,
+    #[serde(default)]
+    pub(crate) tags: Vec<String>,
+    #[serde(default)]
+    pub(crate) search_text: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -247,7 +253,96 @@ fn summary_of(id: i64, file: &SnapshotFile) -> SnapshotSummary {
         homework_count: file.payload.homeworks.len(),
         subject_count: file.payload.subjects.len(),
         tag_count: file.payload.tags.len(),
+        subjects: collect_snapshot_subjects(&file.payload),
+        tags: collect_snapshot_tags(&file.payload),
+        search_text: extract_payload_search_text(&file.payload),
     }
+}
+
+fn collect_snapshot_subjects(payload: &SnapshotPayload) -> Vec<String> {
+    let mut items = Vec::new();
+    for homework in &payload.homeworks {
+        push_unique_trimmed(&mut items, &homework.subject);
+    }
+    items
+}
+
+fn collect_snapshot_tags(payload: &SnapshotPayload) -> Vec<String> {
+    let mut items = Vec::new();
+    for homework in &payload.homeworks {
+        for tag in &homework.tags {
+            push_unique_trimmed(&mut items, tag);
+        }
+    }
+    items
+}
+
+fn push_unique_trimmed(items: &mut Vec<String>, value: &str) {
+    let trimmed = value.trim();
+    if !trimmed.is_empty() && !items.iter().any(|existing| existing == trimmed) {
+        items.push(trimmed.to_owned());
+    }
+}
+
+fn extract_payload_search_text(payload: &SnapshotPayload) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    for homework in &payload.homeworks {
+        for tag in &homework.tags {
+            push_trimmed(&mut parts, tag);
+        }
+        match &homework.content {
+            crate::data::HomeworkContent::PlainText { text } => push_trimmed(&mut parts, text),
+            crate::data::HomeworkContent::TiptapJson { document } => collect_tiptap_text(document, &mut parts),
+            crate::data::HomeworkContent::LegacyFlowDocumentXaml { xaml } => {
+                let stripped = strip_xml_tags(xaml);
+                push_trimmed(&mut parts, &stripped);
+            }
+        }
+    }
+    parts.join(" ")
+}
+
+fn push_trimmed(parts: &mut Vec<String>, value: &str) {
+    let trimmed = value.trim();
+    if !trimmed.is_empty() {
+        parts.push(trimmed.to_owned());
+    }
+}
+
+fn collect_tiptap_text(value: &serde_json::Value, parts: &mut Vec<String>) {
+    let Some(object) = value.as_object() else {
+        return;
+    };
+    if object.get("type").and_then(serde_json::Value::as_str) == Some("image") {
+        return;
+    }
+    if let Some(text) = object.get("text").and_then(serde_json::Value::as_str) {
+        push_trimmed(parts, text);
+    }
+    if let Some(content) = object.get("content").and_then(serde_json::Value::as_array) {
+        for child in content {
+            collect_tiptap_text(child, parts);
+        }
+    }
+}
+
+fn strip_xml_tags(xaml: &str) -> String {
+    let mut result = String::with_capacity(xaml.len());
+    let mut in_tag = false;
+    for ch in xaml.chars() {
+        match ch {
+            '<' => {
+                in_tag = true;
+                if !result.ends_with(' ') {
+                    result.push(' ');
+                }
+            }
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    result
 }
 
 fn snapshot_path(directory: &Path, id: i64) -> PathBuf {
@@ -756,5 +851,42 @@ mod tests {
         for (source, expected) in sources {
             assert_eq!(serde_json::to_value(source).unwrap(), json!(expected));
         }
+    }
+
+    #[test]
+    fn summary_search_text_extracts_content_and_skips_images() {
+        let directory = TempDirectory::new();
+        let mut tiptap_hw = homework("物理", "");
+        tiptap_hw.tags = vec!["实验".to_owned()];
+        tiptap_hw.content = HomeworkContent::TiptapJson {
+            document: json!({
+                "type": "doc",
+                "content": [
+                    { "type": "paragraph", "content": [{ "type": "text", "text": "完成力学练习" }] },
+                    { "type": "image", "attrs": { "src": "data:image/png;base64,AAAA" } }
+                ]
+            }),
+        };
+        let mut xaml_hw = homework("化学", "");
+        xaml_hw.content = HomeworkContent::LegacyFlowDocumentXaml {
+            xaml: "<FlowDocument><Paragraph>背诵元素周期表</Paragraph></FlowDocument>".to_owned(),
+        };
+        let data = data_with(&["物理", "化学", "生物"], &["实验", "重要"], vec![tiptap_hw, xaml_hw]);
+        record_snapshot(directory.path(), &data, SnapshotSource::HomeworkCreate, 1_000).unwrap();
+
+        let (listed, _) = list_snapshots(directory.path()).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].subjects, vec!["物理".to_owned(), "化学".to_owned()]);
+        assert_eq!(listed[0].tags, vec!["实验".to_owned()]);
+        let search_text = &listed[0].search_text;
+        assert!(!search_text.contains("物理"));
+        assert!(!search_text.contains("化学"));
+        assert!(!search_text.contains("生物"));
+        assert!(search_text.contains("实验"));
+        assert!(!search_text.contains("重要"));
+        assert!(search_text.contains("完成力学练习"));
+        assert!(search_text.contains("背诵元素周期表"));
+        assert!(!search_text.contains("base64"));
+        assert!(!search_text.contains("FlowDocument"));
     }
 }

@@ -93,7 +93,8 @@ function orderSection(before: readonly HomeworkRecord[], after: readonly Homewor
   if (before.length !== after.length || before.length === 0) return null;
   const beforeIds = before.map((homework) => homework.id);
   const afterIds = after.map((homework) => homework.id);
-  const sameSet = beforeIds.every((id) => afterIds.includes(id));
+  const afterIdSet = new Set(afterIds);
+  const sameSet = beforeIds.every((id) => afterIdSet.has(id));
   if (!sameSet) return null;
   if (beforeIds.every((id, index) => id === afterIds[index])) return null;
 
@@ -165,6 +166,10 @@ function buildHomeworkDiff(
       continue;
     }
 
+    if (isSameHomework(homework, target)) {
+      continue;
+    }
+
     const targetLines = homeworkLines(target);
     append(diffLines(ownLines, targetLines, oldOffset, afterStart.get(homework.id) ?? 0));
     markBlockStart(blockStart);
@@ -190,6 +195,17 @@ function buildHomeworkDiff(
   }
 
   return { lines: visibleLines(lines), truncated };
+}
+
+function isSameHomework(left: HomeworkRecord, right: HomeworkRecord): boolean {
+  return (
+    left.subject === right.subject &&
+    left.dueTime === right.dueTime &&
+    left.firstExpiredShowTime === right.firstExpiredShowTime &&
+    left.tags.length === right.tags.length &&
+    left.tags.every((tag, index) => tag === right.tags[index]) &&
+    JSON.stringify(left.content) === JSON.stringify(right.content)
+  );
 }
 
 function onlyChanges(lines: readonly DiffLine[]): DiffLine[] {

@@ -3,10 +3,11 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 import { M3eSnackbar } from "@m3e/web/all";
 import { useAppContext } from "../app-context";
+import SearchExpansionPanel from "../components/SearchExpansionPanel.vue";
 import TimeMachineDiff from "../components/TimeMachineDiff.vue";
 import type { DialogElement } from "../composables/useAppDialogs";
 import { hideWebKitGtkDialog, useWebKitGtkDialogExit } from "../composables/useWebKitGtkDialogExit";
-import { formatSnapshotTime, groupSnapshotsByDay, snapshotSourceLabel } from "../domain/time-machine";
+import { formatLocalDay, formatSnapshotTime, groupSnapshotsByDay, snapshotSourceLabel } from "../domain/time-machine";
 import { logWarn } from "../services/logging";
 import { listSnapshots, readSnapshot } from "../services/time-machine";
 import type { HomeworkRecord } from "../types/app-data";
@@ -22,6 +23,13 @@ const context = useAppContext();
 const isSupported = isTauri();
 
 const snapshots = ref<SnapshotSummary[]>([]);
+const searchQuery = ref("");
+const isFilterOpen = ref(false);
+const selectedSource = ref<SnapshotSource | "all">("all");
+const selectedSubjects = ref<string[]>([]);
+const selectedTags = ref<string[]>([]);
+const selectedDateStart = ref<Date | null>(null);
+const selectedDateEnd = ref<Date | null>(null);
 const isLoading = ref(false);
 const listError = ref("");
 const selectedId = ref<string | null>(null);
@@ -58,6 +66,270 @@ const currentPayload = computed<SnapshotPayload>(() => ({
 }));
 
 const dayGroups = computed(() => groupSnapshotsByDay(snapshots.value));
+const searchIndexById = computed(() => {
+  const index = new Map<string, string>();
+  for (const group of dayGroups.value) {
+    for (const snapshot of group.snapshots) {
+      index.set(
+        snapshot.id,
+        [
+          group.label,
+          formatSnapshotTime(snapshot.createdAt, true),
+          snapshotSourceLabel(snapshot.source),
+          snapshot.source,
+          `${snapshot.homeworkCount} 条作业`,
+          snapshot.id,
+          snapshot.searchText ?? "",
+        ]
+          .join(" ")
+          .toLowerCase(),
+      );
+    }
+  }
+  return index;
+});
+const snapshotSourceOptions: SnapshotSource[] = [
+  "homework-create",
+  "homework-update",
+  "homework-delete",
+  "homework-cleanup",
+  "expiry-mark",
+  "cleanup-undo",
+  "uaf-import",
+  "legacy-import",
+  "vocabulary-update",
+  "snapshot-restore",
+];
+
+function handleSourceChange(event: Event) {
+  const value = (event.currentTarget as HTMLElement & { value?: string | null }).value;
+  if (value === "all" || snapshotSourceOptions.includes(value as SnapshotSource)) {
+    selectedSource.value = value as SnapshotSource | "all";
+  }
+}
+
+const availableDateKeys = computed(() => new Set(dayGroups.value.map((group) => group.key).filter(Boolean)));
+
+function isBlackoutDate(date: Date): boolean {
+  return !availableDateKeys.value.has(formatLocalDay(date));
+}
+
+const dateRangeDisplayText = computed(() => {
+  if (!selectedDateStart.value) return "";
+  const start = formatLocalDay(selectedDateStart.value);
+  if (!selectedDateEnd.value) return start;
+  const end = formatLocalDay(selectedDateEnd.value);
+  return start === end ? start : `${start} ~ ${end}`;
+});
+
+function handleDateRangeChange(event: Event) {
+  const picker = event.currentTarget as HTMLElement & {
+    rangeStart?: Date | null;
+    rangeEnd?: Date | null;
+    date?: Date | null;
+  };
+  const start = picker.rangeStart ?? picker.date ?? null;
+  const end = picker.rangeEnd ?? start;
+  if (start && end && start.getTime() > end.getTime()) {
+    selectedDateStart.value = end;
+    selectedDateEnd.value = start;
+  } else {
+    selectedDateStart.value = start;
+    selectedDateEnd.value = end;
+  }
+}
+
+const subjectFilterOptions = computed(() => {
+  const seen = new Set<string>();
+  for (const snapshot of snapshots.value) {
+    for (const subject of snapshot.subjects ?? []) {
+      seen.add(subject);
+    }
+  }
+  return [...seen];
+});
+
+const tagFilterOptions = computed(() => {
+  const seen = new Set<string>();
+  for (const snapshot of snapshots.value) {
+    for (const tag of snapshot.tags ?? []) {
+      seen.add(tag);
+    }
+  }
+  return [...seen];
+});
+
+function readMultiSelectValues(event: Event): string[] {
+  const select = event.currentTarget as HTMLElement & {
+    selected?: ReadonlyArray<{ value?: string | null }>;
+    value?: string | readonly string[] | null;
+  };
+  if (Array.isArray(select.selected)) {
+    return select.selected
+      .map((option) => (typeof option.value === "string" ? option.value : ""))
+      .filter((value) => value.length > 0);
+  }
+  if (Array.isArray(select.value)) {
+    return select.value.filter((value): value is string => typeof value === "string" && value.length > 0);
+  }
+  if (typeof select.value === "string" && select.value.length > 0) {
+    return select.value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function handleSubjectsChange(event: Event) {
+  selectedSubjects.value = readMultiSelectValues(event);
+}
+
+function handleTagsChange(event: Event) {
+  selectedTags.value = readMultiSelectValues(event);
+}
+
+type MatchSegment = {
+  text: string;
+  hit: boolean;
+};
+
+const activeSearchTerms = computed(() => searchQuery.value.trim().toLowerCase().split(/\s+/).filter(Boolean));
+
+function matchSegmentsForSnapshot(snapshot: SnapshotSummary): MatchSegment[] {
+  const terms = activeSearchTerms.value;
+  const sourceText = snapshot.searchText ?? "";
+  if (terms.length === 0 || !sourceText) return [];
+
+  const lower = sourceText.toLowerCase();
+  let firstHitIndex = -1;
+  for (const term of terms) {
+    const idx = lower.indexOf(term);
+    if (idx !== -1 && (firstHitIndex === -1 || idx < firstHitIndex)) {
+      firstHitIndex = idx;
+    }
+  }
+  if (firstHitIndex === -1) return [];
+
+  const start = Math.max(0, firstHitIndex - 14);
+  const end = Math.min(sourceText.length, start + 56);
+  const rawSnippet = sourceText.slice(start, end);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < sourceText.length ? "…" : "";
+  const snippet = `${prefix}${rawSnippet}${suffix}`;
+  const snippetLower = snippet.toLowerCase();
+
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (const term of terms) {
+    let cursor = 0;
+    while (cursor < snippetLower.length) {
+      const found = snippetLower.indexOf(term, cursor);
+      if (found === -1) break;
+      ranges.push({ start: found, end: found + term.length });
+      cursor = found + term.length;
+    }
+  }
+  if (ranges.length === 0) return [];
+
+  ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const range of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && range.start <= last.end) {
+      last.end = Math.max(last.end, range.end);
+    } else {
+      merged.push({ ...range });
+    }
+  }
+
+  const segments: MatchSegment[] = [];
+  let pos = 0;
+  for (const range of merged) {
+    if (range.start > pos) {
+      segments.push({ text: snippet.slice(pos, range.start), hit: false });
+    }
+    segments.push({ text: snippet.slice(range.start, range.end), hit: true });
+    pos = range.end;
+  }
+  if (pos < snippet.length) {
+    segments.push({ text: snippet.slice(pos), hit: false });
+  }
+  return segments;
+}
+
+const matchSegmentsById = computed(() => {
+  const map = new Map<string, MatchSegment[]>();
+  if (activeSearchTerms.value.length === 0) return map;
+  for (const group of filteredDayGroups.value) {
+    for (const snapshot of group.snapshots) {
+      const segments = matchSegmentsForSnapshot(snapshot);
+      if (segments.length > 0) map.set(snapshot.id, segments);
+    }
+  }
+  return map;
+});
+
+const activeFilterCount = computed(() => {
+  let count = 0;
+  if (selectedSource.value !== "all") count += 1;
+  count += selectedSubjects.value.length;
+  count += selectedTags.value.length;
+  if (selectedDateStart.value) count += 1;
+  return count;
+});
+
+const hasAnyFilter = computed(() => activeFilterCount.value > 0 || searchQuery.value.trim().length > 0);
+
+function resetSearchFilters() {
+  searchQuery.value = "";
+  selectedSource.value = "all";
+  selectedSubjects.value = [];
+  selectedTags.value = [];
+  selectedDateStart.value = null;
+  selectedDateEnd.value = null;
+}
+
+const filteredDayGroups = computed(() => {
+  const sourceFilter = selectedSource.value;
+  const requiredSubjects = selectedSubjects.value;
+  const requiredTags = selectedTags.value;
+  const startKey = selectedDateStart.value ? formatLocalDay(selectedDateStart.value) : null;
+  const endKey = selectedDateEnd.value ? formatLocalDay(selectedDateEnd.value) : startKey;
+  const terms = searchQuery.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (
+    sourceFilter === "all" &&
+    requiredSubjects.length === 0 &&
+    requiredTags.length === 0 &&
+    !startKey &&
+    terms.length === 0
+  ) {
+    return dayGroups.value;
+  }
+  return dayGroups.value
+    .filter((group) => {
+      if (!startKey) return true;
+      if (!group.key) return false;
+      return group.key >= startKey && group.key <= (endKey ?? startKey);
+    })
+    .map((group) => ({
+      ...group,
+      snapshots: group.snapshots.filter((snapshot) => {
+        if (sourceFilter !== "all" && snapshot.source !== sourceFilter) return false;
+        if (requiredSubjects.length > 0) {
+          const subjectSet = new Set(snapshot.subjects ?? []);
+          if (!requiredSubjects.every((subject) => subjectSet.has(subject))) return false;
+        }
+        if (requiredTags.length > 0) {
+          const tagSet = new Set(snapshot.tags ?? []);
+          if (!requiredTags.every((tag) => tagSet.has(tag))) return false;
+        }
+        if (terms.length === 0) return true;
+        const searchable = searchIndexById.value.get(snapshot.id) ?? "";
+        return terms.every((term) => searchable.includes(term));
+      }),
+    }))
+    .filter((group) => group.snapshots.length > 0);
+});
 const dualPane = computed(() => !context.isMobileRuntime.value && viewportWidth.value >= DUAL_PANE_MIN_WIDTH);
 
 const paneDirection = ref<"forward" | "back">("forward");
@@ -260,6 +532,100 @@ onUnmounted(() => {
         <div v-if="showListPane" class="time-machine__pane time-machine__pane--list">
           <m3e-callout v-if="!isSupported" variant="error" shape="square">{{ UNAVAILABLE_MESSAGE }}</m3e-callout>
           <template v-if="isSupported">
+            <SearchExpansionPanel
+              v-model="searchQuery"
+              v-model:open="isFilterOpen"
+              :badge-count="activeFilterCount"
+              class="time-machine__search"
+              placeholder="搜索作业内容..."
+              aria-label="搜索历史记录"
+            >
+              <div class="time-machine__filters">
+                <m3e-form-field variant="outlined" class="time-machine__select-field">
+                  <label slot="label" for="time-machine-source-select">快照类型</label>
+                  <m3e-select id="time-machine-source-select" :value="selectedSource" @change="handleSourceChange">
+                    <m3e-option value="all" :selected="selectedSource === 'all'">全部类型</m3e-option>
+                    <m3e-option
+                      v-for="source in snapshotSourceOptions"
+                      :key="source"
+                      :value="source"
+                      :selected="selectedSource === source"
+                    >
+                      {{ snapshotSourceLabel(source) }}
+                    </m3e-option>
+                  </m3e-select>
+                </m3e-form-field>
+
+                <m3e-form-field variant="outlined" class="time-machine__select-field">
+                  <label slot="label" for="time-machine-subjects-select">科目（须全部包含）</label>
+                  <m3e-select
+                    id="time-machine-subjects-select"
+                    :multi.prop="true"
+                    aria-multiselectable="true"
+                    @change="handleSubjectsChange"
+                  >
+                    <m3e-option
+                      v-for="subject in subjectFilterOptions"
+                      :key="subject"
+                      :value="subject"
+                      :selected="selectedSubjects.includes(subject)"
+                    >
+                      {{ subject }}
+                    </m3e-option>
+                  </m3e-select>
+                </m3e-form-field>
+
+                <m3e-form-field variant="outlined" class="time-machine__select-field">
+                  <label slot="label" for="time-machine-tags-select">标签（须全部包含）</label>
+                  <m3e-select
+                    id="time-machine-tags-select"
+                    :multi.prop="true"
+                    aria-multiselectable="true"
+                    @change="handleTagsChange"
+                  >
+                    <m3e-option
+                      v-for="tag in tagFilterOptions"
+                      :key="tag"
+                      :value="tag"
+                      :selected="selectedTags.includes(tag)"
+                    >
+                      {{ tag }}
+                    </m3e-option>
+                  </m3e-select>
+                </m3e-form-field>
+
+                <m3e-form-field variant="outlined" class="time-machine__select-field">
+                  <label slot="label" for="time-machine-date-trigger">快照日期范围</label>
+                  <input
+                    id="time-machine-date-trigger"
+                    readonly
+                    :value="dateRangeDisplayText"
+                    placeholder="全部日期"
+                  />
+                  <m3e-icon-button slot="suffix" aria-label="选择日期范围">
+                    <m3e-icon name="calendar_today"></m3e-icon>
+                    <m3e-datepicker-toggle for="time-machine-date-picker"></m3e-datepicker-toggle>
+                  </m3e-icon-button>
+                </m3e-form-field>
+              </div>
+              <template #actions>
+                <m3e-button variant="text" :disabled="!hasAnyFilter" @click="resetSearchFilters">重置</m3e-button>
+              </template>
+            </SearchExpansionPanel>
+            <m3e-datepicker
+              id="time-machine-date-picker"
+              for="time-machine-date-trigger"
+              :range.prop="true"
+              :clearable.prop="true"
+              clear-label="清除"
+              confirm-label="确定"
+              dismiss-label="取消"
+              label="选择快照日期范围"
+              :range-start.prop="selectedDateStart"
+              :range-end.prop="selectedDateEnd"
+              .blackoutDates="isBlackoutDate"
+              @change="handleDateRangeChange"
+            ></m3e-datepicker>
             <p v-if="listError" class="time-machine__error" role="alert">
               {{ listError }}
               <m3e-button variant="text" @click="refresh">重试</m3e-button>
@@ -272,7 +638,12 @@ onUnmounted(() => {
                 <m3e-icon name="history"></m3e-icon>
                 <p>还没有历史记录。修改作业后会自动留下一个时间点。</p>
               </div>
-              <div v-for="group in dayGroups" :key="group.key" class="time-machine__day">
+              <div v-else-if="filteredDayGroups.length === 0 && !listError" class="time-machine__empty">
+                <m3e-icon name="search_off"></m3e-icon>
+                <p>没有匹配的历史记录。</p>
+                <m3e-button variant="text" @click="resetSearchFilters">清除筛选</m3e-button>
+              </div>
+              <div v-for="group in filteredDayGroups" :key="group.key" class="time-machine__day">
                 <m3e-heading variant="label" size="large" level="3" class="time-machine__day-label">{{
                   group.label
                 }}</m3e-heading>
@@ -287,7 +658,14 @@ onUnmounted(() => {
                     <m3e-icon slot="leading" :name="sourceIcon(snapshot.source)"></m3e-icon>
                     <span>{{ formatSnapshotTime(snapshot.createdAt) }}</span>
                     <span slot="supporting-text">
-                      {{ snapshotSourceLabel(snapshot.source) }} · {{ snapshot.homeworkCount }} 条作业
+                      <span>{{ snapshotSourceLabel(snapshot.source) }} · {{ snapshot.homeworkCount }} 条作业</span>
+                      <span v-if="matchSegmentsById.get(snapshot.id)" class="time-machine__match-snippet">
+                        命中：<template v-for="(seg, segIndex) in matchSegmentsById.get(snapshot.id)" :key="segIndex"><mark
+                            v-if="seg.hit"
+                            class="time-machine__match-mark"
+                            >{{ seg.text }}</mark
+                          ><template v-else>{{ seg.text }}</template></template>
+                      </span>
                     </span>
                   </m3e-list-action>
                 </m3e-list>
@@ -342,19 +720,14 @@ onUnmounted(() => {
                 </div>
 
                 <m3e-tabs class="time-machine__tabs" variant="primary" stretch>
-                  <m3e-tab for="time-machine-diff" selected id="tab1">
-                    <m3e-icon slot="icon" name="difference"></m3e-icon>恢复差异
-                  </m3e-tab>
-                  <m3e-tooltip for="tab1">该备份与您当前数据的差异</m3e-tooltip>
-                  <m3e-tab for="time-machine-content" id="tab2">
+                  <m3e-tab for="time-machine-content" selected id="tab2">
                     <m3e-icon slot="icon" name="article"></m3e-icon>快照内容
                   </m3e-tab>
                   <m3e-tooltip for="tab2">该备份的数据</m3e-tooltip>
-                  <m3e-tab-panel id="time-machine-diff">
-                    <div class="time-machine__panel-body">
-                      <TimeMachineDiff :before="currentPayload" :after="displayedDetail" />
-                    </div>
-                  </m3e-tab-panel>
+                  <m3e-tab for="time-machine-diff" id="tab1">
+                    <m3e-icon slot="icon" name="difference"></m3e-icon>恢复差异
+                  </m3e-tab>
+                  <m3e-tooltip for="tab1">该备份与您当前数据的差异</m3e-tooltip>
                   <m3e-tab-panel id="time-machine-content">
                     <div class="time-machine__panel-body">
                       <div v-if="contentGroups.length === 0" class="time-machine__empty">
@@ -390,6 +763,11 @@ onUnmounted(() => {
                           <span v-if="displayedDetail.tags.length === 0" class="time-machine__muted">空</span>
                         </div>
                       </section>
+                    </div>
+                  </m3e-tab-panel>
+                  <m3e-tab-panel id="time-machine-diff">
+                    <div class="time-machine__panel-body">
+                      <TimeMachineDiff :before="currentPayload" :after="displayedDetail" />
                     </div>
                   </m3e-tab-panel>
                 </m3e-tabs>

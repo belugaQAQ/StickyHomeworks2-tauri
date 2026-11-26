@@ -56,7 +56,7 @@ function dayLabel(date: Date, today: Date, yesterday: Date): string {
   return formatLocalDay(date);
 }
 
-function formatLocalDay(value: Date): string {
+export function formatLocalDay(value: Date): string {
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
 }
 
